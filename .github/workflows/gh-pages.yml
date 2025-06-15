@@ -41,7 +41,6 @@ jobs:
           Remove-Item Env:GOOS
           Remove-Item Env:GOARCH
           cp gamejam.wasm html/
-          cp data html
 
       - name: Archive artifacts
         uses: actions/upload-artifact@v4
