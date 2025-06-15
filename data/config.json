@@ -1,0 +1,15 @@
+{
+    "windowTitle": "Ebiten Game Jam",
+    "targetFPS": 30,
+    "debugDraw": false,
+    "resolution": {
+        "external": {
+            "w": 1420,
+            "h": 900
+        },
+        "internal": {
+            "w": 800,
+            "h": 600
+        }
+    }
+}
