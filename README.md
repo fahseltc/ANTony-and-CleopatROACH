@@ -1,6 +1,7 @@
 # Ebitengine Game Jam
 
-This repo is for the (Ebitengine Game Jame)[https://itch.io/jam/ebitengine-game-jam-2025] held from 6/15/2025 to 6/29/2025.
+This repo is for the [Ebitengine Game Jam](https://itch.io/jam/ebitengine-game-jam-2025) held from 6/15/2025 to 6/29/2025.
+
 The game can be played at: https://charlesfahselt.com/ebitengine-gamejam/
 
 ## Theme
