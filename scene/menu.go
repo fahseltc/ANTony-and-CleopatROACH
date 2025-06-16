@@ -5,7 +5,6 @@ import (
 	"gamejam/ui"
 	"gamejam/util"
 	"image"
-	"image/color"
 
 	"github.com/hajimehoshi/ebiten/v2"
 )
@@ -13,16 +12,18 @@ import (
 type MenuScene struct {
 	BaseScene
 	startBtn *ui.Button
+	bg       *ebiten.Image
 	txt      string
 }
 
 func NewMenuScene() *MenuScene {
 	scene := &MenuScene{
-		txt: "Anteo and Antiet",
+		bg:  util.LoadImage("ui/menu-bg.png"),
+		txt: "ANTony & CleopatROACH",
 	}
 	scene.startBtn = ui.NewButton(ui.WithText("START"), ui.WithRect(image.Rectangle{
-		Min: image.Point{X: 300, Y: 300},
-		Max: image.Point{X: 500, Y: 350},
+		Min: image.Point{X: 250, Y: 520},
+		Max: image.Point{X: 550, Y: 570},
 	}), ui.WithClickFunc(func() {
 		scene.BaseScene.sm.SwitchTo(NewPlayScene())
 	}))
@@ -35,7 +36,7 @@ func (s *MenuScene) Update() error {
 }
 
 func (s *MenuScene) Draw(screen *ebiten.Image) {
-	screen.Fill(color.RGBA{22, 0, 0, 255}) // Fill Red
+	screen.DrawImage(s.bg, nil)
 	util.DrawCenteredText(screen, environment.NewFontsCollection().Large, s.txt, 400, 50, nil)
 
 	s.startBtn.Draw(screen)

@@ -48,11 +48,10 @@ func (tm *Tilemap) GetMap() *tiled.Map {
 
 func (tm *Tilemap) Draw(screen *ebiten.Image, camera *ui.Camera) {
 	opts := &ebiten.DrawImageOptions{}
-	ebitenutil.DebugPrintAt(screen, fmt.Sprintf("%v", camera.ViewPortZoom), 1, 1)
 
 	opts.GeoM.Scale(camera.ViewPortZoom, camera.ViewPortZoom)
 	opts.GeoM.Translate(float64(camera.ViewPortX), float64(camera.ViewPortY))
 
-	ebitenutil.DebugPrintAt(screen, fmt.Sprintf("%v", camera.ViewPortZoom), 1, 1)
 	screen.DrawImage(tm.staticBg, opts)
+	ebitenutil.DebugPrintAt(screen, fmt.Sprintf("zoom:%v", camera.ViewPortZoom), 1, 20)
 }
