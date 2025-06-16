@@ -2,21 +2,33 @@ package game
 
 import (
 	"gamejam/environment"
+	"gamejam/scene"
+	"gamejam/tilemap"
 	"time"
 
 	"github.com/hajimehoshi/ebiten/v2"
+	"github.com/joelschutz/stagehand"
 )
 
 type Game struct {
 	Env            *environment.Env
 	LastUpdateTime time.Time
+
+	tileMap      *tilemap.Tilemap
+	sceneManager *stagehand.SceneManager[scene.GameState]
 }
 
 func NewGame(env *environment.Env) *Game {
+	state := scene.GameState{}
+	sceneInstance := scene.NewMenuScene()
+	manager := stagehand.NewSceneManager(sceneInstance, state)
+
 	// logger uses JSON structure as follows
 	env.Logger.Info("Game Constructor", "exampleKey", "exampleValue")
 	return &Game{
-		Env: env,
+		Env:          env,
+		tileMap:      tilemap.NewTilemapLoader(),
+		sceneManager: manager,
 	}
 }
 
@@ -30,6 +42,7 @@ func (g *Game) Update() error {
 	//
 	// call game object updates here
 	//
+	g.sceneManager.Update()
 
 	// Pt2: Calculate DT for next loop
 	g.LastUpdateTime = time.Now()
@@ -37,7 +50,8 @@ func (g *Game) Update() error {
 }
 
 func (g *Game) Draw(screen *ebiten.Image) {
-
+	//g.tileMap.Draw(screen)
+	g.sceneManager.Draw(screen)
 }
 
 // Layout takes the outside size (e.g., the window size) and returns the (logical) screen size.
