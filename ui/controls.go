@@ -12,13 +12,15 @@ type Controls struct {
 	bg        *ebiten.Image
 	rect      image.Rectangle
 	attackBtn *Button
-	moveBtn   *Button
-	stopBtn   *Button
+	//attackLabel *ebiten.Image
+	moveBtn *Button
+	stopBtn *Button
 }
 
 func NewControls() *Controls {
 	c := &Controls{
 		rect: image.Rectangle{Min: image.Pt(0, 450), Max: image.Pt(300, 600)},
+		//attackLabel: util.LoadImage("ui/keys/z.png"),
 	}
 	c.bg = util.ScaleImage(util.LoadImage("ui/btn/controls-bg.png"), float32(c.rect.Dx()), float32(c.rect.Dy()))
 

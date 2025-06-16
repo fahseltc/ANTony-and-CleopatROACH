@@ -1,9 +1,12 @@
 package tilemap
 
 import (
+	"fmt"
+	"gamejam/ui"
 	"log"
 
 	"github.com/hajimehoshi/ebiten/v2"
+	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
 	"github.com/lafriks/go-tiled"
 	"github.com/lafriks/go-tiled/render"
 )
@@ -39,8 +42,17 @@ func NewTilemap() *Tilemap {
 	}
 }
 
-func (tm *Tilemap) Draw(screen *ebiten.Image, x int, y int) {
+func (tm *Tilemap) GetMap() *tiled.Map {
+	return tm.tileMap
+}
+
+func (tm *Tilemap) Draw(screen *ebiten.Image, camera *ui.Camera) {
 	opts := &ebiten.DrawImageOptions{}
-	opts.GeoM.Translate(float64(x), float64(y))
+	ebitenutil.DebugPrintAt(screen, fmt.Sprintf("%v", camera.ViewPortZoom), 1, 1)
+
+	opts.GeoM.Scale(camera.ViewPortZoom, camera.ViewPortZoom)
+	opts.GeoM.Translate(float64(camera.ViewPortX), float64(camera.ViewPortY))
+
+	ebitenutil.DebugPrintAt(screen, fmt.Sprintf("%v", camera.ViewPortZoom), 1, 1)
 	screen.DrawImage(tm.staticBg, opts)
 }
