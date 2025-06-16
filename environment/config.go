@@ -64,20 +64,12 @@ func newConfig() *Config {
 }
 
 func (r *Config) Add(k string, v any) {
-	if r == nil {
-		return
-	}
-
 	r.Lock()
 	defer r.Unlock()
 	r.values[k] = v
 }
 
 func (r *Config) Get(k string) any {
-	if r == nil {
-		return nil
-	}
-
 	r.Lock()
 	defer r.Unlock()
 	return r.values[k]
