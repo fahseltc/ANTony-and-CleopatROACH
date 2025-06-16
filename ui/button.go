@@ -40,9 +40,9 @@ func NewButton(opts ...BtnOptFunc) *Button {
 func defaultBtnOpts() Button {
 	defaultWidth := float32(250.0)
 	defaultHeight := float32(100.0)
-	defaultImg := util.LoadImage("ui/btn/yellow_btn.png")
+	defaultImg := util.LoadImage("ui/btn/yellow-btn.png")
 	defaultImg = util.ScaleImage(defaultImg, defaultWidth, defaultHeight)
-	pressed := util.LoadImage("ui/btn/yellow_btn.png") // todo pressed
+	pressed := util.LoadImage("ui/btn/yellow-btn.png") // todo pressed
 	pressed = util.ScaleImage(pressed, defaultWidth, defaultHeight)
 	return Button{
 		rect: image.Rectangle{
@@ -56,7 +56,6 @@ func defaultBtnOpts() Button {
 			},
 		},
 		font:       environment.NewFontsCollection().Med,
-		text:       "DefaultText",
 		currentImg: defaultImg,
 		defaultImg: defaultImg,
 		pressedImg: pressed,
@@ -70,9 +69,9 @@ func WithText(txt string) BtnOptFunc {
 func WithRect(rect image.Rectangle) BtnOptFunc {
 	return func(btn *Button) {
 		btn.rect = rect
-		defaultImg := util.LoadImage("ui/btn/yellow_btn.png")
+		defaultImg := util.LoadImage("ui/btn/yellow-btn.png")
 		defaultImg = util.ScaleImage(defaultImg, float32(rect.Dx()), float32(rect.Dy()))
-		pressed := util.LoadImage("ui/btn/yellow_btn.png")
+		pressed := util.LoadImage("ui/btn/yellow-btn.png")
 		pressed = util.ScaleImage(pressed, float32(rect.Bounds().Dx()), float32(rect.Bounds().Dy()))
 
 		btn.currentImg = defaultImg
@@ -83,6 +82,14 @@ func WithRect(rect image.Rectangle) BtnOptFunc {
 func WithClickFunc(f func()) BtnOptFunc {
 	return func(btn *Button) {
 		btn.OnClick = f
+	}
+}
+func WithImage(defaultImg *ebiten.Image, pressedImg *ebiten.Image) BtnOptFunc {
+	return func(btn *Button) {
+		defaultBtn := util.ScaleImage(defaultImg, float32(btn.rect.Bounds().Dx()), float32(btn.rect.Bounds().Dy()))
+		btn.currentImg = defaultBtn
+		btn.defaultImg = defaultBtn
+		btn.pressedImg = util.ScaleImage(pressedImg, float32(btn.rect.Bounds().Dx()), float32(btn.rect.Bounds().Dy()))
 	}
 }
 
@@ -110,9 +117,12 @@ func (btn *Button) Draw(screen *ebiten.Image) {
 	op.GeoM.Translate(float64(btn.rect.Min.X), float64(btn.rect.Min.Y))
 	screen.DrawImage(btn.currentImg, op)
 
-	// draw text centered
-	centerX, centerY := btn.GetCenter()
-	util.DrawCenteredText(screen, btn.font, btn.text, centerX, centerY, nil)
+	if btn.text != "" {
+		// draw text centered
+		centerX, centerY := btn.GetCenter()
+		util.DrawCenteredText(screen, btn.font, btn.text, centerX, centerY, nil)
+	}
+	// ebitenutil.DrawRect(screen, float64(btn.rect.Min.X), float64(btn.rect.Min.Y), float64(btn.rect.Dx()), float64(btn.rect.Dy()), color.RGBA{0, 255, 0, 255})
 }
 
 func (btn *Button) Update() {
@@ -128,9 +138,9 @@ func (btn *Button) Update() {
 func (btn *Button) MouseCollides() bool {
 	mx, my := ebiten.CursorPosition()
 	collides := mx > int(btn.rect.Min.X) &&
-		mx < int(btn.rect.Max.X+btn.rect.Dx()) &&
+		mx < int(btn.rect.Max.X) &&
 		my > int(btn.rect.Min.Y) &&
-		my < int(btn.rect.Max.Y+btn.rect.Dy())
+		my < int(btn.rect.Max.Y)
 	return collides
 }
 

@@ -3,7 +3,6 @@ package game
 import (
 	"gamejam/environment"
 	"gamejam/scene"
-	"gamejam/tilemap"
 	"time"
 
 	"github.com/hajimehoshi/ebiten/v2"
@@ -14,7 +13,6 @@ type Game struct {
 	Env            *environment.Env
 	LastUpdateTime time.Time
 
-	tileMap      *tilemap.Tilemap
 	sceneManager *stagehand.SceneManager[scene.GameState]
 }
 
@@ -27,7 +25,6 @@ func NewGame(env *environment.Env) *Game {
 	env.Logger.Info("Game Constructor", "exampleKey", "exampleValue")
 	return &Game{
 		Env:          env,
-		tileMap:      tilemap.NewTilemapLoader(),
 		sceneManager: manager,
 	}
 }

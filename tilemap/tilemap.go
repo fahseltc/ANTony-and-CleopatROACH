@@ -1,9 +1,12 @@
 package tilemap
 
 import (
+	"fmt"
+	"gamejam/ui"
 	"log"
 
 	"github.com/hajimehoshi/ebiten/v2"
+	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
 	"github.com/lafriks/go-tiled"
 	"github.com/lafriks/go-tiled/render"
 )
@@ -15,7 +18,7 @@ type Tilemap struct {
 	staticBg *ebiten.Image
 }
 
-func NewTilemapLoader() *Tilemap {
+func NewTilemap() *Tilemap {
 	t, err := tiled.LoadFile("assets/tilemap/untitled.tmx") // this wont work in wasm! need to embed files but it breaks
 	if err != nil {
 		log.Fatalf("unable to load tmx: %v", err.Error())
@@ -39,6 +42,17 @@ func NewTilemapLoader() *Tilemap {
 	}
 }
 
-func (tm *Tilemap) Draw(screen *ebiten.Image) {
-	screen.DrawImage(tm.staticBg, nil)
+func (tm *Tilemap) GetMap() *tiled.Map {
+	return tm.tileMap
+}
+
+func (tm *Tilemap) Draw(screen *ebiten.Image, camera *ui.Camera) {
+	opts := &ebiten.DrawImageOptions{}
+	ebitenutil.DebugPrintAt(screen, fmt.Sprintf("%v", camera.ViewPortZoom), 1, 1)
+
+	opts.GeoM.Scale(camera.ViewPortZoom, camera.ViewPortZoom)
+	opts.GeoM.Translate(float64(camera.ViewPortX), float64(camera.ViewPortY))
+
+	ebitenutil.DebugPrintAt(screen, fmt.Sprintf("%v", camera.ViewPortZoom), 1, 1)
+	screen.DrawImage(tm.staticBg, opts)
 }

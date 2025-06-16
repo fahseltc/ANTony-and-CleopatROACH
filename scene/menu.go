@@ -24,10 +24,8 @@ func NewMenuScene() *MenuScene {
 		Min: image.Point{X: 300, Y: 300},
 		Max: image.Point{X: 500, Y: 350},
 	}), ui.WithClickFunc(func() {
-		scene.BaseScene.sm.SwitchTo(&PlayScene{})
+		scene.BaseScene.sm.SwitchTo(NewPlayScene())
 	}))
-	// 800
-	// 300 200 300
 	return scene
 }
 
