@@ -1,8 +1,10 @@
 package game
 
 import (
-	"gamejam/environment"
+	"gamejam/config"
+	"gamejam/log"
 	"gamejam/scene"
+	"log/slog"
 	"time"
 
 	"github.com/hajimehoshi/ebiten/v2"
@@ -10,22 +12,22 @@ import (
 )
 
 type Game struct {
-	Env            *environment.Env
 	LastUpdateTime time.Time
+	sceneManager   *stagehand.SceneManager[scene.GameState]
 
-	sceneManager *stagehand.SceneManager[scene.GameState]
+	cfg *config.T
+	log *slog.Logger
 }
 
-func NewGame(env *environment.Env) *Game {
+func NewGame(cfg *config.T) *Game {
 	state := scene.GameState{}
 	sceneInstance := scene.NewMenuScene()
 	manager := stagehand.NewSceneManager(sceneInstance, state)
 
-	// logger uses JSON structure as follows
-	env.Logger.Info("Game Constructor", "exampleKey", "exampleValue")
 	return &Game{
-		Env:          env,
 		sceneManager: manager,
+		cfg:          cfg,
+		log:          log.NewLogger().With("for", "game"),
 	}
 }
 
@@ -54,5 +56,5 @@ func (g *Game) Draw(screen *ebiten.Image) {
 // Layout takes the outside size (e.g., the window size) and returns the (logical) screen size.
 // If you don't have to adjust the screen size with the outside size, just return a fixed size.
 func (g *Game) Layout(outsideWidth int, outsideHeight int) (screenWidth int, screenHeight int) {
-	return g.Env.Config.Get("resolution.internal.w").(int), g.Env.Config.Get("resolution.internal.h").(int)
+	return g.cfg.Resolutions.Internal.Width, g.cfg.Resolutions.Internal.Height
 }
