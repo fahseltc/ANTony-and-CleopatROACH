@@ -15,7 +15,7 @@ type Tilemap struct {
 	staticBg *ebiten.Image
 }
 
-func NewTilemapLoader() *Tilemap {
+func NewTilemap() *Tilemap {
 	t, err := tiled.LoadFile("assets/tilemap/untitled.tmx") // this wont work in wasm! need to embed files but it breaks
 	if err != nil {
 		log.Fatalf("unable to load tmx: %v", err.Error())
@@ -39,6 +39,8 @@ func NewTilemapLoader() *Tilemap {
 	}
 }
 
-func (tm *Tilemap) Draw(screen *ebiten.Image) {
-	screen.DrawImage(tm.staticBg, nil)
+func (tm *Tilemap) Draw(screen *ebiten.Image, x int, y int) {
+	opts := &ebiten.DrawImageOptions{}
+	opts.GeoM.Translate(float64(x), float64(y))
+	screen.DrawImage(tm.staticBg, opts)
 }
