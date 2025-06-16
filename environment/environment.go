@@ -9,6 +9,7 @@ import (
 type Env struct {
 	*slog.Logger
 	*Config
+	Fonts
 }
 
 var ENV *Env
@@ -17,6 +18,7 @@ func NewEnv() *Env {
 	env := &Env{
 		Logger: setupLogger(),
 		Config: newConfig(),
+		Fonts:  *NewFontsCollection(),
 	}
 	ENV = env
 	return env

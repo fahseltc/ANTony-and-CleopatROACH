@@ -1,6 +1,6 @@
 {
     "windowTitle": "Ebiten Game Jam",
-    "targetFPS": 30,
+    "targetFPS": 60,
     "debugDraw": false,
     "resolution": {
         "external": {
