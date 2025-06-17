@@ -2,18 +2,18 @@ package main
 
 import (
 	"gamejam/config"
-	"gamejam/fonts"
 	"gamejam/game"
+	"log"
 
 	"github.com/hajimehoshi/ebiten/v2"
 )
 
-var fontPath = "fonts/PressStart2P-Regular.ttf"
-
 func main() {
-	cfg := config.New()
-	fonts := fonts.Load(fontPath)
-	game := game.New(cfg, fonts)
+	cfg, err := config.New()
+	if err != nil {
+		log.Fatal(err)
+	}
+	game := game.New(cfg)
 
 	ebiten.SetWindowTitle(cfg.WindowTitle)
 	// set external window resolution
@@ -21,8 +21,8 @@ func main() {
 	ebiten.SetWindowResizingMode(ebiten.WindowResizingModeEnabled)
 	ebiten.SetTPS(int(cfg.TargetFPS))
 
-	err := ebiten.RunGame(game)
+	err = ebiten.RunGame(game)
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
 }

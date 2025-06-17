@@ -12,6 +12,8 @@ import (
 	"github.com/joelschutz/stagehand"
 )
 
+var fontPath = "fonts/PressStart2P-Regular.ttf"
+
 type Game struct {
 	LastUpdateTime time.Time
 	sceneManager   *stagehand.SceneManager[scene.GameState]
@@ -21,8 +23,9 @@ type Game struct {
 	log *slog.Logger
 }
 
-func New(cfg *config.T, fonts *fonts.All) *Game {
+func New(cfg *config.T) *Game {
 	state := scene.GameState{}
+	fonts := fonts.Load(fontPath)
 	defaultFont := fonts.Med // TODO allowance to reset font & re-render scene
 	sceneInstance := scene.NewMenuScene(defaultFont)
 	manager := stagehand.NewSceneManager(sceneInstance, state)

@@ -2,6 +2,7 @@ package config
 
 import (
 	"encoding/json"
+	"fmt"
 
 	"gamejam/data"
 )
@@ -23,9 +24,15 @@ type Resolution struct {
 }
 
 // New loads config keys from a root-level config.json
-func New() *T {
+func New() (*T, error) {
 	var cfg T
-	jsonFile, _ := data.Files.ReadFile("config.json")
-	_ = json.Unmarshal(jsonFile, &cfg)
-	return &cfg
+	jsonFile, err := data.Files.ReadFile("config.json")
+	if err != nil {
+		return nil, fmt.Errorf("opening config file: %w", err)
+	}
+	err = json.Unmarshal(jsonFile, &cfg)
+	if err != nil {
+		return nil, fmt.Errorf("decoding config: %w", err)
+	}
+	return &cfg, nil
 }
