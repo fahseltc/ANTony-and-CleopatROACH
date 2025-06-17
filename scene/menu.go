@@ -19,8 +19,9 @@ type MenuScene struct {
 
 func NewMenuScene(font text.Face) *MenuScene {
 	scene := &MenuScene{
-		bg:  util.LoadImage("ui/menu-bg.png"),
-		txt: "ANTony & CleopatROACH",
+		bg:   util.LoadImage("ui/menu-bg.png"),
+		txt:  "ANTony & CleopatROACH",
+		font: font,
 	}
 	scene.startBtn = ui.NewButton(font, ui.WithText("START"), ui.WithRect(image.Rectangle{
 		Min: image.Point{X: 250, Y: 520},

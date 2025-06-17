@@ -1,23 +1,16 @@
 package ui
 
 import (
-<<<<<<< HEAD
 	"fmt"
-	"gamejam/environment"
-=======
 	"gamejam/log"
->>>>>>> master
 	"gamejam/util"
 	"image"
 	"log/slog"
 
 	"github.com/hajimehoshi/ebiten/v2"
-<<<<<<< HEAD
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
 	"github.com/hajimehoshi/ebiten/v2/inpututil"
-=======
 	"github.com/hajimehoshi/ebiten/v2/text/v2"
->>>>>>> master
 )
 
 type Controls struct {
@@ -27,13 +20,10 @@ type Controls struct {
 	//attackLabel *ebiten.Image
 	moveBtn *Button
 	stopBtn *Button
-<<<<<<< HEAD
 
 	dragRect        image.Rectangle
 	firstClickPoint *image.Point
-=======
-	log     *slog.Logger
->>>>>>> master
+	log             *slog.Logger
 }
 
 func NewControls(font text.Face) *Controls {
