@@ -1,6 +1,7 @@
 package tilemap
 
 import (
+	"fmt"
 	"log"
 
 	"github.com/hajimehoshi/ebiten/v2"
@@ -32,13 +33,27 @@ func NewTilemap() *Tilemap {
 	}
 	staticBg := ebiten.NewImageFromImage(r.Result)
 	r.Clear()
-	return &Tilemap{
+	tm := &Tilemap{
 		renderer: r,
 		tileMap:  t,
 		StaticBg: staticBg,
 	}
+
+	tm.ToWorld()
+	return tm
 }
 
 func (tm *Tilemap) GetMap() *tiled.Map {
 	return tm.tileMap
+}
+
+func (tm *Tilemap) ToWorld() {
+	layer := tm.tileMap.Layers[0].Tiles
+	fmt.Print(layer)
+}
+
+type Tile struct {
+	Type     string
+	Passable bool
+	//Resource *Resource
 }

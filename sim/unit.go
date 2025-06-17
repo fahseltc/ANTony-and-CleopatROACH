@@ -5,17 +5,19 @@ type Action int
 const (
 	Idle Action = iota
 	Moving
+	AttackMoving
+	Attacking
+	HoldingPosition
 	Collecting
 	Delivering
-	Building
-	Attacking
+	//Building
 )
 
 type Unit struct {
 	ID           uint32
 	Health       int
-	X, Y         float64
+	X, Y         int
 	MoveSpeed    float64
 	Action       Action
-	DestX, DestY float64
+	DestX, DestY int
 }

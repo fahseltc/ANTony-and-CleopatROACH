@@ -37,8 +37,15 @@ type World struct {
 	TileData [][]Tile
 }
 
+const (
+	NoneTile     = "none"
+	ResourceTile = "resource"
+	BuildingTile = "building"
+)
+
 type Tile struct {
 	Type     string
+	Passable bool
 	Resource *Resource
 }
 
