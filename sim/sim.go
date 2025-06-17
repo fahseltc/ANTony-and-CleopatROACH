@@ -1,7 +1,9 @@
 package sim
 
 import (
+	"math"
 	"slices"
+	"sync"
 	"sync/atomic"
 )
 
@@ -17,6 +19,9 @@ type T struct {
 
 	// ID generator
 	unitIdx atomic.Uint32
+
+	playerState PlayerState
+	stateMu     sync.RWMutex
 
 	playerSpawnX, playerSpawnY float64
 	playerWorkers              []Worker
@@ -37,6 +42,38 @@ type Tile struct {
 	Resource *Resource
 }
 
+type PlayerState struct {
+	Wood  uint16
+	Food  uint16
+	Water uint16
+}
+
+func (s *T) AddResource(res Resource, amount uint16) {
+	s.stateMu.Lock()
+	defer s.stateMu.Unlock()
+
+	switch res.Type {
+	case Wood:
+		s.playerState.Wood = max(s.playerState.Wood+amount, math.MaxUint16)
+	case Food:
+		s.playerState.Food = max(s.playerState.Food+amount, math.MaxUint16)
+	case Water:
+		s.playerState.Water = max(s.playerState.Water+amount, math.MaxUint16)
+	}
+}
+
+func (s *T) GetPlayerState() PlayerState {
+	s.stateMu.RLock()
+	defer s.stateMu.RUnlock()
+	return s.playerState
+}
+
+const (
+	Wood  = "wood"
+	Food  = "food"
+	Water = "water"
+)
+
 // Resource represents a collectable resource on the map
 type Resource struct {
 	Type      string
@@ -53,9 +90,13 @@ func New(tps int) *T {
 		world: World{
 			TileData: make([][]Tile, 0, 1),
 		},
+
+		// TODO Spawn Points
+		playerState:   PlayerState{},
 		playerWorkers: make([]Worker, 1),
 		playerUnits:   make([]Unit, 0, 10),
-		enemyUnits:    make([]Unit, 0, 10),
+
+		enemyUnits: make([]Unit, 0, 10),
 	}
 }
 
