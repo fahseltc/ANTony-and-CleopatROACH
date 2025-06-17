@@ -32,7 +32,7 @@ func NewControls(font text.Face) *Controls {
 		dragRect:        image.Rectangle{Min: image.Pt(0, 0), Max: image.Pt(0, 0)},
 		firstClickPoint: nil,
 		//attackLabel: util.LoadImage("ui/keys/z.png"),
-		log: log.NewLogger().With("for", "ui"),
+		log: log.NewLogger().With("for", "controls"),
 	}
 	c.bg = util.ScaleImage(util.LoadImage("ui/btn/controls-bg.png"), float32(c.rect.Dx()), float32(c.rect.Dy()))
 

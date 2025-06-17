@@ -26,8 +26,7 @@ type Game struct {
 func New(cfg *config.T) *Game {
 	state := scene.GameState{}
 	fonts := fonts.Load(fontPath)
-	defaultFont := fonts.Med // TODO allowance to reset font & re-render scene
-	sceneInstance := scene.NewMenuScene(defaultFont)
+	sceneInstance := scene.NewMenuScene(fonts)
 	manager := stagehand.NewSceneManager(sceneInstance, state)
 
 	return &Game{

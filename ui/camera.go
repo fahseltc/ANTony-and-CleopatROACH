@@ -1,6 +1,10 @@
 package ui
 
 import (
+	"gamejam/log"
+	"log/slog"
+	"math"
+
 	"github.com/hajimehoshi/ebiten/v2"
 )
 
@@ -8,6 +12,7 @@ var MaxZoom = 1.0
 var MinZoom = 0.3
 
 type Camera struct {
+	log          *slog.Logger
 	ViewPortX    int
 	ViewPortY    int
 	ViewPortZoom float64
@@ -18,6 +23,7 @@ type Camera struct {
 
 func NewCamera() *Camera {
 	return &Camera{
+		log:          log.NewLogger().With("for", "camera"),
 		ViewPortX:    0,
 		ViewPortY:    0,
 		ViewPortZoom: 0.5,
@@ -69,7 +75,10 @@ func (c *Camera) PanY(amount int) {
 	}
 }
 
-// func (c *Camera) SetLimitBounds(maxWidth int, maxHeight int) {
-// 	c.mapHeight = maxWidth
-// 	c.mapWidth = maxHeight
-// }
+func (c *Camera) ScreenPosToMapPos(x, y int) (int, int) {
+	c.log.Info("input", "x", x, "y", y)
+	mapX := math.Abs(float64(c.ViewPortX)) + float64(x)
+	mapY := math.Abs(float64(c.ViewPortY)) + float64(y)
+	c.log.Info("output", "mapX", mapX, "mapY", mapY)
+	return int(mapX), int(mapY)
+}

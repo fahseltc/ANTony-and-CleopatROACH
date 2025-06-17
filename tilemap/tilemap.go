@@ -1,12 +1,9 @@
 package tilemap
 
 import (
-	"fmt"
-	"gamejam/ui"
 	"log"
 
 	"github.com/hajimehoshi/ebiten/v2"
-	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
 	"github.com/lafriks/go-tiled"
 	"github.com/lafriks/go-tiled/render"
 )
@@ -15,7 +12,7 @@ import (
 type Tilemap struct {
 	renderer *render.Renderer
 	tileMap  *tiled.Map
-	staticBg *ebiten.Image
+	StaticBg *ebiten.Image
 }
 
 func NewTilemap() *Tilemap {
@@ -38,20 +35,10 @@ func NewTilemap() *Tilemap {
 	return &Tilemap{
 		renderer: r,
 		tileMap:  t,
-		staticBg: staticBg,
+		StaticBg: staticBg,
 	}
 }
 
 func (tm *Tilemap) GetMap() *tiled.Map {
 	return tm.tileMap
-}
-
-func (tm *Tilemap) Draw(screen *ebiten.Image, camera *ui.Camera) {
-	opts := &ebiten.DrawImageOptions{}
-
-	opts.GeoM.Scale(camera.ViewPortZoom, camera.ViewPortZoom)
-	opts.GeoM.Translate(float64(camera.ViewPortX), float64(camera.ViewPortY))
-
-	screen.DrawImage(tm.staticBg, opts)
-	ebitenutil.DebugPrintAt(screen, fmt.Sprintf("zoom:%v", camera.ViewPortZoom), 1, 20)
 }
