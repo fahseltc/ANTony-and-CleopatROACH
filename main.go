@@ -1,18 +1,19 @@
 package main
 
 import (
-	"fmt"
 	"gamejam/config"
+	"gamejam/fonts"
 	"gamejam/game"
 
 	"github.com/hajimehoshi/ebiten/v2"
 )
 
+var fontPath = "fonts/PressStart2P-Regular.ttf"
+
 func main() {
 	cfg := config.New()
-	game := game.NewGame(cfg)
-
-	fmt.Printf("%#v\n", cfg)
+	fonts := fonts.Load(fontPath)
+	game := game.New(cfg, fonts)
 
 	ebiten.SetWindowTitle(cfg.WindowTitle)
 	// set external window resolution

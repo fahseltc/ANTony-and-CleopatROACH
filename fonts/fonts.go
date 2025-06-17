@@ -1,31 +1,27 @@
-package environment
+package fonts
 
 import (
-	"bytes"
 	"gamejam/assets"
-	"io"
 
 	"github.com/hajimehoshi/ebiten/v2/text/v2"
 )
 
-type Fonts struct {
+type All struct {
 	XSmall text.Face
 	Small  text.Face
 	Med    text.Face
 	Large  text.Face
 }
 
-var fontPath = "fonts/PressStart2P-Regular.ttf"
-
-func NewFontsCollection() *Fonts {
-	fonts := &Fonts{}
-	xs, _ := loadTTFFont(fontPath, 8)
+func Load(path string) *All {
+	fonts := &All{}
+	xs, _ := loadTTFFont(path, 8)
 	fonts.XSmall = xs
-	s, _ := loadTTFFont(fontPath, 12)
+	s, _ := loadTTFFont(path, 12)
 	fonts.Small = s
-	m, _ := loadTTFFont(fontPath, 20)
+	m, _ := loadTTFFont(path, 20)
 	fonts.Med = m
-	l, _ := loadTTFFont(fontPath, 30)
+	l, _ := loadTTFFont(path, 30)
 	fonts.Large = l
 	return fonts
 }
@@ -35,12 +31,7 @@ func loadTTFFont(path string, size float64) (text.Face, error) {
 	if err != nil {
 		return nil, err
 	}
-	fontBytes, err := io.ReadAll(fontFile)
-	if err != nil {
-		return nil, err
-	}
-
-	s, err := text.NewGoTextFaceSource(bytes.NewReader(fontBytes))
+	s, err := text.NewGoTextFaceSource(fontFile)
 	if err != nil {
 		return nil, err
 	}

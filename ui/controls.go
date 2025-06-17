@@ -7,6 +7,7 @@ import (
 	"log/slog"
 
 	"github.com/hajimehoshi/ebiten/v2"
+	"github.com/hajimehoshi/ebiten/v2/text/v2"
 )
 
 type Controls struct {
@@ -19,7 +20,7 @@ type Controls struct {
 	log     *slog.Logger
 }
 
-func NewControls() *Controls {
+func NewControls(font text.Face) *Controls {
 	c := &Controls{
 		rect: image.Rectangle{Min: image.Pt(0, 450), Max: image.Pt(300, 600)},
 		//attackLabel: util.LoadImage("ui/keys/z.png"),
@@ -27,21 +28,21 @@ func NewControls() *Controls {
 	}
 	c.bg = util.ScaleImage(util.LoadImage("ui/btn/controls-bg.png"), float32(c.rect.Dx()), float32(c.rect.Dy()))
 
-	c.attackBtn = NewButton(
+	c.attackBtn = NewButton(font,
 		WithRect(image.Rectangle{Min: image.Pt(c.rect.Min.X+20, c.rect.Min.Y+20), Max: image.Pt(c.rect.Min.X+70, c.rect.Min.Y+70)}),
 		WithClickFunc(func() {
 			c.log.Info("atkbtnclicked")
 		}),
 		WithImage(util.LoadImage("ui/btn/atk-btn.png"), util.LoadImage("ui/btn/atk-btn.png")),
 	)
-	c.moveBtn = NewButton(
+	c.moveBtn = NewButton(font,
 		WithRect(image.Rectangle{Min: image.Pt(c.rect.Min.X+80, c.rect.Min.Y+20), Max: image.Pt(c.rect.Min.X+130, c.rect.Min.Y+70)}),
 		WithImage(util.LoadImage("ui/btn/move-btn.png"), util.LoadImage("ui/btn/move-btn.png")),
 		WithClickFunc(func() {
 			c.log.Info("movebtnclicked")
 		}),
 	)
-	c.stopBtn = NewButton(
+	c.stopBtn = NewButton(font,
 		WithRect(image.Rectangle{Min: image.Pt(c.rect.Min.X+140, c.rect.Min.Y+20), Max: image.Pt(c.rect.Min.X+190, c.rect.Min.Y+70)}),
 		WithImage(util.LoadImage("ui/btn/stop-btn.png"), util.LoadImage("ui/btn/stop-btn.png")),
 		WithClickFunc(func() {

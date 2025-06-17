@@ -3,6 +3,8 @@ package scene
 import (
 	"image"
 
+	"gamejam/fonts"
+
 	"github.com/joelschutz/stagehand"
 )
 
@@ -14,6 +16,7 @@ type BaseScene struct {
 	bounds image.Rectangle
 	state  *GameState
 	sm     *stagehand.SceneManager[GameState]
+	fonts  fonts.All
 }
 
 func (s *BaseScene) Layout(w, h int) (int, int) {

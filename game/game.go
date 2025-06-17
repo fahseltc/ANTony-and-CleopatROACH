@@ -2,6 +2,7 @@ package game
 
 import (
 	"gamejam/config"
+	"gamejam/fonts"
 	"gamejam/log"
 	"gamejam/scene"
 	"log/slog"
@@ -14,18 +15,21 @@ import (
 type Game struct {
 	LastUpdateTime time.Time
 	sceneManager   *stagehand.SceneManager[scene.GameState]
+	fonts          *fonts.All
 
 	cfg *config.T
 	log *slog.Logger
 }
 
-func NewGame(cfg *config.T) *Game {
+func New(cfg *config.T, fonts *fonts.All) *Game {
 	state := scene.GameState{}
-	sceneInstance := scene.NewMenuScene()
+	defaultFont := fonts.Med // TODO allowance to reset font & re-render scene
+	sceneInstance := scene.NewMenuScene(defaultFont)
 	manager := stagehand.NewSceneManager(sceneInstance, state)
 
 	return &Game{
 		sceneManager: manager,
+		fonts:        fonts,
 		cfg:          cfg,
 		log:          log.NewLogger().With("for", "game"),
 	}
