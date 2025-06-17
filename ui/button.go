@@ -1,9 +1,9 @@
 package ui
 
 import (
-	"gamejam/environment"
-	"gamejam/util"
 	"image"
+
+	"gamejam/util"
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/inpututil"
@@ -30,15 +30,15 @@ type Button struct {
 // NewButton creates a new Button with the given environment and options.
 //
 
-func NewButton(opts ...BtnOptFunc) *Button {
-	btn := defaultBtnOpts()
+func NewButton(font text.Face, opts ...BtnOptFunc) *Button {
+	btn := defaultBtnOpts(font)
 	for _, opt := range opts {
 		opt(&btn)
 	}
 	return &btn
 }
 
-func defaultBtnOpts() Button {
+func defaultBtnOpts(font text.Face) Button {
 	defaultWidth := float32(250.0)
 	defaultHeight := float32(100.0)
 	defaultImg := util.LoadImage("ui/btn/yellow-btn.png")
@@ -56,7 +56,7 @@ func defaultBtnOpts() Button {
 				Y: 100,
 			},
 		},
-		font:       environment.NewFontsCollection().Med,
+		font:       font,
 		currentImg: defaultImg,
 		defaultImg: defaultImg,
 		pressedImg: pressed,

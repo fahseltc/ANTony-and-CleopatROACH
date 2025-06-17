@@ -1,14 +1,23 @@
 package ui
 
 import (
+<<<<<<< HEAD
 	"fmt"
 	"gamejam/environment"
+=======
+	"gamejam/log"
+>>>>>>> master
 	"gamejam/util"
 	"image"
+	"log/slog"
 
 	"github.com/hajimehoshi/ebiten/v2"
+<<<<<<< HEAD
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
 	"github.com/hajimehoshi/ebiten/v2/inpututil"
+=======
+	"github.com/hajimehoshi/ebiten/v2/text/v2"
+>>>>>>> master
 )
 
 type Controls struct {
@@ -18,41 +27,46 @@ type Controls struct {
 	//attackLabel *ebiten.Image
 	moveBtn *Button
 	stopBtn *Button
+<<<<<<< HEAD
 
 	dragRect        image.Rectangle
 	firstClickPoint *image.Point
+=======
+	log     *slog.Logger
+>>>>>>> master
 }
 
-func NewControls() *Controls {
+func NewControls(font text.Face) *Controls {
 	c := &Controls{
 		rect:            image.Rectangle{Min: image.Pt(0, 450), Max: image.Pt(300, 600)},
 		dragRect:        image.Rectangle{Min: image.Pt(0, 0), Max: image.Pt(0, 0)},
 		firstClickPoint: nil,
 		//attackLabel: util.LoadImage("ui/keys/z.png"),
+		log: log.NewLogger().With("for", "ui"),
 	}
 	c.bg = util.ScaleImage(util.LoadImage("ui/btn/controls-bg.png"), float32(c.rect.Dx()), float32(c.rect.Dy()))
 
-	c.attackBtn = NewButton(
+	c.attackBtn = NewButton(font,
 		WithRect(image.Rectangle{Min: image.Pt(c.rect.Min.X+20, c.rect.Min.Y+20), Max: image.Pt(c.rect.Min.X+70, c.rect.Min.Y+70)}),
 		WithClickFunc(func() {
-			environment.ENV.Info("atkbtnclicked")
+			c.log.Info("atkbtnclicked")
 		}),
 		WithImage(util.LoadImage("ui/btn/atk-btn.png"), util.LoadImage("ui/btn/atk-btn-pressed.png")),
 		WithKeyActivation(ebiten.KeyZ),
 	)
-	c.moveBtn = NewButton(
+	c.moveBtn = NewButton(font,
 		WithRect(image.Rectangle{Min: image.Pt(c.rect.Min.X+80, c.rect.Min.Y+20), Max: image.Pt(c.rect.Min.X+130, c.rect.Min.Y+70)}),
 		WithImage(util.LoadImage("ui/btn/move-btn.png"), util.LoadImage("ui/btn/move-btn-pressed.png")),
 		WithClickFunc(func() {
-			environment.ENV.Info("movebtnclicked")
+			c.log.Info("movebtnclicked")
 		}),
 		WithKeyActivation(ebiten.KeyX),
 	)
-	c.stopBtn = NewButton(
+	c.stopBtn = NewButton(font,
 		WithRect(image.Rectangle{Min: image.Pt(c.rect.Min.X+140, c.rect.Min.Y+20), Max: image.Pt(c.rect.Min.X+190, c.rect.Min.Y+70)}),
 		WithImage(util.LoadImage("ui/btn/stop-btn.png"), util.LoadImage("ui/btn/stop-btn-pressed.png")),
 		WithClickFunc(func() {
-			environment.ENV.Info("stopbtnclicked")
+			c.log.Info("stopbtnclicked")
 		}),
 		WithKeyActivation(ebiten.KeyC),
 	)
