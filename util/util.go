@@ -1,16 +1,12 @@
 package util
 
 import (
-	"bytes"
-	"fmt"
 	"gamejam/assets"
 	"image/color"
-	"log"
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
 	"github.com/hajimehoshi/ebiten/v2/text/v2"
-	"golang.org/x/image/font/gofont/goregular"
 )
 
 func LoadImage(filePath string) *ebiten.Image {
@@ -53,17 +49,4 @@ func DrawCenteredText(screen *ebiten.Image, f text.Face, s string, cx, cy int, c
 	opt.ColorScale.ScaleWithColor(textColor)
 	opt.GeoM.Translate(float64(x), float64(y))
 	text.Draw(screen, s, f, &opt)
-}
-
-func LoadFont(size float64) (text.Face, error) {
-	s, err := text.NewGoTextFaceSource(bytes.NewReader(goregular.TTF))
-	if err != nil {
-		log.Fatal(err)
-		return nil, fmt.Errorf("Error loading font: %w", err)
-	}
-
-	return &text.GoTextFace{
-		Source: s,
-		Size:   size,
-	}, nil
 }

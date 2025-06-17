@@ -8,6 +8,7 @@ import (
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
+	"github.com/hajimehoshi/ebiten/v2/text/v2"
 )
 
 type PlayScene struct {
@@ -15,14 +16,15 @@ type PlayScene struct {
 	unitControls *ui.Controls
 	tileMap      *tilemap.Tilemap
 	camera       *ui.Camera
+	font         text.Face
 
 	sprites []*ui.Sprite
 }
 
-func NewPlayScene() *PlayScene {
+func NewPlayScene(font text.Face) *PlayScene {
 	tileMap := tilemap.NewTilemap()
 	scene := &PlayScene{
-		unitControls: ui.NewControls(),
+		unitControls: ui.NewControls(font),
 		tileMap:      tileMap,
 		camera:       ui.NewCamera(),
 	}

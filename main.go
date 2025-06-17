@@ -1,24 +1,28 @@
 package main
 
 import (
-	"gamejam/environment"
+	"gamejam/config"
 	"gamejam/game"
+	"log"
 
 	"github.com/hajimehoshi/ebiten/v2"
 )
 
 func main() {
-	env := environment.NewEnv()
-	game := game.NewGame(env)
-
-	ebiten.SetWindowTitle(env.Config.Get("windowTitle").(string))
-	// set external window resolution
-	ebiten.SetWindowSize(env.Config.Get("resolution.external.w").(int), env.Config.Get("resolution.external.h").(int))
-	ebiten.SetWindowResizingMode(ebiten.WindowResizingModeEnabled)
-	ebiten.SetTPS(env.Config.Get("targetFPS").(int))
-
-	err := ebiten.RunGame(game)
+	cfg, err := config.New()
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
+	}
+	game := game.New(cfg)
+
+	ebiten.SetWindowTitle(cfg.WindowTitle)
+	// set external window resolution
+	ebiten.SetWindowSize(cfg.Resolutions.External.Width, cfg.Resolutions.External.Height)
+	ebiten.SetWindowResizingMode(ebiten.WindowResizingModeEnabled)
+	ebiten.SetTPS(int(cfg.TargetFPS))
+
+	err = ebiten.RunGame(game)
+	if err != nil {
+		log.Fatal(err)
 	}
 }
