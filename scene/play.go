@@ -29,7 +29,7 @@ func NewPlayScene(font text.Face) *PlayScene {
 		camera:       ui.NewCamera(),
 	}
 
-	ant := ui.NewSprite(image.Rect(0, 0, 128, 128), "units/ant.png")
+	ant := ui.NewSprite(image.Rect(50, 50, 128, 128), "units/ant.png")
 
 	scene.sprites = append(scene.sprites, ant)
 
@@ -48,5 +48,5 @@ func (s *PlayScene) Draw(screen *ebiten.Image) {
 	for _, sprite := range s.sprites {
 		sprite.Draw(screen, s.camera)
 	}
-	ebitenutil.DebugPrintAt(screen, fmt.Sprintf("%v,%v", s.camera.ViewPortX, s.camera.ViewPortY), 1, 1)
+	ebitenutil.DebugPrintAt(screen, fmt.Sprintf("camera:%v,%v", s.camera.ViewPortX, s.camera.ViewPortY), 1, 1)
 }

@@ -23,6 +23,7 @@ type Button struct {
 	pressedImg *ebiten.Image
 
 	OnClick func()
+	key     ebiten.Key
 }
 
 //
@@ -59,6 +60,7 @@ func defaultBtnOpts(font text.Face) Button {
 		currentImg: defaultImg,
 		defaultImg: defaultImg,
 		pressedImg: pressed,
+		key:        999,
 	}
 }
 func WithText(txt string) BtnOptFunc {
@@ -90,6 +92,11 @@ func WithImage(defaultImg *ebiten.Image, pressedImg *ebiten.Image) BtnOptFunc {
 		btn.currentImg = defaultBtn
 		btn.defaultImg = defaultBtn
 		btn.pressedImg = util.ScaleImage(pressedImg, float32(btn.rect.Bounds().Dx()), float32(btn.rect.Bounds().Dy()))
+	}
+}
+func WithKeyActivation(key ebiten.Key) BtnOptFunc {
+	return func(btn *Button) {
+		btn.key = key
 	}
 }
 
@@ -126,10 +133,19 @@ func (btn *Button) Draw(screen *ebiten.Image) {
 }
 
 func (btn *Button) Update() {
+	// clicks
 	if btn.OnClick != nil && inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) && btn.MouseCollides() {
 		btn.currentImg = btn.pressedImg
 	}
 	if btn.OnClick != nil && inpututil.IsMouseButtonJustReleased(ebiten.MouseButtonLeft) && btn.MouseCollides() {
+		btn.OnClick()
+		btn.currentImg = btn.defaultImg
+	}
+	// key presses
+	if btn.key != 999 && inpututil.IsKeyJustPressed(btn.key) {
+		btn.currentImg = btn.pressedImg
+	}
+	if btn.key != 999 && inpututil.IsKeyJustReleased(btn.key) {
 		btn.OnClick()
 		btn.currentImg = btn.defaultImg
 	}
