@@ -41,7 +41,7 @@ func (ui *Ui) Draw(screen *ebiten.Image) {
 
 	opts.GeoM.Scale(ui.Camera.ViewPortZoom, ui.Camera.ViewPortZoom)
 	opts.GeoM.Translate(float64(ui.Camera.ViewPortX), float64(ui.Camera.ViewPortY))
-
+	ui.tileMap.Render(screen)
 	screen.DrawImage(ui.tileMap.StaticBg, opts)
 	ebitenutil.DebugPrintAt(screen, fmt.Sprintf("zoom:%v", ui.Camera.ViewPortZoom), 1, 20)
 

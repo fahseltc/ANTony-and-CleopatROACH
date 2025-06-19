@@ -26,8 +26,14 @@ type Game struct {
 func New(cfg *config.T) *Game {
 	state := scene.GameState{}
 	fonts := fonts.Load(fontPath)
-	sceneInstance := scene.NewMenuScene(fonts)
-	manager := stagehand.NewSceneManager(sceneInstance, state)
+	var manager *stagehand.SceneManager[scene.GameState]
+	if cfg.SkipMenu {
+		sceneInstance := scene.NewPlayScene(fonts)
+		manager = stagehand.NewSceneManager(sceneInstance, state)
+	} else {
+		sceneInstance := scene.NewMenuScene(fonts)
+		manager = stagehand.NewSceneManager(sceneInstance, state)
+	}
 
 	return &Game{
 		sceneManager: manager,

@@ -14,6 +14,7 @@ type Tilemap struct {
 	renderer *render.Renderer
 	tileMap  *tiled.Map
 	StaticBg *ebiten.Image
+	Tiles    map[int]*tiled.TilesetTile
 }
 
 func NewTilemap() *Tilemap {
@@ -33,10 +34,18 @@ func NewTilemap() *Tilemap {
 	}
 	staticBg := ebiten.NewImageFromImage(r.Result)
 	r.Clear()
+
+	tilesIdMap := make(map[int]*tiled.TilesetTile)
+
+	for _, tile := range t.Tilesets[0].Tiles {
+		tilesIdMap[int(tile.ID)] = tile
+	}
+
 	tm := &Tilemap{
 		renderer: r,
 		tileMap:  t,
 		StaticBg: staticBg,
+		Tiles:    tilesIdMap,
 	}
 
 	tm.ToWorld()
@@ -49,7 +58,23 @@ func (tm *Tilemap) GetMap() *tiled.Map {
 
 func (tm *Tilemap) ToWorld() {
 	layer := tm.tileMap.Layers[0].Tiles
+
 	fmt.Print(layer)
+}
+
+func (tm *Tilemap) Render(screen *ebiten.Image) {
+	// for _, tile := range tm.tileMap.Layers[0].GetTilePosition() {
+	// 	if tile != nil {
+	// 		//prop := tile.Tileset.Properties.Get("anything") // nil
+	// 		// tileRect := tile.Tileset.GetTileRect(tile.ID) // nil ref error ' ts.Image' is nil
+	// 		// tileImage := tm.StaticBgT.SubImage(tileRect).(*ebiten.Image)
+	// 		// tile.Tileset.Properties.Get("passable")
+	// 		// opts := &ebiten.DrawImageOptions{}
+	// 		// opts.GeoM.Translate(float64(tileRect.Min.X), float64(tileRect.Min.Y))
+	// 		// screen.DrawImage(tileImage, opts)
+	// 	}
+
+	// }
 }
 
 type Tile struct {

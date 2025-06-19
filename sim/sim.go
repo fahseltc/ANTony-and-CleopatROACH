@@ -1,6 +1,7 @@
 package sim
 
 import (
+	"image"
 	"math"
 	"slices"
 	"sync"
@@ -15,7 +16,7 @@ import (
 type T struct {
 	tps   int
 	dt    float64
-	world World
+	world *World
 
 	// ID generator
 	unitIdx atomic.Uint32
@@ -24,11 +25,9 @@ type T struct {
 	stateMu     sync.RWMutex
 
 	playerSpawnX, playerSpawnY float64
-	playerWorkers              []Worker
-	playerUnits                []Unit
-
-	enemyUnits               []Unit
-	enemySpawnX, enemySpawnY float64
+	playerUnits                []*Unit
+	enemyUnits                 []*Unit
+	enemySpawnX, enemySpawnY   float64
 
 	selectedUnits []*Unit
 }
@@ -94,20 +93,27 @@ func New(tps int) *T {
 	return &T{
 		tps: tps,
 		dt:  float64(1 / tps),
-		world: World{
+		world: &World{
 			TileData: make([][]Tile, 0, 1),
 		},
 
 		// TODO Spawn Points
-		playerState:   PlayerState{},
-		playerWorkers: make([]Worker, 1),
-		playerUnits:   make([]Unit, 0, 10),
-
-		enemyUnits: make([]Unit, 0, 10),
+		playerState: PlayerState{},
+		//playerWorkers: make([]Worker, 1),
+		playerUnits: make([]*Unit, 0, 10),
+		enemyUnits:  make([]*Unit, 0, 10),
 	}
 }
 
-func (s *T) Tick() {
+func (s *T) Update() {
+	for _, unit := range s.playerUnits {
+		//nearestEnemy := findNearestEnemy()
+		//unit.SetNearestEnemy()
+		unit.Update(s.world)
+	}
+	for _, unit := range s.enemyUnits {
+		unit.Update(s.world)
+	}
 	// update resource counts
 	// Update unit movement
 	// calculate damage done
@@ -120,7 +126,24 @@ func (s *T) NewUnitID() uint32 {
 }
 
 func (s *T) RemoveUnit(u *Unit) {
-	s.playerUnits = slices.DeleteFunc(s.playerUnits, func(other Unit) bool {
+	s.playerUnits = slices.DeleteFunc(s.playerUnits, func(other *Unit) bool {
 		return other.ID == u.ID
 	})
+}
+
+func (s *T) AddUnit(u *Unit) {
+	s.playerUnits = append(s.playerUnits, u)
+}
+
+func (s *T) FindUnitByID(id string) (*Unit, error) {
+
+}
+
+func (s *T) IssueAction(id string, action Action, point *image.Point) {
+	unit, err := s.FindUnitByID(id)
+	if err != nil {
+
+	}
+	unit.Action = action
+	unit.Destination = point
 }

@@ -11,7 +11,7 @@ import (
 type T struct {
 	WindowTitle string `json:"windowTitle"`
 	TargetFPS   uint   `json:"targetFPS"`
-	DebugDraw   bool   `json:"debugDraw"`
+	SkipMenu    bool   `json:"skipMenu"`
 	Resolutions struct {
 		Internal Resolution `json:"internal"`
 		External Resolution `json:"external"`

@@ -3,6 +3,7 @@ package scene
 import (
 	"fmt"
 	"gamejam/fonts"
+	"gamejam/sim"
 	"gamejam/tilemap"
 	"gamejam/ui"
 	"image"
@@ -13,7 +14,8 @@ import (
 
 type PlayScene struct {
 	BaseScene
-	ui *ui.Ui
+	sim *sim.T
+	ui  *ui.Ui
 
 	tileMap *tilemap.Tilemap
 
@@ -26,10 +28,12 @@ func NewPlayScene(fonts *fonts.All) *PlayScene {
 	tileMap := tilemap.NewTilemap()
 	scene := &PlayScene{
 		fonts:   fonts,
+		sim:     sim.New(60),
 		ui:      ui.NewUi(fonts, tileMap),
 		tileMap: tileMap,
 	}
 
+	sim.AddUnit()
 	ant := ui.NewSprite(image.Rect(50, 50, 128, 128), "units/ant.png")
 	scene.sprites = append(scene.sprites, ant)
 	return scene
