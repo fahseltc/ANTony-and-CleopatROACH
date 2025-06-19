@@ -1,6 +1,7 @@
 package sim
 
 import (
+	"fmt"
 	"image"
 	"math"
 	"slices"
@@ -121,10 +122,6 @@ func (s *T) Update() {
 	// process unit additions
 }
 
-func (s *T) NewUnitID() uint32 {
-	return s.unitIdx.Add(1)
-}
-
 func (s *T) RemoveUnit(u *Unit) {
 	s.playerUnits = slices.DeleteFunc(s.playerUnits, func(other *Unit) bool {
 		return other.ID == u.ID
@@ -136,14 +133,29 @@ func (s *T) AddUnit(u *Unit) {
 }
 
 func (s *T) FindUnitByID(id string) (*Unit, error) {
-
+	for _, unit := range s.playerUnits {
+		if unit.ID.String() == id {
+			return unit, nil
+		}
+	}
+	for _, unit := range s.enemyUnits {
+		if unit.ID.String() == id {
+			return unit, nil
+		}
+	}
+	return nil, fmt.Errorf("unable to find unit with ID:%v", id)
 }
 
-func (s *T) IssueAction(id string, action Action, point *image.Point) {
+func (s *T) IssueAction(id string, action Action, point *image.Point) error {
 	unit, err := s.FindUnitByID(id)
 	if err != nil {
-
+		return err
 	}
 	unit.Action = action
 	unit.Destination = point
+	return nil
+}
+
+func (s *T) GetAllUnits() []*Unit {
+	return append(s.enemyUnits, s.playerUnits...)
 }

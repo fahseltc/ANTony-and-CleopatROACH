@@ -21,7 +21,7 @@ type PlayScene struct {
 
 	fonts *fonts.All
 
-	sprites []*ui.Sprite
+	sprites map[string]*ui.Sprite
 }
 
 func NewPlayScene(fonts *fonts.All) *PlayScene {
@@ -31,16 +31,33 @@ func NewPlayScene(fonts *fonts.All) *PlayScene {
 		sim:     sim.New(60),
 		ui:      ui.NewUi(fonts, tileMap),
 		tileMap: tileMap,
+		sprites: make(map[string]*ui.Sprite),
 	}
+	u := sim.NewDefaultUnit()
+	scene.sim.AddUnit(u)
+	scene.sim.IssueAction(u.ID.String(), sim.MovingAction, &image.Point{X: 200, Y: 200})
 
-	sim.AddUnit()
-	ant := ui.NewSprite(image.Rect(50, 50, 128, 128), "units/ant.png")
-	scene.sprites = append(scene.sprites, ant)
+	ant := ui.NewDefaultSprite(u.ID)
+	scene.sprites[u.ID.String()] = ant
 	return scene
 }
 
 func (s *PlayScene) Update() error {
+	// make sure all the sim units are in the list of spritess
+	for _, unit := range s.sim.GetAllUnits() {
+		if s.sprites[unit.ID.String()] == nil {
+			spr := ui.NewDefaultSprite(unit.ID)
+			s.sprites[unit.ID.String()] = spr
+
+		} else {
+			// else update sprites to match their sim positions
+			s.sprites[unit.ID.String()].SetPosition(unit.Position)
+		}
+	}
+
 	s.ui.Update()
+	s.sim.Update()
+
 	return nil
 }
 

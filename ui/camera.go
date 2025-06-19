@@ -76,9 +76,17 @@ func (c *Camera) PanY(amount int) {
 }
 
 func (c *Camera) ScreenPosToMapPos(x, y int) (int, int) {
-	c.log.Info("input", "x", x, "y", y)
+	//c.log.Info("input", "x", x, "y", y)
 	mapX := math.Abs(float64(c.ViewPortX)) + float64(x)
 	mapY := math.Abs(float64(c.ViewPortY)) + float64(y)
-	c.log.Info("output", "mapX", mapX, "mapY", mapY)
+	//c.log.Info("output", "mapX", mapX, "mapY", mapY)
+	return int(mapX), int(mapY)
+}
+
+func (c *Camera) MapPosToScreenPos(x, y int) (int, int) {
+	//c.log.Info("input", "mapX", x, "mapY", y)
+	mapX := math.Abs(float64(c.ViewPortX)) - float64(x)
+	mapY := math.Abs(float64(c.ViewPortY)) - float64(y)
+	//c.log.Info("output", "mapX", mapX, "mapY", mapY)
 	return int(mapX), int(mapY)
 }
