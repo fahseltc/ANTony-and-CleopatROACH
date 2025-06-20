@@ -110,10 +110,10 @@ func (s *T) Update() {
 	for _, unit := range s.playerUnits {
 		//nearestEnemy := findNearestEnemy()
 		//unit.SetNearestEnemy()
-		unit.Update(s.world)
+		unit.Update(s)
 	}
 	for _, unit := range s.enemyUnits {
-		unit.Update(s.world)
+		unit.Update(s)
 	}
 	// update resource counts
 	// Update unit movement
