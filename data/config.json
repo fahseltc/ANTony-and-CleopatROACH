@@ -5,8 +5,8 @@
     "skipMenu": true,
     "resolution": {
         "external": {
-            "w": 1420,
-            "h": 900
+            "w": 1000,
+            "h": 700
         },
         "internal": {
             "w": 800,

@@ -1,7 +1,6 @@
 package tilemap
 
 import (
-	"fmt"
 	"log"
 
 	"github.com/hajimehoshi/ebiten/v2"
@@ -57,9 +56,7 @@ func (tm *Tilemap) GetMap() *tiled.Map {
 }
 
 func (tm *Tilemap) ToWorld() {
-	layer := tm.tileMap.Layers[0].Tiles
-
-	fmt.Print(layer)
+	//layer := tm.tileMap.Layers[0].Tiles
 }
 
 func (tm *Tilemap) Render(screen *ebiten.Image) {

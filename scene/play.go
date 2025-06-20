@@ -10,6 +10,7 @@ import (
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
+	"github.com/hajimehoshi/ebiten/v2/inpututil"
 )
 
 type PlayScene struct {
@@ -18,10 +19,12 @@ type PlayScene struct {
 	ui  *ui.Ui
 
 	tileMap *tilemap.Tilemap
+	drag    *ui.Drag
 
 	fonts *fonts.All
 
-	sprites map[string]*ui.Sprite
+	sprites         map[string]*ui.Sprite
+	selectedUnitIDs []string
 }
 
 func NewPlayScene(fonts *fonts.All) *PlayScene {
@@ -31,6 +34,7 @@ func NewPlayScene(fonts *fonts.All) *PlayScene {
 		sim:     sim.New(60),
 		ui:      ui.NewUi(fonts, tileMap),
 		tileMap: tileMap,
+		drag:    ui.NewDrag(),
 		sprites: make(map[string]*ui.Sprite),
 	}
 	u := sim.NewDefaultUnit()
@@ -55,6 +59,21 @@ func (s *PlayScene) Update() error {
 		}
 	}
 
+	s.drag.Update(s.sprites)
+	for _, spr := range s.sprites {
+		if spr.Selected {
+			s.selectedUnitIDs = append(s.selectedUnitIDs, spr.Id.String())
+		}
+	}
+	if len(s.selectedUnitIDs) > 0 {
+		if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonRight) {
+			mx, my := ebiten.CursorPosition()
+			for _, unitId := range s.selectedUnitIDs {
+				s.sim.IssueAction(unitId, sim.AttackMovingAction, &image.Point{X: mx, Y: my})
+			}
+		}
+	}
+
 	s.ui.Update()
 	s.sim.Update()
 
@@ -66,5 +85,6 @@ func (s *PlayScene) Draw(screen *ebiten.Image) {
 	for _, sprite := range s.sprites {
 		sprite.Draw(screen, s.ui.Camera)
 	}
+	s.drag.Draw(screen)
 	ebitenutil.DebugPrintAt(screen, fmt.Sprintf("camera:%v,%v", s.ui.Camera.ViewPortX, s.ui.Camera.ViewPortY), 1, 1)
 }

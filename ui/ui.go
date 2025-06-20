@@ -12,30 +12,28 @@ import (
 )
 
 type Ui struct {
-	log          *slog.Logger
-	fonts        *fonts.All
-	unitControls *Controls
-	Camera       *Camera
-	tileMap      *tilemap.Tilemap
+	log     *slog.Logger
+	fonts   *fonts.All
+	hud     *HUD
+	Camera  *Camera
+	tileMap *tilemap.Tilemap
 }
 
 func NewUi(fonts *fonts.All, tileMap *tilemap.Tilemap) *Ui {
-
 	return &Ui{
-		log:          log.NewLogger().With("for", "ui"),
-		fonts:        fonts,
-		unitControls: NewControls(fonts.Med),
-		Camera:       NewCamera(),
-		tileMap:      tileMap,
+		log:     log.NewLogger().With("for", "ui"),
+		fonts:   fonts,
+		hud:     NewHUD(fonts.Med),
+		Camera:  NewCamera(),
+		tileMap: tileMap,
 	}
 }
 
 func (ui *Ui) Update() {
-	ui.unitControls.Update()
+	ui.hud.Update()
 	ui.Camera.Update()
-	//mx, my := ebiten.CursorPosition()
-
 }
+
 func (ui *Ui) Draw(screen *ebiten.Image) {
 	opts := &ebiten.DrawImageOptions{}
 
@@ -45,5 +43,5 @@ func (ui *Ui) Draw(screen *ebiten.Image) {
 	screen.DrawImage(ui.tileMap.StaticBg, opts)
 	ebitenutil.DebugPrintAt(screen, fmt.Sprintf("zoom:%v", ui.Camera.ViewPortZoom), 1, 20)
 
-	ui.unitControls.Draw(screen)
+	ui.hud.Draw(screen)
 }

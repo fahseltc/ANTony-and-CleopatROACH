@@ -26,7 +26,7 @@ func NewCamera() *Camera {
 		log:          log.NewLogger().With("for", "camera"),
 		ViewPortX:    0,
 		ViewPortY:    0,
-		ViewPortZoom: 0.5,
+		ViewPortZoom: 1,
 	}
 }
 
@@ -54,13 +54,13 @@ func (c *Camera) Update() {
 }
 
 func (c *Camera) Zoom(amount float64) {
-	c.ViewPortZoom += amount
-	if c.ViewPortZoom >= MaxZoom {
-		c.ViewPortZoom = MaxZoom
-	}
-	if c.ViewPortZoom <= MinZoom {
-		c.ViewPortZoom = MinZoom
-	}
+	// c.ViewPortZoom += amount
+	// if c.ViewPortZoom >= MaxZoom {
+	// 	c.ViewPortZoom = MaxZoom
+	// }
+	// if c.ViewPortZoom <= MinZoom {
+	// 	c.ViewPortZoom = MinZoom
+	// }
 }
 func (c *Camera) PanX(amount int) {
 	c.ViewPortX += amount

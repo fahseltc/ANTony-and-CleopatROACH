@@ -1,38 +1,30 @@
 package ui
 
 import (
-	"fmt"
 	"gamejam/log"
 	"gamejam/util"
 	"image"
 	"log/slog"
 
 	"github.com/hajimehoshi/ebiten/v2"
-	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
-	"github.com/hajimehoshi/ebiten/v2/inpututil"
 	"github.com/hajimehoshi/ebiten/v2/text/v2"
 )
 
-type Controls struct {
+type HUD struct {
 	bg        *ebiten.Image
 	rect      image.Rectangle
 	attackBtn *Button
 	//attackLabel *ebiten.Image
 	moveBtn *Button
 	stopBtn *Button
-
-	dragRect        image.Rectangle
-	firstClickPoint *image.Point
-	log             *slog.Logger
+	log     *slog.Logger
 }
 
-func NewControls(font text.Face) *Controls {
-	c := &Controls{
-		rect:            image.Rectangle{Min: image.Pt(0, 450), Max: image.Pt(300, 600)},
-		dragRect:        image.Rectangle{Min: image.Pt(0, 0), Max: image.Pt(0, 0)},
-		firstClickPoint: nil,
+func NewHUD(font text.Face) *HUD {
+	c := &HUD{
+		rect: image.Rectangle{Min: image.Pt(0, 450), Max: image.Pt(300, 600)},
 		//attackLabel: util.LoadImage("ui/keys/z.png"),
-		log: log.NewLogger().With("for", "controls"),
+		log: log.NewLogger().With("for", "HUD"),
 	}
 	c.bg = util.ScaleImage(util.LoadImage("ui/btn/controls-bg.png"), float32(c.rect.Dx()), float32(c.rect.Dy()))
 
@@ -63,31 +55,17 @@ func NewControls(font text.Face) *Controls {
 	return c
 }
 
-func (c *Controls) Update() {
+func (c *HUD) Update() {
 	c.attackBtn.Update()
 	c.stopBtn.Update()
 	c.moveBtn.Update()
-	if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) {
-		mx, my := ebiten.CursorPosition()
-		c.firstClickPoint = &image.Point{X: mx, Y: my}
-	}
-	if inpututil.IsMouseButtonJustReleased(ebiten.MouseButtonLeft) {
-		mx, my := ebiten.CursorPosition()
-		c.dragRect = image.Rectangle{Min: *c.firstClickPoint, Max: image.Pt(mx, my)}
-	}
 }
 
-func (c *Controls) Draw(screen *ebiten.Image) {
+func (c *HUD) Draw(screen *ebiten.Image) {
 	opts := &ebiten.DrawImageOptions{}
 	opts.GeoM.Translate(float64(c.rect.Min.X), float64(c.rect.Min.Y))
 	screen.DrawImage(c.bg, opts)
 	c.attackBtn.Draw(screen)
 	c.stopBtn.Draw(screen)
 	c.moveBtn.Draw(screen)
-
-	ebitenutil.DebugPrintAt(screen, fmt.Sprintf("drag:(%v,%v) to (%v,%v)",
-		c.dragRect.Min.X,
-		c.dragRect.Min.Y,
-		c.dragRect.Max.X,
-		c.dragRect.Max.Y), 1, 40)
 }

@@ -132,7 +132,7 @@ func (s *T) AddUnit(u *Unit) {
 	s.playerUnits = append(s.playerUnits, u)
 }
 
-func (s *T) FindUnitByID(id string) (*Unit, error) {
+func (s *T) GetUnitByID(id string) (*Unit, error) {
 	for _, unit := range s.playerUnits {
 		if unit.ID.String() == id {
 			return unit, nil
@@ -147,7 +147,7 @@ func (s *T) FindUnitByID(id string) (*Unit, error) {
 }
 
 func (s *T) IssueAction(id string, action Action, point *image.Point) error {
-	unit, err := s.FindUnitByID(id)
+	unit, err := s.GetUnitByID(id)
 	if err != nil {
 		return err
 	}
