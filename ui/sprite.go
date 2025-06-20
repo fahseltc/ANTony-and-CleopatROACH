@@ -45,18 +45,20 @@ func (spr *Sprite) SetPosition(pos *image.Point) {
 // DrawStatic draws the sprite at its world position, ignoring the camera (static on screen).
 func (spr *Sprite) Draw(screen *ebiten.Image, camera *Camera) {
 	opts := &ebiten.DrawImageOptions{}
-	// Offset sprite position by adding the camera's world position
+	// Apply camera zoom scaling
+	opts.GeoM.Scale(camera.ViewPortZoom, camera.ViewPortZoom)
+	// Offset sprite position by adding the camera's world position, also scale position
 	opts.GeoM.Translate(
-		float64(spr.rect.Min.X+camera.ViewPortX),
-		float64(spr.rect.Min.Y+camera.ViewPortY),
+		float64(spr.rect.Min.X+camera.ViewPortX)*camera.ViewPortZoom,
+		float64(spr.rect.Min.Y+camera.ViewPortY)*camera.ViewPortZoom,
 	)
 	screen.DrawImage(spr.img, opts)
 
 	if spr.Selected {
-		x := spr.rect.Min.X + camera.ViewPortX
-		y := spr.rect.Min.Y + camera.ViewPortY
-		w := spr.rect.Dx()
-		h := spr.rect.Dy()
+		x := int(float64(spr.rect.Min.X+camera.ViewPortX) * camera.ViewPortZoom)
+		y := int(float64(spr.rect.Min.Y+camera.ViewPortY) * camera.ViewPortZoom)
+		w := int(float64(spr.rect.Dx()) * camera.ViewPortZoom)
+		h := int(float64(spr.rect.Dy()) * camera.ViewPortZoom)
 
 		green := color.RGBA{0, 255, 0, 255}
 

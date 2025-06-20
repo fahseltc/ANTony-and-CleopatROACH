@@ -3,13 +3,13 @@ package ui
 import (
 	"gamejam/log"
 	"log/slog"
-	"math"
 
 	"github.com/hajimehoshi/ebiten/v2"
 )
 
 var MaxZoom = 1.0
 var MinZoom = 0.3
+var ZoomIncrement = 0.05
 
 type Camera struct {
 	log          *slog.Logger
@@ -46,21 +46,21 @@ func (c *Camera) Update() {
 	}
 	_, mouseWheelY := ebiten.Wheel()
 	if mouseWheelY > 0 {
-		c.Zoom(.05)
+		c.Zoom(ZoomIncrement)
 	}
 	if mouseWheelY < 0 {
-		c.Zoom(-.05)
+		c.Zoom(-ZoomIncrement)
 	}
 }
 
 func (c *Camera) Zoom(amount float64) {
-	// c.ViewPortZoom += amount
-	// if c.ViewPortZoom >= MaxZoom {
-	// 	c.ViewPortZoom = MaxZoom
-	// }
-	// if c.ViewPortZoom <= MinZoom {
-	// 	c.ViewPortZoom = MinZoom
-	// }
+	c.ViewPortZoom += amount
+	if c.ViewPortZoom >= MaxZoom {
+		c.ViewPortZoom = MaxZoom
+	}
+	if c.ViewPortZoom <= MinZoom {
+		c.ViewPortZoom = MinZoom
+	}
 }
 func (c *Camera) PanX(amount int) {
 	c.ViewPortX += amount
@@ -77,16 +77,16 @@ func (c *Camera) PanY(amount int) {
 
 func (c *Camera) ScreenPosToMapPos(x, y int) (int, int) {
 	//c.log.Info("input", "x", x, "y", y)
-	mapX := math.Abs(float64(c.ViewPortX)) + float64(x)
-	mapY := math.Abs(float64(c.ViewPortY)) + float64(y)
+	mapX := float64(x)/c.ViewPortZoom - float64(c.ViewPortX)
+	mapY := float64(y)/c.ViewPortZoom - float64(c.ViewPortY)
 	//c.log.Info("output", "mapX", mapX, "mapY", mapY)
 	return int(mapX), int(mapY)
 }
 
 func (c *Camera) MapPosToScreenPos(x, y int) (int, int) {
 	//c.log.Info("input", "mapX", x, "mapY", y)
-	mapX := math.Abs(float64(c.ViewPortX)) - float64(x)
-	mapY := math.Abs(float64(c.ViewPortY)) - float64(y)
+	mapX := (float64(x) + float64(c.ViewPortX)) * c.ViewPortZoom
+	mapY := (float64(y) + float64(c.ViewPortY)) * c.ViewPortZoom
 	//c.log.Info("output", "mapX", mapX, "mapY", mapY)
 	return int(mapX), int(mapY)
 }
