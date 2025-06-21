@@ -9,6 +9,8 @@ import (
 	"sync/atomic"
 )
 
+var NearbyDistance = uint(300)
+
 // T is the simulated world for the game. This Sim makes
 // a couple assumptions:
 //
@@ -158,4 +160,18 @@ func (s *T) IssueAction(id string, action Action, point *image.Point) error {
 
 func (s *T) GetAllUnits() []*Unit {
 	return append(s.enemyUnits, s.playerUnits...)
+}
+
+func (s *T) GetAllNearbyUnits(x, y int) []*Unit {
+	var nearbyUnits []*Unit
+	for _, unit := range append(s.enemyUnits, s.playerUnits...) {
+		distance := unit.DistanceTo(image.Pt(x, y))
+		if distance == 0 {
+			continue
+		}
+		if distance <= NearbyDistance {
+			nearbyUnits = append(nearbyUnits, unit)
+		}
+	}
+	return nearbyUnits
 }

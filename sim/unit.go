@@ -85,15 +85,41 @@ func (unit *Unit) Update(sim *T) {
 
 func (unit *Unit) MoveToDestination(sim *T) {
 	// TODO pathfinding
-	if unit.Position.X < unit.Destination.X {
-		unit.SetPosition(&image.Point{X: unit.Position.X + int(unit.Stats.MoveSpeed), Y: unit.Position.Y})
-	} else if unit.Position.X > unit.Destination.X {
-		unit.SetPosition(&image.Point{X: unit.Position.X - int(unit.Stats.MoveSpeed), Y: unit.Position.Y})
+	//oldX := unit.Position.X
+	if unit.Position.X != unit.Destination.X {
+		newX := 0
+		if unit.Position.X < unit.Destination.X {
+			newX = unit.Position.X + int(unit.Stats.MoveSpeed)
+			//unit.SetPosition(&image.Point{X: unit.Position.X + int(unit.Stats.MoveSpeed), Y: unit.Position.Y})
+		} else if unit.Position.X > unit.Destination.X {
+			newX = unit.Position.X - int(unit.Stats.MoveSpeed)
+			//		unit.SetPosition(&image.Point{X: unit.Position.X - int(unit.Stats.MoveSpeed), Y: unit.Position.Y})
+		}
+		newRect := &image.Rectangle{
+			Min: image.Point{
+				X: newX,
+				Y: unit.Position.Y,
+			},
+			Max: image.Point{
+				X: newX + unit.Rect.Dx(),
+				Y: unit.Position.Y + unit.Rect.Dy(),
+			},
+		}
+		// check X collision
+		collidesX := false
+		for _, worldUnit := range sim.GetAllNearbyUnits(unit.Position.X, unit.Position.Y) {
+			if worldUnit.Rect.Overlaps(*newRect) {
+				collidesX = true
+				break
+			}
+		}
+		if collidesX {
+			// dont move in X then
+		} else {
+			unit.SetPosition(&image.Point{X: newX, Y: unit.Position.Y})
+		}
 	}
-	// check X collision
-	// for _, worldUnits := range sim.GetAllUnits() {
 
-	// }
 	if unit.Position.Y < unit.Destination.Y {
 		unit.SetPosition(&image.Point{X: unit.Position.X, Y: unit.Position.Y + int(unit.Stats.MoveSpeed)})
 	} else if unit.Position.Y > unit.Destination.Y {
@@ -120,7 +146,7 @@ func (unit *Unit) SetNearestEnemy(target *Unit) {
 func (unit *Unit) DistanceTo(point image.Point) uint {
 	xDist := math.Abs(float64(unit.Position.X - point.X))
 	yDist := math.Abs(float64(unit.Position.Y - point.Y))
-	return uint(math.Pow(xDist, 2) + math.Pow(yDist, 2))
+	return uint(math.Sqrt(math.Pow(xDist, 2) + math.Pow(yDist, 2)))
 }
 
 func (unit *Unit) TargetInRange(point image.Point) bool {

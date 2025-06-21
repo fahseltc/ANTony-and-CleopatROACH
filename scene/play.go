@@ -44,7 +44,7 @@ func NewPlayScene(fonts *fonts.All) *PlayScene {
 
 	u2 := sim.NewDefaultUnit()
 	scene.sim.AddUnit(u2)
-	scene.sim.IssueAction(u2.ID.String(), sim.MovingAction, &image.Point{X: 400, Y: 200})
+	//scene.sim.IssueAction(u2.ID.String(), sim.MovingAction, &image.Point{X: 600, Y: 200})
 
 	ant := ui.NewDefaultSprite(u.ID)
 	scene.sprites[u.ID.String()] = ant
