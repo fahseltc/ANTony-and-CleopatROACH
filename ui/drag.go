@@ -13,9 +13,10 @@ import (
 )
 
 type Drag struct {
-	dragRect        image.Rectangle
-	firstClickPoint image.Point
-	log             *slog.Logger
+	dragRect         image.Rectangle
+	firstClickPoint  image.Point
+	secondClickPoint image.Point
+	log              *slog.Logger
 }
 
 func NewDrag() *Drag {
@@ -33,7 +34,20 @@ func (d *Drag) Update(sprites map[string]*Sprite) []string {
 	}
 	// Detect if the mouse is being held down
 	if ebiten.IsMouseButtonPressed(ebiten.MouseButtonLeft) {
-		d.dragRect = image.Rectangle{Min: d.firstClickPoint, Max: image.Pt(mx, my)}
+		d.secondClickPoint = image.Point{X: mx, Y: my}
+		minX := d.firstClickPoint.X
+		maxX := mx
+		if mx < d.firstClickPoint.X {
+			minX = mx
+			maxX = d.firstClickPoint.X
+		}
+		minY := d.firstClickPoint.Y
+		maxY := my
+		if my < d.firstClickPoint.Y {
+			minY = my
+			maxY = d.firstClickPoint.Y
+		}
+		d.dragRect = image.Rectangle{Min: image.Pt(minX, minY), Max: image.Pt(maxX, maxY)}
 	}
 	if inpututil.IsMouseButtonJustReleased(ebiten.MouseButtonLeft) {
 		var selectedIDs []string

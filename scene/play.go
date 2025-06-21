@@ -32,17 +32,19 @@ func NewPlayScene(fonts *fonts.All) *PlayScene {
 	tileMap := tilemap.NewTilemap()
 	scene := &PlayScene{
 		fonts:   fonts,
-		sim:     sim.New(60),
+		sim:     sim.New(60, tileMap.CollisionRects),
 		ui:      ui.NewUi(fonts, tileMap),
 		tileMap: tileMap,
 		drag:    ui.NewDrag(),
 		sprites: make(map[string]*ui.Sprite),
 	}
 	u := sim.NewDefaultUnit()
+	u.SetPosition(&image.Point{400, 500})
 	scene.sim.AddUnit(u)
-	scene.sim.IssueAction(u.ID.String(), sim.MovingAction, &image.Point{X: 200, Y: 200})
+	//scene.sim.IssueAction(u.ID.String(), sim.MovingAction, &image.Point{X: 300, Y: 400})
 
 	u2 := sim.NewDefaultUnit()
+	u2.SetPosition(&image.Point{300, 300})
 	scene.sim.AddUnit(u2)
 	//scene.sim.IssueAction(u2.ID.String(), sim.MovingAction, &image.Point{X: 600, Y: 200})
 
@@ -89,10 +91,17 @@ func (s *PlayScene) Update() error {
 }
 
 func (s *PlayScene) Draw(screen *ebiten.Image) {
-	s.ui.Draw(screen)
+	// Draw tiles first as the BG
+	opts := &ebiten.DrawImageOptions{}
+	opts.GeoM.Scale(s.ui.Camera.ViewPortZoom, s.ui.Camera.ViewPortZoom)
+	opts.GeoM.Translate(float64(s.ui.Camera.ViewPortX), float64(s.ui.Camera.ViewPortY))
+	screen.DrawImage(s.ui.TileMap.StaticBg, opts)
+	// Then sprites on top
 	for _, sprite := range s.sprites {
 		sprite.Draw(screen, s.ui.Camera)
 	}
+	s.ui.Draw(screen)
+
 	s.drag.Draw(screen)
 	ebitenutil.DebugPrintAt(screen, fmt.Sprintf("camera:%v,%v", s.ui.Camera.ViewPortX, s.ui.Camera.ViewPortY), 1, 1)
 }

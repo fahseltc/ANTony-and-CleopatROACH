@@ -36,7 +36,8 @@ type T struct {
 }
 
 type World struct {
-	TileData [][]Tile
+	TileData       [][]Tile
+	CollisionRects []*image.Rectangle
 }
 
 const (
@@ -92,12 +93,13 @@ type Resource struct {
 	// FreeSlots uint
 }
 
-func New(tps int) *T {
+func New(tps int, collisionRects []*image.Rectangle) *T {
 	return &T{
 		tps: tps,
 		dt:  float64(1 / tps),
 		world: &World{
-			TileData: make([][]Tile, 0, 1),
+			TileData:       make([][]Tile, 0, 1),
+			CollisionRects: collisionRects,
 		},
 
 		// TODO Spawn Points

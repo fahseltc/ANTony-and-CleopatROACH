@@ -16,7 +16,7 @@ type Ui struct {
 	fonts   *fonts.All
 	hud     *HUD
 	Camera  *Camera
-	tileMap *tilemap.Tilemap
+	TileMap *tilemap.Tilemap
 }
 
 func NewUi(fonts *fonts.All, tileMap *tilemap.Tilemap) *Ui {
@@ -25,7 +25,7 @@ func NewUi(fonts *fonts.All, tileMap *tilemap.Tilemap) *Ui {
 		fonts:   fonts,
 		hud:     NewHUD(fonts.Med),
 		Camera:  NewCamera(),
-		tileMap: tileMap,
+		TileMap: tileMap,
 	}
 }
 
@@ -35,12 +35,12 @@ func (ui *Ui) Update() {
 }
 
 func (ui *Ui) Draw(screen *ebiten.Image) {
-	opts := &ebiten.DrawImageOptions{}
+	// opts := &ebiten.DrawImageOptions{}
 
-	opts.GeoM.Scale(ui.Camera.ViewPortZoom, ui.Camera.ViewPortZoom)
-	opts.GeoM.Translate(float64(ui.Camera.ViewPortX), float64(ui.Camera.ViewPortY))
-	ui.tileMap.Render(screen)
-	screen.DrawImage(ui.tileMap.StaticBg, opts)
+	// opts.GeoM.Scale(ui.Camera.ViewPortZoom, ui.Camera.ViewPortZoom)
+	// opts.GeoM.Translate(float64(ui.Camera.ViewPortX), float64(ui.Camera.ViewPortY))
+	//	ui.tileMap.Render(screen)
+
 	ebitenutil.DebugPrintAt(screen, fmt.Sprintf("zoom:%v", ui.Camera.ViewPortZoom), 1, 20)
 
 	ui.hud.Draw(screen)

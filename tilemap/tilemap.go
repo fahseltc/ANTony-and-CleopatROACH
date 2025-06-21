@@ -1,6 +1,7 @@
 package tilemap
 
 import (
+	"image"
 	"log"
 
 	"github.com/hajimehoshi/ebiten/v2"
@@ -10,10 +11,11 @@ import (
 
 // see https://pkg.go.dev/github.com/lafriks/go-tiled
 type Tilemap struct {
-	renderer *render.Renderer
-	tileMap  *tiled.Map
-	StaticBg *ebiten.Image
-	Tiles    map[int]*tiled.TilesetTile
+	renderer       *render.Renderer
+	tileMap        *tiled.Map
+	StaticBg       *ebiten.Image
+	CollisionRects []*image.Rectangle
+	Tiles          map[int]*tiled.TilesetTile
 }
 
 func NewTilemap() *Tilemap {
@@ -40,11 +42,18 @@ func NewTilemap() *Tilemap {
 		tilesIdMap[int(tile.ID)] = tile
 	}
 
+	var mapRects []*image.Rectangle
+	for _, object := range t.ObjectGroups[0].Objects {
+		rect := image.Rect(int(object.X), int(object.Y), int(object.X+object.Width), int(object.Y+object.Height))
+		mapRects = append(mapRects, &rect)
+	}
+
 	tm := &Tilemap{
-		renderer: r,
-		tileMap:  t,
-		StaticBg: staticBg,
-		Tiles:    tilesIdMap,
+		renderer:       r,
+		tileMap:        t,
+		StaticBg:       staticBg,
+		Tiles:          tilesIdMap,
+		CollisionRects: mapRects,
 	}
 
 	tm.ToWorld()

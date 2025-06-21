@@ -4,6 +4,7 @@ import (
 	"gamejam/util"
 	"image"
 	"image/color"
+	"math"
 
 	"github.com/google/uuid"
 
@@ -45,13 +46,15 @@ func (spr *Sprite) SetPosition(pos *image.Point) {
 // DrawStatic draws the sprite at its world position, ignoring the camera (static on screen).
 func (spr *Sprite) Draw(screen *ebiten.Image, camera *Camera) {
 	opts := &ebiten.DrawImageOptions{}
+
 	// Apply camera zoom scaling
 	opts.GeoM.Scale(camera.ViewPortZoom, camera.ViewPortZoom)
-	// Offset sprite position by adding the camera's world position, also scale position
+	// Offset sprite position by subtracting the camera's world position
 	opts.GeoM.Translate(
-		float64(spr.rect.Min.X+camera.ViewPortX)*camera.ViewPortZoom,
-		float64(spr.rect.Min.Y+camera.ViewPortY)*camera.ViewPortZoom,
+		float64(spr.rect.Min.X-int(math.Abs(float64(camera.ViewPortX))))*camera.ViewPortZoom,
+		float64(spr.rect.Min.Y-int(math.Abs(float64(camera.ViewPortY))))*camera.ViewPortZoom,
 	)
+
 	screen.DrawImage(spr.img, opts)
 
 	if spr.Selected {

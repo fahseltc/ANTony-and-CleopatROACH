@@ -90,10 +90,8 @@ func (unit *Unit) MoveToDestination(sim *T) {
 		newX := 0
 		if unit.Position.X < unit.Destination.X {
 			newX = unit.Position.X + int(unit.Stats.MoveSpeed)
-			//unit.SetPosition(&image.Point{X: unit.Position.X + int(unit.Stats.MoveSpeed), Y: unit.Position.Y})
 		} else if unit.Position.X > unit.Destination.X {
 			newX = unit.Position.X - int(unit.Stats.MoveSpeed)
-			//		unit.SetPosition(&image.Point{X: unit.Position.X - int(unit.Stats.MoveSpeed), Y: unit.Position.Y})
 		}
 		newRect := &image.Rectangle{
 			Min: image.Point{
@@ -113,25 +111,70 @@ func (unit *Unit) MoveToDestination(sim *T) {
 				break
 			}
 		}
+		if !collidesX {
+			// check X collision with world
+			for _, worldCollision := range sim.world.CollisionRects {
+				if worldCollision.Overlaps(*newRect) {
+					collidesX = true
+					break
+				}
+			}
+		}
 		if collidesX {
 			// dont move in X then
 		} else {
 			unit.SetPosition(&image.Point{X: newX, Y: unit.Position.Y})
+			// if the distance to desitination is smaller than movespeed, set Pos to Dest to prevent flicker/wobbling
+			if math.Abs(float64(unit.Position.X-unit.Destination.X)) <= float64(unit.Stats.MoveSpeed) {
+				unit.SetPosition(&image.Point{X: unit.Destination.X, Y: unit.Position.Y})
+			}
+
 		}
 	}
 
-	if unit.Position.Y < unit.Destination.Y {
-		unit.SetPosition(&image.Point{X: unit.Position.X, Y: unit.Position.Y + int(unit.Stats.MoveSpeed)})
-	} else if unit.Position.Y > unit.Destination.Y {
-		unit.SetPosition(&image.Point{X: unit.Position.X, Y: unit.Position.Y - int(unit.Stats.MoveSpeed)})
-	}
-
-	// if the distance to desitination is smaller than movespeed, set Pos to Dest to prevent flicker/wobbling
-	if math.Abs(float64(unit.Position.X-unit.Destination.X)) <= float64(unit.Stats.MoveSpeed) {
-		unit.SetPosition(&image.Point{X: unit.Destination.X, Y: unit.Position.Y})
-	}
-	if math.Abs(float64(unit.Position.Y-unit.Destination.Y)) <= float64(unit.Stats.MoveSpeed) {
-		unit.SetPosition(&image.Point{X: unit.Position.X, Y: unit.Destination.Y})
+	// move in Y
+	if unit.Position.Y != unit.Destination.Y {
+		newY := 0
+		if unit.Position.Y < unit.Destination.Y {
+			newY = unit.Position.Y + int(unit.Stats.MoveSpeed)
+		} else if unit.Position.Y > unit.Destination.Y {
+			newY = unit.Position.Y - int(unit.Stats.MoveSpeed)
+		}
+		newRect := &image.Rectangle{
+			Min: image.Point{
+				X: unit.Position.X,
+				Y: newY,
+			},
+			Max: image.Point{
+				X: unit.Position.X + unit.Rect.Dx(),
+				Y: newY + unit.Rect.Dy(),
+			},
+		}
+		// check Y collision with units
+		collidesY := false
+		for _, worldUnit := range sim.GetAllNearbyUnits(unit.Position.X, unit.Position.Y) {
+			if worldUnit.Rect.Overlaps(*newRect) {
+				collidesY = true
+				break
+			}
+		}
+		if !collidesY {
+			// check Y collision with world
+			for _, worldCollision := range sim.world.CollisionRects {
+				if worldCollision.Overlaps(*newRect) {
+					collidesY = true
+					break
+				}
+			}
+		}
+		if collidesY {
+			// dont move in Y then
+		} else {
+			unit.SetPosition(&image.Point{X: unit.Position.X, Y: newY})
+			if math.Abs(float64(unit.Position.Y-unit.Destination.Y)) <= float64(unit.Stats.MoveSpeed) {
+				unit.SetPosition(&image.Point{X: unit.Position.X, Y: unit.Destination.Y})
+			}
+		}
 	}
 
 	if unit.Position == unit.Destination { // If we've arrived, go Idle
