@@ -20,12 +20,12 @@ type Ui struct {
 	textArea *TextArea
 }
 
-func NewUi(fonts *fonts.All, tileMap *tilemap.Tilemap) *Ui {
+func NewUi(cam *Camera, fonts *fonts.All, tileMap *tilemap.Tilemap) *Ui {
 	return &Ui{
 		log:      log.NewLogger().With("for", "ui"),
 		fonts:    fonts,
 		hud:      NewHUD(fonts.Med),
-		Camera:   NewCamera(),
+		Camera:   cam,
 		TileMap:  tileMap,
 		textArea: NewTextArea(fonts, "test, this is a big chunk of text in the area!"),
 	}
@@ -44,7 +44,7 @@ func (ui *Ui) Draw(screen *ebiten.Image) {
 	// opts.GeoM.Translate(float64(ui.Camera.ViewPortX), float64(ui.Camera.ViewPortY))
 	//	ui.tileMap.Render(screen)
 
-	ebitenutil.DebugPrintAt(screen, fmt.Sprintf("zoom:%v", ui.Camera.ViewPortZoom), 1, 20)
+	ebitenutil.DebugPrintAt(screen, fmt.Sprintf("zoom: %0.2f", ui.Camera.Zoom), 1, 20)
 
 	ui.hud.Draw(screen)
 	ui.textArea.Draw(screen)

@@ -2,6 +2,7 @@ package scene
 
 import (
 	"fmt"
+	"gamejam/config"
 	"gamejam/fonts"
 	"gamejam/sim"
 	"gamejam/tilemap"
@@ -28,12 +29,22 @@ type PlayScene struct {
 	selectedUnitIDs []string
 }
 
-func NewPlayScene(fonts *fonts.All) *PlayScene {
+func NewPlayScene(cfg *config.T, fonts *fonts.All) *PlayScene {
+	screenWidth := cfg.Resolutions.Internal.Width
+	screenHeight := cfg.Resolutions.Internal.Height
+
+	// TODO this should come from the Sim?
+	mapWidth := cfg.Resolutions.External.Width
+	mapHeight := cfg.Resolutions.External.Height
+
+	cam := ui.NewCamera(screenWidth, screenHeight, mapWidth, mapHeight)
+
 	tileMap := tilemap.NewTilemap()
+	s := sim.New(60, tileMap.CollisionRects)
 	scene := &PlayScene{
 		fonts:   fonts,
-		sim:     sim.New(60, tileMap.CollisionRects),
-		ui:      ui.NewUi(fonts, tileMap),
+		sim:     s,
+		ui:      ui.NewUi(cam, fonts, tileMap),
 		tileMap: tileMap,
 		drag:    ui.NewDrag(),
 		sprites: make(map[string]*ui.Sprite),
@@ -54,7 +65,7 @@ func NewPlayScene(fonts *fonts.All) *PlayScene {
 }
 
 func (s *PlayScene) Update() error {
-	// make sure all the sim units are in the list of spritess
+	// make sure all the sim units are in the list of sprites
 	for _, unit := range s.sim.GetAllUnits() {
 		if s.sprites[unit.ID.String()] == nil {
 			spr := ui.NewDefaultSprite(unit.ID)
@@ -93,15 +104,17 @@ func (s *PlayScene) Update() error {
 func (s *PlayScene) Draw(screen *ebiten.Image) {
 	// Draw tiles first as the BG
 	opts := &ebiten.DrawImageOptions{}
-	opts.GeoM.Scale(s.ui.Camera.ViewPortZoom, s.ui.Camera.ViewPortZoom)
-	opts.GeoM.Translate(float64(s.ui.Camera.ViewPortX), float64(s.ui.Camera.ViewPortY))
+	opts.GeoM.Scale(s.ui.Camera.Zoom, s.ui.Camera.Zoom)
+	opts.GeoM.Translate(float64(s.ui.Camera.X), float64(s.ui.Camera.Y))
 	screen.DrawImage(s.ui.TileMap.StaticBg, opts)
 	// Then sprites on top
 	for _, sprite := range s.sprites {
+		// if s.ui.Camera.IsVisible(sprite.X, sprite.Y, sprite.Width, sprite.Height) {
 		sprite.Draw(screen, s.ui.Camera)
+		// }
 	}
 	s.ui.Draw(screen)
 
 	s.drag.Draw(screen)
-	ebitenutil.DebugPrintAt(screen, fmt.Sprintf("camera:%v,%v", s.ui.Camera.ViewPortX, s.ui.Camera.ViewPortY), 1, 1)
+	ebitenutil.DebugPrintAt(screen, fmt.Sprintf("camera:%0.2f, %0.2f", s.ui.Camera.X, s.ui.Camera.Y), 1, 1)
 }

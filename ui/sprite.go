@@ -4,7 +4,6 @@ import (
 	"gamejam/util"
 	"image"
 	"image/color"
-	"math"
 
 	"github.com/google/uuid"
 
@@ -48,20 +47,21 @@ func (spr *Sprite) Draw(screen *ebiten.Image, camera *Camera) {
 	opts := &ebiten.DrawImageOptions{}
 
 	// Apply camera zoom scaling
-	opts.GeoM.Scale(camera.ViewPortZoom, camera.ViewPortZoom)
-	// Offset sprite position by subtracting the camera's world position
-	opts.GeoM.Translate(
-		float64(spr.rect.Min.X-int(math.Abs(float64(camera.ViewPortX))))*camera.ViewPortZoom,
-		float64(spr.rect.Min.Y-int(math.Abs(float64(camera.ViewPortY))))*camera.ViewPortZoom,
-	)
+	opts.GeoM.Scale(camera.Zoom, camera.Zoom)
 
+	// TODO this does not seem to be translating properly between a sprite's
+	// Map position and the translated screen position
+	spriteX, spriteY := float64(spr.rect.Min.X), float64(spr.rect.Min.Y)
+	screenX, screenY := camera.MapPosToScreenPos(spriteX, spriteY)
+	// Offset sprite position by subtracting the camera's world position
+	opts.GeoM.Translate(screenX, screenY)
 	screen.DrawImage(spr.img, opts)
 
 	if spr.Selected {
-		x := int(float64(spr.rect.Min.X+camera.ViewPortX) * camera.ViewPortZoom)
-		y := int(float64(spr.rect.Min.Y+camera.ViewPortY) * camera.ViewPortZoom)
-		w := int(float64(spr.rect.Dx()) * camera.ViewPortZoom)
-		h := int(float64(spr.rect.Dy()) * camera.ViewPortZoom)
+		x := int(float64(spr.rect.Min.X) + camera.X*camera.Zoom)
+		y := int(float64(spr.rect.Min.Y) + camera.Y*camera.Zoom)
+		w := int(float64(spr.rect.Dx()) * camera.Zoom)
+		h := int(float64(spr.rect.Dy()) * camera.Zoom)
 
 		green := color.RGBA{0, 255, 0, 255}
 

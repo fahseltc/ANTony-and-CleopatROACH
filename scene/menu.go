@@ -1,6 +1,7 @@
 package scene
 
 import (
+	"gamejam/config"
 	"gamejam/fonts"
 	"gamejam/ui"
 	"gamejam/util"
@@ -17,7 +18,7 @@ type MenuScene struct {
 	fonts    *fonts.All
 }
 
-func NewMenuScene(fonts *fonts.All) *MenuScene {
+func NewMenuScene(cfg *config.T, fonts *fonts.All) *MenuScene {
 	scene := &MenuScene{
 		bg:    util.LoadImage("ui/menu-bg.png"),
 		txt:   "ANTony & CleopatROACH",
@@ -27,7 +28,7 @@ func NewMenuScene(fonts *fonts.All) *MenuScene {
 		Min: image.Point{X: 250, Y: 520},
 		Max: image.Point{X: 550, Y: 570},
 	}), ui.WithClickFunc(func() {
-		scene.BaseScene.sm.SwitchTo(NewPlayScene(scene.fonts))
+		scene.BaseScene.sm.SwitchTo(NewPlayScene(cfg, scene.fonts))
 	}))
 	return scene
 }

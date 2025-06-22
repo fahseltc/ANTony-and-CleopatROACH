@@ -28,10 +28,10 @@ func New(cfg *config.T) *Game {
 	fonts := fonts.Load(fontPath)
 	var manager *stagehand.SceneManager[scene.GameState]
 	if cfg.SkipMenu {
-		sceneInstance := scene.NewPlayScene(fonts)
+		sceneInstance := scene.NewPlayScene(cfg, fonts)
 		manager = stagehand.NewSceneManager(sceneInstance, state)
 	} else {
-		sceneInstance := scene.NewMenuScene(fonts)
+		sceneInstance := scene.NewMenuScene(cfg, fonts)
 		manager = stagehand.NewSceneManager(sceneInstance, state)
 	}
 
