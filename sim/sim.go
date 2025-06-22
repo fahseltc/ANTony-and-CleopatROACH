@@ -3,7 +3,6 @@ package sim
 import (
 	"fmt"
 	"image"
-	"math"
 	"slices"
 	"sync"
 	"sync/atomic"
@@ -29,6 +28,7 @@ type T struct {
 
 	playerSpawnX, playerSpawnY float64
 	playerUnits                []*Unit
+	playerBuildings            []*Hive
 	enemyUnits                 []*Unit
 	enemySpawnX, enemySpawnY   float64
 
@@ -36,7 +36,7 @@ type T struct {
 }
 
 type World struct {
-	TileData       [][]Tile
+	//TileData       [][]Tile
 	CollisionRects []*image.Rectangle
 }
 
@@ -58,20 +58,6 @@ type PlayerState struct {
 	Water uint16
 }
 
-func (s *T) AddResource(res Resource, amount uint16) {
-	s.stateMu.Lock()
-	defer s.stateMu.Unlock()
-
-	switch res.Type {
-	case Wood:
-		s.playerState.Wood = max(s.playerState.Wood+amount, math.MaxUint16)
-	case Food:
-		s.playerState.Food = max(s.playerState.Food+amount, math.MaxUint16)
-	case Water:
-		s.playerState.Water = max(s.playerState.Water+amount, math.MaxUint16)
-	}
-}
-
 func (s *T) GetPlayerState() PlayerState {
 	s.stateMu.RLock()
 	defer s.stateMu.RUnlock()
@@ -79,9 +65,8 @@ func (s *T) GetPlayerState() PlayerState {
 }
 
 const (
-	Wood  = "wood"
-	Food  = "food"
-	Water = "water"
+	Protein = "protein"
+	Sucrose = "sucrose"
 )
 
 // Resource represents a collectable resource on the map
@@ -89,8 +74,6 @@ type Resource struct {
 	Type      string
 	X, Y      float64
 	Available uint
-	// TODO do we want to limit number of assigned units?
-	// FreeSlots uint
 }
 
 func New(tps int, collisionRects []*image.Rectangle) *T {
@@ -98,7 +81,7 @@ func New(tps int, collisionRects []*image.Rectangle) *T {
 		tps: tps,
 		dt:  float64(1 / tps),
 		world: &World{
-			TileData:       make([][]Tile, 0, 1),
+			//TileData:       make([][]Tile, 0, 1),
 			CollisionRects: collisionRects,
 		},
 
@@ -111,6 +94,7 @@ func New(tps int, collisionRects []*image.Rectangle) *T {
 }
 
 func (s *T) Update() {
+
 	for _, unit := range s.playerUnits {
 		//nearestEnemy := findNearestEnemy()
 		//unit.SetNearestEnemy()
@@ -177,3 +161,7 @@ func (s *T) GetAllNearbyUnits(x, y int) []*Unit {
 	}
 	return nearbyUnits
 }
+
+// func (s *T) findNearestEnemy(u *Unit) *Unit {
+
+// }

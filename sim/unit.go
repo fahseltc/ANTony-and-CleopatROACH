@@ -27,6 +27,8 @@ type Unit struct {
 	Destination  *image.Point
 	Action       Action
 	NearestEnemy *Unit
+
+	Faction uint
 }
 
 type UnitStats struct {
@@ -55,6 +57,7 @@ func NewDefaultUnit() *Unit {
 		},
 		Destination: &image.Point{0, 0},
 		Action:      IdleAction,
+		Faction:     0,
 	}
 }
 

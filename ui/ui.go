@@ -17,24 +17,26 @@ type Ui struct {
 	hud      *HUD
 	Camera   *Camera
 	TileMap  *tilemap.Tilemap
-	textArea *TextArea
+	textArea *PortraitTextArea
 }
 
 func NewUi(fonts *fonts.All, tileMap *tilemap.Tilemap) *Ui {
 	return &Ui{
-		log:      log.NewLogger().With("for", "ui"),
-		fonts:    fonts,
-		hud:      NewHUD(fonts.Med),
-		Camera:   NewCamera(),
-		TileMap:  tileMap,
-		textArea: NewTextArea(fonts, "test, this is a big chunk of text in the area!"),
+		log:     log.NewLogger().With("for", "ui"),
+		fonts:   fonts,
+		hud:     NewHUD(fonts.Med),
+		Camera:  NewCamera(),
+		TileMap: tileMap,
+		textArea: NewPortraitTextArea(
+			fonts,
+			"We, ignorant of ourselves, beg often our own harms, which the wise powers deny us for our good; so find we profit by losing of our prayers.",
+			"portraits/ant-king.png"),
 	}
 }
 
 func (ui *Ui) Update() {
 	ui.hud.Update()
 	ui.Camera.Update()
-
 }
 
 func (ui *Ui) Draw(screen *ebiten.Image) {
@@ -47,5 +49,5 @@ func (ui *Ui) Draw(screen *ebiten.Image) {
 	ebitenutil.DebugPrintAt(screen, fmt.Sprintf("zoom:%v", ui.Camera.ViewPortZoom), 1, 20)
 
 	ui.hud.Draw(screen)
-	ui.textArea.Draw(screen)
+	//ui.textArea.Draw(screen)
 }

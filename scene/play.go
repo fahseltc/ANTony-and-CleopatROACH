@@ -40,6 +40,7 @@ func NewPlayScene(fonts *fonts.All) *PlayScene {
 	}
 	u := sim.NewDefaultUnit()
 	u.SetPosition(&image.Point{400, 500})
+	//u.Faction = 1
 	scene.sim.AddUnit(u)
 	//scene.sim.IssueAction(u.ID.String(), sim.MovingAction, &image.Point{X: 300, Y: 400})
 
@@ -66,7 +67,7 @@ func (s *PlayScene) Update() error {
 		}
 	}
 
-	s.drag.Update(s.sprites)
+	s.drag.Update(s.sprites, s.ui.Camera)
 	for _, spr := range s.sprites {
 		if spr.Selected {
 			s.selectedUnitIDs = append(s.selectedUnitIDs, spr.Id.String())

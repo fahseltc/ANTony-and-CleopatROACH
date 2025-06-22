@@ -27,7 +27,7 @@ func NewDrag() *Drag {
 	}
 }
 
-func (d *Drag) Update(sprites map[string]*Sprite) []string {
+func (d *Drag) Update(sprites map[string]*Sprite, camera *Camera) []string {
 	mx, my := ebiten.CursorPosition()
 	if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) {
 		d.firstClickPoint = image.Point{X: mx, Y: my}
@@ -47,12 +47,16 @@ func (d *Drag) Update(sprites map[string]*Sprite) []string {
 			minY = my
 			maxY = d.firstClickPoint.Y
 		}
+
 		d.dragRect = image.Rectangle{Min: image.Pt(minX, minY), Max: image.Pt(maxX, maxY)}
 	}
 	if inpututil.IsMouseButtonJustReleased(ebiten.MouseButtonLeft) {
 		var selectedIDs []string
+		mapRect := image.Rectangle{
+			Min: image.Pt(camera.ScreenPosToMapPos(d.dragRect.Min.X, d.dragRect.Min.Y)),
+			Max: image.Pt(camera.ScreenPosToMapPos(d.dragRect.Max.X, d.dragRect.Max.Y))}
 		for _, sprite := range sprites {
-			if d.dragRect.Overlaps(*sprite.rect) {
+			if mapRect.Overlaps(*sprite.rect) {
 				selectedIDs = append(selectedIDs, sprite.Id.String())
 				sprite.Selected = true
 			} else {

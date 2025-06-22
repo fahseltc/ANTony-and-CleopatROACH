@@ -4,7 +4,6 @@ import (
 	"gamejam/util"
 	"image"
 	"image/color"
-	"math"
 
 	"github.com/google/uuid"
 
@@ -50,28 +49,29 @@ func (spr *Sprite) Draw(screen *ebiten.Image, camera *Camera) {
 	// Apply camera zoom scaling
 	opts.GeoM.Scale(camera.ViewPortZoom, camera.ViewPortZoom)
 	// Offset sprite position by subtracting the camera's world position
-	opts.GeoM.Translate(
-		float64(spr.rect.Min.X-int(math.Abs(float64(camera.ViewPortX))))*camera.ViewPortZoom,
-		float64(spr.rect.Min.Y-int(math.Abs(float64(camera.ViewPortY))))*camera.ViewPortZoom,
-	)
+	sprX, sprY := camera.MapPosToScreenPos(spr.rect.Min.X, spr.rect.Min.Y)
+	opts.GeoM.Translate(float64(sprX), float64(sprY))
 
 	screen.DrawImage(spr.img, opts)
 
 	if spr.Selected {
-		x := int(float64(spr.rect.Min.X+camera.ViewPortX) * camera.ViewPortZoom)
-		y := int(float64(spr.rect.Min.Y+camera.ViewPortY) * camera.ViewPortZoom)
-		w := int(float64(spr.rect.Dx()) * camera.ViewPortZoom)
-		h := int(float64(spr.rect.Dy()) * camera.ViewPortZoom)
-
-		green := color.RGBA{0, 255, 0, 255}
-
-		// Top
-		ebitenutil.DrawLine(screen, float64(x), float64(y), float64(x+w), float64(y), green)
-		// Bottom
-		ebitenutil.DrawLine(screen, float64(x), float64(y+h), float64(x+w), float64(y+h), green)
-		// Left
-		ebitenutil.DrawLine(screen, float64(x), float64(y), float64(x), float64(y+h), green)
-		// Right
-		ebitenutil.DrawLine(screen, float64(x+w), float64(y), float64(x+w), float64(y+h), green)
+		spr.drawSelectedBox(screen, camera)
 	}
+}
+
+func (spr *Sprite) drawSelectedBox(screen *ebiten.Image, camera *Camera) {
+	boxX, boxY := camera.MapPosToScreenPos(spr.rect.Min.X, spr.rect.Min.Y)
+	w := int(float64(spr.rect.Dx()) * camera.ViewPortZoom)
+	h := int(float64(spr.rect.Dy()) * camera.ViewPortZoom)
+
+	green := color.RGBA{0, 255, 0, 255}
+
+	// Top
+	ebitenutil.DrawLine(screen, float64(boxX), float64(boxY), float64(boxX+w), float64(boxY), green)
+	// Bottom
+	ebitenutil.DrawLine(screen, float64(boxX), float64(boxY+h), float64(boxX+w), float64(boxY+h), green)
+	// Left
+	ebitenutil.DrawLine(screen, float64(boxX), float64(boxY), float64(boxX), float64(boxY+h), green)
+	// Right
+	ebitenutil.DrawLine(screen, float64(boxX+w), float64(boxY), float64(boxX+w), float64(boxY+h), green)
 }
