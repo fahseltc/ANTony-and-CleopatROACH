@@ -2,6 +2,7 @@ package sim
 
 import (
 	"fmt"
+	"gamejam/tilemap"
 	"image"
 	"slices"
 	"sync"
@@ -36,8 +37,9 @@ type T struct {
 }
 
 type World struct {
-	//TileData       [][]Tile
-	CollisionRects []*image.Rectangle
+	TileMap          *tilemap.Tilemap
+	TileData         [][]*tilemap.Tile
+	CollisionObjects []*image.Rectangle
 }
 
 const (
@@ -45,12 +47,6 @@ const (
 	ResourceTile = "resource"
 	BuildingTile = "building"
 )
-
-type Tile struct {
-	Type     string
-	Passable bool
-	Resource *Resource
-}
 
 type PlayerState struct {
 	Wood  uint16
@@ -76,13 +72,14 @@ type Resource struct {
 	Available uint
 }
 
-func New(tps int, collisionRects []*image.Rectangle) *T {
+func New(tps int, tileMap *tilemap.Tilemap) *T {
 	return &T{
 		tps: tps,
 		dt:  float64(1 / tps),
 		world: &World{
-			//TileData:       make([][]Tile, 0, 1),
-			CollisionRects: collisionRects,
+			TileMap:          tileMap,
+			TileData:         tileMap.Tiles,
+			CollisionObjects: tileMap.CollisionRects,
 		},
 
 		// TODO Spawn Points
@@ -99,6 +96,9 @@ func (s *T) Update() {
 		//nearestEnemy := findNearestEnemy()
 		//unit.SetNearestEnemy()
 		unit.Update(s)
+	}
+	for _, building := range s.playerBuildings {
+		building.Update(s)
 	}
 	for _, unit := range s.enemyUnits {
 		unit.Update(s)
@@ -118,6 +118,9 @@ func (s *T) RemoveUnit(u *Unit) {
 
 func (s *T) AddUnit(u *Unit) {
 	s.playerUnits = append(s.playerUnits, u)
+}
+func (s *T) AddHive(h *Hive) {
+	s.playerBuildings = append(s.playerBuildings, h)
 }
 
 func (s *T) GetUnitByID(id string) (*Unit, error) {
@@ -139,27 +142,65 @@ func (s *T) IssueAction(id string, action Action, point *image.Point) error {
 	if err != nil {
 		return err
 	}
-	unit.Action = action
 	unit.Destination = point
+	unit.DestinationType = s.DetermineDestinationType(point)
+	// TODO: take passed in ACTION into account as it might matter for some UI buttons
+	switch unit.DestinationType {
+	case EnemyDestination:
+		unit.Action = AttackMovingAction
+	case ResourceDestination:
+		unit.Action = CollectingAction
+	case LocationDestination:
+		unit.Action = AttackMovingAction
+	}
+
 	return nil
+}
+
+func (s *T) DetermineDestinationType(point *image.Point) DestinationType {
+	// This should use factions instead
+	for _, enemy := range s.enemyUnits {
+		if point.In(*enemy.Rect) {
+			return EnemyDestination
+		}
+	}
+	tile := s.world.TileMap.GetTileByPosition(point.X, point.Y)
+	if tile != nil && tile.Type == "resource" {
+		return ResourceDestination
+	}
+
+	return LocationDestination
 }
 
 func (s *T) GetAllUnits() []*Unit {
 	return append(s.enemyUnits, s.playerUnits...)
 }
 
-func (s *T) GetAllNearbyUnits(x, y int) []*Unit {
-	var nearbyUnits []*Unit
+func (s *T) GetAllNearbyColliders(x, y int) []*image.Rectangle {
+	var nearbyColliders []*image.Rectangle
 	for _, unit := range append(s.enemyUnits, s.playerUnits...) {
 		distance := unit.DistanceTo(image.Pt(x, y))
 		if distance == 0 {
 			continue
 		}
 		if distance <= NearbyDistance {
-			nearbyUnits = append(nearbyUnits, unit)
+			nearbyColliders = append(nearbyColliders, unit.Rect)
 		}
 	}
-	return nearbyUnits
+	for _, building := range s.playerBuildings {
+		distance := building.DistanceTo(image.Pt(x, y))
+		if distance == 0 {
+			continue
+		}
+		if distance <= NearbyDistance {
+			nearbyColliders = append(nearbyColliders, building.Rect)
+		}
+	}
+	return nearbyColliders
+}
+
+func (s *T) GetAllBuildings() []*Hive {
+	return s.playerBuildings
 }
 
 // func (s *T) findNearestEnemy(u *Unit) *Unit {

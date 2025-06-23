@@ -11,15 +11,22 @@ import (
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
 )
 
+var TileDimensions = 128
+
 type Sprite struct {
 	Id       uuid.UUID
 	rect     *image.Rectangle
 	img      *ebiten.Image
+	angle    float64
 	Selected bool
 }
 
 func NewDefaultSprite(uuid uuid.UUID) *Sprite {
-	return NewSprite(uuid, image.Rect(0, 0, 128, 128), "units/ant.png")
+	return NewSprite(uuid, image.Rect(0, 0, TileDimensions, TileDimensions), "units/ant.png")
+}
+
+func NewHiveSprite(uuid uuid.UUID) *Sprite {
+	return NewSprite(uuid, image.Rect(0, 0, TileDimensions*2, TileDimensions*2), "units/anthill.png")
 }
 
 func NewSprite(uuid uuid.UUID, rect image.Rectangle, imgPath string) *Sprite {
@@ -41,14 +48,22 @@ func (spr *Sprite) SetPosition(pos *image.Point) {
 		},
 	}
 }
-
-// DrawStatic draws the sprite at its world position, ignoring the camera (static on screen).
+func (spr *Sprite) SetAngle(angle float64) {
+	spr.angle = angle
+}
 func (spr *Sprite) Draw(screen *ebiten.Image, camera *Camera) {
 	opts := &ebiten.DrawImageOptions{}
 
-	// Apply camera zoom scaling
+	sz := spr.img.Bounds().Size()
+
 	opts.GeoM.Scale(camera.ViewPortZoom, camera.ViewPortZoom)
-	// Offset sprite position by subtracting the camera's world position
+
+	w, h := float64(sz.X), float64(sz.X)
+	opts.GeoM.Translate(-w/2*camera.ViewPortZoom, -h/2*camera.ViewPortZoom)
+	opts.GeoM.Rotate(spr.angle)
+
+	opts.GeoM.Translate(w/2*camera.ViewPortZoom, h/2*camera.ViewPortZoom)
+
 	sprX, sprY := camera.MapPosToScreenPos(spr.rect.Min.X, spr.rect.Min.Y)
 	opts.GeoM.Translate(float64(sprX), float64(sprY))
 

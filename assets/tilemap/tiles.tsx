@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<tileset version="1.10" tiledversion="1.11.2" name="tiles" tilewidth="128" tileheight="128" tilecount="15" columns="0">
+<tileset version="1.10" tiledversion="1.11.2" name="tiles" tilewidth="128" tileheight="128" tilecount="16" columns="0">
  <grid orientation="orthogonal" width="1" height="1"/>
  <tile id="0">
   <properties>
@@ -90,5 +90,11 @@
    <property name="passable" type="bool" value="true"/>
   </properties>
   <image source="map_tiles/tile_043.png" width="128" height="128"/>
+ </tile>
+ <tile id="15">
+  <properties>
+   <property name="resources" type="int" value="1000"/>
+  </properties>
+  <image source="map_tiles/crystal.png" width="128" height="128"/>
  </tile>
 </tileset>

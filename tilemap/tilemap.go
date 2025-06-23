@@ -1,6 +1,7 @@
 package tilemap
 
 import (
+	"fmt"
 	"image"
 	"log"
 
@@ -11,20 +12,56 @@ import (
 
 // see https://pkg.go.dev/github.com/lafriks/go-tiled
 type Tilemap struct {
-	renderer       *render.Renderer
+	Width    int
+	Height   int
+	TileSize int
+
 	tileMap        *tiled.Map
 	StaticBg       *ebiten.Image
 	CollisionRects []*image.Rectangle
-	Tiles          map[int]*tiled.TilesetTile
+	TileSet        map[int]*tiled.TilesetTile
+	Tiles          [][]*Tile
 }
 
 func NewTilemap() *Tilemap {
-	t, err := tiled.LoadFile("assets/tilemap/untitled.tmx") // this wont work in wasm! need to embed files but it breaks
+	tm, err := tiled.LoadFile("assets/tilemap/untitled.tmx") // this wont work in wasm! need to embed files but it breaks
 	if err != nil {
 		log.Fatalf("unable to load tmx: %v", err.Error())
 	}
 
-	r, err := render.NewRenderer(t)
+	staticBg := generateLayer0Image(tm)
+
+	tilesIdMap := make(map[int]*tiled.TilesetTile)
+
+	for _, tile := range tm.Tilesets[0].Tiles {
+		tilesIdMap[int(tile.ID)] = tile
+	}
+
+	var mapRects []*image.Rectangle
+	for _, object := range tm.ObjectGroups[0].Objects {
+		rect := image.Rect(int(object.X), int(object.Y), int(object.X+object.Width), int(object.Y+object.Height))
+		mapRects = append(mapRects, &rect)
+	}
+
+	tmap := &Tilemap{
+		tileMap:        tm,
+		StaticBg:       staticBg,
+		TileSet:        tilesIdMap,
+		Tiles:          make([][]*Tile, tm.Width),
+		CollisionRects: mapRects,
+		Width:          tm.Width,
+		Height:         tm.Height,
+		TileSize:       tm.TileWidth,
+	}
+	for i := 0; i < tm.Width; i++ {
+		tmap.Tiles[i] = make([]*Tile, tm.Height)
+	}
+	tmap.ToWorld()
+	return tmap
+}
+
+func generateLayer0Image(tm *tiled.Map) *ebiten.Image {
+	r, err := render.NewRenderer(tm)
 	if err != nil {
 		log.Fatal("unable to load tmx renderer")
 	}
@@ -35,29 +72,7 @@ func NewTilemap() *Tilemap {
 	}
 	staticBg := ebiten.NewImageFromImage(r.Result)
 	r.Clear()
-
-	tilesIdMap := make(map[int]*tiled.TilesetTile)
-
-	for _, tile := range t.Tilesets[0].Tiles {
-		tilesIdMap[int(tile.ID)] = tile
-	}
-
-	var mapRects []*image.Rectangle
-	for _, object := range t.ObjectGroups[0].Objects {
-		rect := image.Rect(int(object.X), int(object.Y), int(object.X+object.Width), int(object.Y+object.Height))
-		mapRects = append(mapRects, &rect)
-	}
-
-	tm := &Tilemap{
-		renderer:       r,
-		tileMap:        t,
-		StaticBg:       staticBg,
-		Tiles:          tilesIdMap,
-		CollisionRects: mapRects,
-	}
-
-	tm.ToWorld()
-	return tm
+	return staticBg
 }
 
 func (tm *Tilemap) GetMap() *tiled.Map {
@@ -65,7 +80,41 @@ func (tm *Tilemap) GetMap() *tiled.Map {
 }
 
 func (tm *Tilemap) ToWorld() {
-	//layer := tm.tileMap.Layers[0].Tiles
+	mapWidth := tm.Width
+	for y := 0; y < tm.Height; y++ {
+		for x := 0; x < tm.Width; x++ {
+			t := tm.tileMap.Layers[0].Tiles[y*mapWidth+x]
+			var tileType string
+			switch t.ID {
+			case 15:
+				tileType = "resource"
+			default:
+				tileType = "none"
+			}
+			newTile := &Tile{
+				Type:        tileType,
+				TileID:      int(t.ID),
+				Coordinates: &image.Point{X: x, Y: y},
+				Rect: &image.Rectangle{
+					Min: image.Point{X: x * tm.TileSize, Y: y * tm.TileSize},
+					Max: image.Point{X: (x * tm.TileSize) + tm.TileSize, Y: (y * tm.TileSize) + tm.TileSize},
+				},
+			}
+			tm.Tiles[x][y] = newTile
+		}
+	}
+}
+
+func (tm *Tilemap) GetTileByPosition(x, y int) *Tile {
+	xCoord := x / tm.TileSize
+	yCoord := y / tm.TileSize
+	fmt.Printf("GetTileByPosition X:%v, Y:%v\n", xCoord, yCoord)
+	if xCoord < tm.Width && xCoord >= 0 &&
+		yCoord < tm.Height && yCoord >= 0 {
+		return tm.Tiles[xCoord][yCoord]
+	} else {
+		return nil
+	}
 }
 
 func (tm *Tilemap) Render(screen *ebiten.Image) {
@@ -80,13 +129,7 @@ func (tm *Tilemap) Render(screen *ebiten.Image) {
 	// 		// screen.DrawImage(tileImage, opts)
 	// 	}
 
-	// }
-}
-
-type Tile struct {
-	Type     string
-	Passable bool
-	//Resource *Resource
+	// // }
 }
 
 // // Import the library

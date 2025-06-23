@@ -19,14 +19,27 @@ const (
 	DeliveringAction
 )
 
+type DestinationType int
+
+const (
+	LocationDestination DestinationType = iota
+	ResourceDestination
+	EnemyDestination
+)
+
 type Unit struct {
-	ID           uuid.UUID
-	Stats        *UnitStats
-	Position     *image.Point
-	Rect         *image.Rectangle
-	Destination  *image.Point
-	Action       Action
-	NearestEnemy *Unit
+	ID          uuid.UUID
+	Stats       *UnitStats
+	Position    *image.Point
+	Rect        *image.Rectangle
+	MovingAngle float64
+
+	Destination     *image.Point
+	DestinationType DestinationType
+	Action          Action
+	NearestEnemy    *Unit
+	NearestHome     *Hive
+	LastResourcePos *image.Point
 
 	Faction uint
 }
@@ -37,6 +50,10 @@ type UnitStats struct {
 	MoveSpeed uint
 	Damage    uint
 	Range     uint
+
+	MaxCarryCapactiy uint
+	SugarCarried     uint
+	WoodCarried      uint
 }
 
 func NewDefaultUnit() *Unit {
@@ -49,6 +66,9 @@ func NewDefaultUnit() *Unit {
 			Damage:    10,
 			Range:     15,
 			// acceleration / current speed?
+			MaxCarryCapactiy: 10,
+			SugarCarried:     0,
+			WoodCarried:      0,
 		},
 		Position: &image.Point{0, 0},
 		Rect: &image.Rectangle{
@@ -57,9 +77,13 @@ func NewDefaultUnit() *Unit {
 		},
 		Destination: &image.Point{0, 0},
 		Action:      IdleAction,
-		Faction:     0,
+		Faction:     1,
 	}
 }
+
+// LocationDestination DestinationType = iota
+// ResourceDestination
+// EnemyDestination
 
 func (unit *Unit) Update(sim *T) {
 	switch unit.Action {
@@ -80,15 +104,47 @@ func (unit *Unit) Update(sim *T) {
 			// pew pew animation
 		}
 	case CollectingAction:
-		// go get resource and pick it up
+		// if we are holding some resources, set home, then set deliveringAction
+		if unit.Stats.SugarCarried > 0 || unit.Stats.WoodCarried > 0 { // better logic so it doesnt always bring back one resource
+
+			if unit.NearestHome == nil {
+				for _, hive := range sim.GetAllBuildings() {
+					if hive.Faction == unit.Faction {
+						unit.NearestHome = hive
+						break
+					}
+				}
+			}
+			unit.Destination = unit.NearestHome.Position
+			unit.LastResourcePos = unit.Position
+			unit.Action = DeliveringAction
+		} else {
+			// move to and collect resource
+
+			unit.MoveToDestination(sim)
+			dist := unit.DistanceTo(*unit.Destination)
+			if dist < 100 {
+				unit.Stats.SugarCarried = 5
+			}
+		}
 	case DeliveringAction:
 		// return resource to home base
+		// set home if unset
+		unit.MoveToDestination(sim)
+		dist := unit.DistanceTo(*unit.Destination)
+		if dist < 200 {
+			unit.NearestHome.Resource += unit.Stats.SugarCarried
+			unit.Stats.SugarCarried = 0
+			unit.Destination = unit.LastResourcePos
+
+			unit.Action = CollectingAction
+		}
+
 	}
 }
 
 func (unit *Unit) MoveToDestination(sim *T) {
-	// TODO pathfinding
-	//oldX := unit.Position.X
+	oldX := unit.Position.X
 	if unit.Position.X != unit.Destination.X {
 		newX := 0
 		if unit.Position.X < unit.Destination.X {
@@ -108,15 +164,15 @@ func (unit *Unit) MoveToDestination(sim *T) {
 		}
 		// check X collision
 		collidesX := false
-		for _, worldUnit := range sim.GetAllNearbyUnits(unit.Position.X, unit.Position.Y) {
-			if worldUnit.Rect.Overlaps(*newRect) {
+		for _, colliderRect := range sim.GetAllNearbyColliders(unit.Position.X, unit.Position.Y) {
+			if colliderRect.Overlaps(*newRect) {
 				collidesX = true
 				break
 			}
 		}
 		if !collidesX {
 			// check X collision with world
-			for _, worldCollision := range sim.world.CollisionRects {
+			for _, worldCollision := range sim.world.CollisionObjects {
 				if worldCollision.Overlaps(*newRect) {
 					collidesX = true
 					break
@@ -135,6 +191,7 @@ func (unit *Unit) MoveToDestination(sim *T) {
 		}
 	}
 
+	oldY := unit.Position.Y
 	// move in Y
 	if unit.Position.Y != unit.Destination.Y {
 		newY := 0
@@ -155,15 +212,15 @@ func (unit *Unit) MoveToDestination(sim *T) {
 		}
 		// check Y collision with units
 		collidesY := false
-		for _, worldUnit := range sim.GetAllNearbyUnits(unit.Position.X, unit.Position.Y) {
-			if worldUnit.Rect.Overlaps(*newRect) {
+		for _, colliderRect := range sim.GetAllNearbyColliders(unit.Position.X, unit.Position.Y) {
+			if colliderRect.Overlaps(*newRect) {
 				collidesY = true
 				break
 			}
 		}
 		if !collidesY {
 			// check Y collision with world
-			for _, worldCollision := range sim.world.CollisionRects {
+			for _, worldCollision := range sim.world.CollisionObjects {
 				if worldCollision.Overlaps(*newRect) {
 					collidesY = true
 					break
@@ -179,8 +236,13 @@ func (unit *Unit) MoveToDestination(sim *T) {
 			}
 		}
 	}
+	dx := float64(unit.Position.X - oldX)
+	dy := float64(unit.Position.Y - oldY)
+	if dx != 0 || dy != 0 { // this check is needed so the ant angle is not reset to zer
+		unit.MovingAngle = math.Atan2(dy, dx) + math.Pi/2 // math.pi/2 fixes default sprite rotation.
+	}
 
-	if unit.Position == unit.Destination { // If we've arrived, go Idle
+	if unit.Position == unit.Destination { // If we've arrived, go Idle -- TODO make this more broad and use some distance to destination instead of exact match
 		unit.Action = IdleAction
 	}
 }
@@ -208,4 +270,8 @@ func (unit *Unit) SetPosition(pos *image.Point) {
 			Y: pos.Y + unit.Rect.Dy(),
 		},
 	}
+}
+
+func (unit *Unit) SetTilePosition(x, y int) {
+	unit.SetPosition(&image.Point{X: x * 128, Y: y * 128})
 }

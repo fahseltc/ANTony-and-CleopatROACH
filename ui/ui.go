@@ -9,6 +9,7 @@ import (
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
+	"github.com/hajimehoshi/ebiten/v2/inpututil"
 )
 
 type Ui struct {
@@ -21,11 +22,12 @@ type Ui struct {
 }
 
 func NewUi(fonts *fonts.All, tileMap *tilemap.Tilemap) *Ui {
+	camera := NewCamera(tileMap.Width, tileMap.Height)
 	return &Ui{
 		log:     log.NewLogger().With("for", "ui"),
 		fonts:   fonts,
 		hud:     NewHUD(fonts.Med),
-		Camera:  NewCamera(),
+		Camera:  camera,
 		TileMap: tileMap,
 		textArea: NewPortraitTextArea(
 			fonts,
@@ -45,6 +47,15 @@ func (ui *Ui) Draw(screen *ebiten.Image) {
 	// opts.GeoM.Scale(ui.Camera.ViewPortZoom, ui.Camera.ViewPortZoom)
 	// opts.GeoM.Translate(float64(ui.Camera.ViewPortX), float64(ui.Camera.ViewPortY))
 	//	ui.tileMap.Render(screen)
+	if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) {
+		mx, my := ebiten.CursorPosition()
+		x, y := ui.Camera.ScreenPosToMapPos(mx, my)
+
+		clickedTile := ui.TileMap.GetTileByPosition(x, y)
+		if clickedTile != nil {
+			fmt.Printf("tile clicked type:%v", clickedTile.Type)
+		}
+	}
 
 	ebitenutil.DebugPrintAt(screen, fmt.Sprintf("zoom:%v", ui.Camera.ViewPortZoom), 1, 20)
 

@@ -54,9 +54,9 @@ func (d *Drag) Update(sprites map[string]*Sprite, camera *Camera) []string {
 		var selectedIDs []string
 		mapRect := image.Rectangle{
 			Min: image.Pt(camera.ScreenPosToMapPos(d.dragRect.Min.X, d.dragRect.Min.Y)),
-			Max: image.Pt(camera.ScreenPosToMapPos(d.dragRect.Max.X, d.dragRect.Max.Y))}
+			Max: image.Pt(camera.ScreenPosToMapPos(d.dragRect.Max.X+4, d.dragRect.Max.Y+4))}
 		for _, sprite := range sprites {
-			if mapRect.Overlaps(*sprite.rect) {
+			if sprite.rect.Overlaps(mapRect) {
 				selectedIDs = append(selectedIDs, sprite.Id.String())
 				sprite.Selected = true
 			} else {
