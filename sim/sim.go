@@ -2,27 +2,21 @@ package sim
 
 import (
 	"fmt"
+	"gamejam/eventing"
 	"gamejam/tilemap"
 	"image"
 	"slices"
 	"sync"
-	"sync/atomic"
 )
 
 var NearbyDistance = uint(300)
+var UnitSucroseCost = uint16(50)
 
-// T is the simulated world for the game. This Sim makes
-// a couple assumptions:
-//
-//   - The Game ticks at a fixed rate (tps)
-//   - The time delta between ticks is (mostly) fixed
 type T struct {
-	tps   int
-	dt    float64
-	world *World
-
-	// ID generator
-	unitIdx atomic.Uint32
+	EventBus *eventing.EventBus
+	tps      int
+	dt       float64
+	world    *World
 
 	playerState PlayerState
 	stateMu     sync.RWMutex
@@ -42,16 +36,14 @@ type World struct {
 	CollisionObjects []*image.Rectangle
 }
 
-const (
-	NoneTile     = "none"
-	ResourceTile = "resource"
-	BuildingTile = "building"
-)
+type Collider struct {
+	Rect    *image.Rectangle
+	OwnerID string
+}
 
 type PlayerState struct {
-	Wood  uint16
-	Food  uint16
-	Water uint16
+	Sucrose uint16
+	Wood    uint16
 }
 
 func (s *T) GetPlayerState() PlayerState {
@@ -60,22 +52,20 @@ func (s *T) GetPlayerState() PlayerState {
 	return s.playerState
 }
 
-const (
-	Protein = "protein"
-	Sucrose = "sucrose"
-)
-
-// Resource represents a collectable resource on the map
-type Resource struct {
-	Type      string
-	X, Y      float64
-	Available uint
-}
+// // Resource represents a collectable resource on the map
+// type Resource struct {
+// 	Type      string
+// 	X, Y      float64
+// 	Available uint
+// }
 
 func New(tps int, tileMap *tilemap.Tilemap) *T {
-	return &T{
-		tps: tps,
-		dt:  float64(1 / tps),
+	bus := eventing.NewEventBus()
+
+	sim := &T{
+		EventBus: bus,
+		tps:      tps,
+		dt:       float64(1 / tps),
 		world: &World{
 			TileMap:          tileMap,
 			TileData:         tileMap.Tiles,
@@ -88,6 +78,12 @@ func New(tps int, tileMap *tilemap.Tilemap) *T {
 		playerUnits: make([]*Unit, 0, 10),
 		enemyUnits:  make([]*Unit, 0, 10),
 	}
+	bus.Subscribe("ConstructUnitEvent", sim.HandleConstructUnitEvent)
+	return sim
+}
+func (s *T) HandleConstructUnitEvent(event eventing.Event) {
+	hiveID := event.Data.(eventing.ConstructUnitEvent).HiveID
+	s.ConstructUnit(hiveID)
 }
 
 func (s *T) Update() {
@@ -136,6 +132,14 @@ func (s *T) GetUnitByID(id string) (*Unit, error) {
 	}
 	return nil, fmt.Errorf("unable to find unit with ID:%v", id)
 }
+func (s *T) GetHiveByID(id string) (*Hive, error) {
+	for _, hive := range s.playerBuildings {
+		if hive.ID.String() == id {
+			return hive, nil
+		}
+	}
+	return nil, fmt.Errorf("unable to find unit with ID:%v", id)
+}
 
 func (s *T) IssueAction(id string, action Action, point *image.Point) error {
 	unit, err := s.GetUnitByID(id)
@@ -165,7 +169,7 @@ func (s *T) DetermineDestinationType(point *image.Point) DestinationType {
 		}
 	}
 	tile := s.world.TileMap.GetTileByPosition(point.X, point.Y)
-	if tile != nil && tile.Type == "resource" {
+	if tile != nil && (tile.Type == "wood" || tile.Type == "sucrose") {
 		return ResourceDestination
 	}
 
@@ -176,9 +180,9 @@ func (s *T) GetAllUnits() []*Unit {
 	return append(s.enemyUnits, s.playerUnits...)
 }
 
-func (s *T) GetAllNearbyColliders(x, y int) []*image.Rectangle {
+func (s *T) GetAllNearbyCollidersHarvesting(x, y int) []*image.Rectangle {
 	var nearbyColliders []*image.Rectangle
-	for _, unit := range append(s.enemyUnits, s.playerUnits...) {
+	for _, unit := range s.enemyUnits {
 		distance := unit.DistanceTo(image.Pt(x, y))
 		if distance == 0 {
 			continue
@@ -198,11 +202,95 @@ func (s *T) GetAllNearbyColliders(x, y int) []*image.Rectangle {
 	}
 	return nearbyColliders
 }
+func (s *T) GetAllNearbyColliders(x, y int) []*Collider {
+	var nearbyColliders []*Collider
+	for _, unit := range append(s.enemyUnits, s.playerUnits...) {
+		if unit == nil {
+			continue
+		}
+		distance := unit.DistanceTo(image.Pt(x, y))
+		if distance <= NearbyDistance {
+			nearbyColliders = append(nearbyColliders, &Collider{
+				Rect:    unit.Rect,
+				OwnerID: unit.ID.String(),
+			})
+		}
+	}
+	for _, building := range s.playerBuildings {
+		distance := building.DistanceTo(image.Pt(x, y))
+		if distance <= NearbyDistance {
+			nearbyColliders = append(nearbyColliders, &Collider{
+				Rect:    building.Rect,
+				OwnerID: building.ID.String(),
+			})
+		}
+	}
+	return nearbyColliders
+}
+
+func (s *T) GetAllCollidersOverlapping(rect *image.Rectangle) []*Collider {
+	var colliders []*Collider
+	for _, unit := range append(s.enemyUnits, s.playerUnits...) {
+		if unit == nil {
+			continue
+		}
+		if unit.Rect.Overlaps(*rect) {
+			colliders = append(colliders, &Collider{
+				Rect:    unit.Rect,
+				OwnerID: unit.ID.String(),
+			})
+		}
+	}
+	for _, building := range s.playerBuildings {
+		if building.Rect.Overlaps(*rect) {
+			colliders = append(colliders, &Collider{
+				Rect:    building.Rect,
+				OwnerID: building.ID.String(),
+			})
+		}
+	}
+	return colliders
+}
 
 func (s *T) GetAllBuildings() []*Hive {
 	return s.playerBuildings
 }
 
-// func (s *T) findNearestEnemy(u *Unit) *Unit {
+func (s *T) DetermineUnitOrHiveById(id string) string {
+	_, err := s.GetHiveByID(id)
+	if err == nil {
+		return "hive"
+	}
+	_, err2 := s.GetUnitByID(id)
+	if err2 == nil {
+		return "unit"
+	}
+	return "neither"
+}
 
-// }
+func (s *T) AddWood(amount uint) {
+	s.playerState.Wood += uint16(amount)
+}
+func (s *T) GetWoodAmount() uint16 {
+	return s.playerState.Wood
+}
+func (s *T) AddSucrose(amount uint) {
+	s.playerState.Sucrose += uint16(amount)
+}
+func (s *T) GetSucroseAmount() uint16 {
+	return s.playerState.Sucrose
+}
+
+func (s *T) ConstructUnit(hiveId string) bool {
+	hive, err := s.GetHiveByID(hiveId)
+	if err != nil {
+		return false
+	}
+	if s.playerState.Sucrose >= UnitSucroseCost {
+		s.playerState.Sucrose -= UnitSucroseCost
+		hive.AddUnitToBuildQueue()
+		return true
+	} else {
+		return false
+	}
+}

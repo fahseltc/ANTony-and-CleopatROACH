@@ -1,7 +1,6 @@
 package ui
 
 import (
-	"fmt"
 	"gamejam/log"
 	"image"
 	"image/color"
@@ -27,8 +26,14 @@ func NewDrag() *Drag {
 	}
 }
 
-func (d *Drag) Update(sprites map[string]*Sprite, camera *Camera) []string {
+func (d *Drag) Update(sprites map[string]*Sprite, camera *Camera, HUD *HUD) {
 	mx, my := ebiten.CursorPosition()
+	pt := image.Point{X: mx, Y: my}
+	if pt.In(HUD.leftSideRect) || (HUD.RightSideState != HiddenState && pt.In(HUD.rightSideRect)) { // abort updating selected units if the click is inside the UI elements
+		d.dragRect = image.Rectangle{Min: image.Pt(0, 0), Max: image.Pt(0, 0)}
+		return
+	}
+
 	if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) {
 		d.firstClickPoint = image.Point{X: mx, Y: my}
 	}
@@ -55,7 +60,12 @@ func (d *Drag) Update(sprites map[string]*Sprite, camera *Camera) []string {
 		mapRect := image.Rectangle{
 			Min: image.Pt(camera.ScreenPosToMapPos(d.dragRect.Min.X, d.dragRect.Min.Y)),
 			Max: image.Pt(camera.ScreenPosToMapPos(d.dragRect.Max.X+4, d.dragRect.Max.Y+4))}
+		d.dragRect = image.Rectangle{Min: image.Pt(0, 0), Max: image.Pt(0, 0)}
 		for _, sprite := range sprites {
+			if sprite.Type == SpriteTypeStatic {
+				sprite.Selected = false
+				continue
+			}
 			if sprite.rect.Overlaps(mapRect) {
 				selectedIDs = append(selectedIDs, sprite.Id.String())
 				sprite.Selected = true
@@ -63,11 +73,9 @@ func (d *Drag) Update(sprites map[string]*Sprite, camera *Camera) []string {
 				sprite.Selected = false
 			}
 		}
-		d.dragRect = image.Rectangle{Min: image.Pt(0, 0), Max: image.Pt(0, 0)}
+
 		d.log.Info("Units Selected", "array", selectedIDs)
-		return selectedIDs
 	}
-	return nil
 }
 
 func (d *Drag) Draw(screen *ebiten.Image) {
@@ -81,9 +89,9 @@ func (d *Drag) Draw(screen *ebiten.Image) {
 		ebitenutil.DrawLine(screen, x, y+h, x+w, y+h, c) // bottom
 	}
 
-	ebitenutil.DebugPrintAt(screen, fmt.Sprintf("drag:(%v,%v) to (%v,%v)",
-		d.dragRect.Min.X,
-		d.dragRect.Min.Y,
-		d.dragRect.Max.X,
-		d.dragRect.Max.Y), 1, 40)
+	// ebitenutil.DebugPrintAt(screen, fmt.Sprintf("drag:(%v,%v) to (%v,%v)",
+	// 	d.dragRect.Min.X,
+	// 	d.dragRect.Min.Y,
+	// 	d.dragRect.Max.X,
+	// 	d.dragRect.Max.Y), 1, 40)
 }

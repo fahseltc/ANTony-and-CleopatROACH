@@ -13,29 +13,58 @@ import (
 
 var TileDimensions = 128
 
+type SpriteType int
+
+const (
+	SpriteTypeDefault SpriteType = iota
+	SpriteTypeHive
+	SpriteTypeUnit
+	SpriteTypeStatic
+	// Add more sprite types as needed
+)
+
 type Sprite struct {
 	Id       uuid.UUID
 	rect     *image.Rectangle
 	img      *ebiten.Image
 	angle    float64
 	Selected bool
+
+	Type SpriteType
 }
 
-func NewDefaultSprite(uuid uuid.UUID) *Sprite {
-	return NewSprite(uuid, image.Rect(0, 0, TileDimensions, TileDimensions), "units/ant.png")
+// Units
+func NewRoyalAntSprite(uuid uuid.UUID) *Sprite {
+	return NewSprite(uuid, image.Rect(0, 0, int(float64(TileDimensions)*1.5), int(float64(TileDimensions)*1.5)), "units/ant-royal.png", SpriteTypeUnit)
+}
+func NewRoyalRoachSprite(uuid uuid.UUID) *Sprite {
+	return NewSprite(uuid, image.Rect(0, 0, TileDimensions, TileDimensions), "units/roach-royal.png", SpriteTypeUnit)
+}
+func NewDefaultAntSprite(uuid uuid.UUID) *Sprite {
+	return NewSprite(uuid, image.Rect(0, 0, TileDimensions, TileDimensions), "units/ant.png", SpriteTypeUnit)
+}
+func NewDefaultRoachSprite(uuid uuid.UUID) *Sprite {
+	return NewSprite(uuid, image.Rect(0, 0, TileDimensions, TileDimensions), "units/roach.png", SpriteTypeUnit)
 }
 
+// Buildings
 func NewHiveSprite(uuid uuid.UUID) *Sprite {
-	return NewSprite(uuid, image.Rect(0, 0, TileDimensions*2, TileDimensions*2), "units/anthill.png")
+	return NewSprite(uuid, image.Rect(0, 0, TileDimensions*2, TileDimensions*2), "units/anthill.png", SpriteTypeHive)
 }
 
-func NewSprite(uuid uuid.UUID, rect image.Rectangle, imgPath string) *Sprite {
+// Static Sprites
+func NewBridgeSprite() *Sprite {
+	return NewSprite(uuid.New(), image.Rect(0, 0, TileDimensions, TileDimensions), "units/bridge.png", SpriteTypeStatic)
+}
+
+func NewSprite(uuid uuid.UUID, rect image.Rectangle, imgPath string, spriteType SpriteType) *Sprite {
 	scaled := util.ScaleImage(util.LoadImage(imgPath), float32(rect.Dx()), float32(rect.Dy()))
 	return &Sprite{
 		Id:       uuid,
 		rect:     &rect,
 		img:      scaled,
 		Selected: false,
+		Type:     spriteType,
 	}
 }
 
@@ -45,6 +74,19 @@ func (spr *Sprite) SetPosition(pos *image.Point) {
 		Max: image.Point{
 			X: pos.X + spr.rect.Dx(),
 			Y: pos.Y + spr.rect.Dy(),
+		},
+	}
+}
+
+func (spr *Sprite) SetTilePosition(x, y int) {
+	spr.rect = &image.Rectangle{
+		Min: image.Point{
+			X: x * TileDimensions,
+			Y: y * TileDimensions,
+		},
+		Max: image.Point{
+			X: (x * TileDimensions) + TileDimensions,
+			Y: (y * TileDimensions) + TileDimensions,
 		},
 	}
 }
@@ -69,9 +111,10 @@ func (spr *Sprite) Draw(screen *ebiten.Image, camera *Camera) {
 
 	screen.DrawImage(spr.img, opts)
 
-	if spr.Selected {
+	if spr.Selected && spr.Type != SpriteTypeStatic {
 		spr.drawSelectedBox(screen, camera)
 	}
+
 }
 
 func (spr *Sprite) drawSelectedBox(screen *ebiten.Image, camera *Camera) {

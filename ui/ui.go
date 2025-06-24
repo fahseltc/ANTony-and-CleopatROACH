@@ -2,8 +2,10 @@ package ui
 
 import (
 	"fmt"
+	"gamejam/eventing"
 	"gamejam/fonts"
 	"gamejam/log"
+	"gamejam/sim"
 	"gamejam/tilemap"
 	"log/slog"
 
@@ -15,29 +17,31 @@ import (
 type Ui struct {
 	log      *slog.Logger
 	fonts    *fonts.All
-	hud      *HUD
+	HUD      *HUD
 	Camera   *Camera
 	TileMap  *tilemap.Tilemap
 	textArea *PortraitTextArea
+	eventBus *eventing.EventBus
 }
 
-func NewUi(fonts *fonts.All, tileMap *tilemap.Tilemap) *Ui {
+func NewUi(fonts *fonts.All, tileMap *tilemap.Tilemap, sim *sim.T) *Ui {
 	camera := NewCamera(tileMap.Width, tileMap.Height)
 	return &Ui{
 		log:     log.NewLogger().With("for", "ui"),
 		fonts:   fonts,
-		hud:     NewHUD(fonts.Med),
+		HUD:     NewHUD(fonts.Med, sim),
 		Camera:  camera,
 		TileMap: tileMap,
 		textArea: NewPortraitTextArea(
 			fonts,
 			"We, ignorant of ourselves, beg often our own harms, which the wise powers deny us for our good; so find we profit by losing of our prayers.",
 			"portraits/ant-king.png"),
+		eventBus: sim.EventBus,
 	}
 }
 
 func (ui *Ui) Update() {
-	ui.hud.Update()
+	ui.HUD.Update()
 	ui.Camera.Update()
 }
 
@@ -59,6 +63,6 @@ func (ui *Ui) Draw(screen *ebiten.Image) {
 
 	ebitenutil.DebugPrintAt(screen, fmt.Sprintf("zoom:%v", ui.Camera.ViewPortZoom), 1, 20)
 
-	ui.hud.Draw(screen)
+	ui.HUD.Draw(screen)
 	//ui.textArea.Draw(screen)
 }

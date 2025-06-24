@@ -3,8 +3,9 @@ package tilemap
 import "image"
 
 var (
-	TileTypePlain    = "plain"
-	TileTypeResource = "resource"
+	TileTypePlain   = "plain"
+	TileTypeSucrose = "sucrose"
+	TileTypeWood    = "wood"
 )
 
 type Tile struct {

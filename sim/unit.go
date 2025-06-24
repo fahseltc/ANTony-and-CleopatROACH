@@ -7,6 +7,8 @@ import (
 	"github.com/google/uuid"
 )
 
+var ArrivalThreshold = 15
+
 type Action int
 
 const (
@@ -27,10 +29,20 @@ const (
 	EnemyDestination
 )
 
+type UnitType int
+
+const (
+	UnitTypeDefaultAnt UnitType = iota
+	UnitTypeRoyalAnt
+	UnitTypeDefaultRoach
+	UnitTypeRoyalRoach
+)
+
 type Unit struct {
 	ID          uuid.UUID
 	Stats       *UnitStats
 	Position    *image.Point
+	Type        UnitType
 	Rect        *image.Rectangle
 	MovingAngle float64
 
@@ -40,6 +52,7 @@ type Unit struct {
 	NearestEnemy    *Unit
 	NearestHome     *Hive
 	LastResourcePos *image.Point
+	CurrentAnim     string
 
 	Faction uint
 }
@@ -51,14 +64,34 @@ type UnitStats struct {
 	Damage    uint
 	Range     uint
 
-	MaxCarryCapactiy uint
-	SugarCarried     uint
-	WoodCarried      uint
+	MaxCarryCapactiy    uint
+	ResourceCarried     uint
+	ResourceTypeCarried string
 }
 
-func NewDefaultUnit() *Unit {
+func NewRoyalRoach() *Unit {
+	u := NewDefaultAnt()
+	u.Type = UnitTypeRoyalRoach
+	return u
+}
+
+func NewRoyalAnt() *Unit {
+	u := NewDefaultAnt()
+	u.Type = UnitTypeRoyalAnt
+	u.Rect.Max = image.Point{256, 256}
+	return u
+}
+
+func NewDefaultRoach() *Unit {
+	u := NewDefaultAnt()
+	u.Type = UnitTypeDefaultRoach
+	return u
+}
+
+func NewDefaultAnt() *Unit {
 	return &Unit{
-		ID: uuid.New(),
+		ID:   uuid.New(),
+		Type: UnitTypeDefaultAnt,
 		Stats: &UnitStats{
 			HPMax:     100,
 			HPCur:     100,
@@ -66,9 +99,9 @@ func NewDefaultUnit() *Unit {
 			Damage:    10,
 			Range:     15,
 			// acceleration / current speed?
-			MaxCarryCapactiy: 10,
-			SugarCarried:     0,
-			WoodCarried:      0,
+			MaxCarryCapactiy:    5,
+			ResourceCarried:     0,
+			ResourceTypeCarried: "",
 		},
 		Position: &image.Point{0, 0},
 		Rect: &image.Rectangle{
@@ -81,22 +114,18 @@ func NewDefaultUnit() *Unit {
 	}
 }
 
-// LocationDestination DestinationType = iota
-// ResourceDestination
-// EnemyDestination
-
 func (unit *Unit) Update(sim *T) {
 	switch unit.Action {
 	case IdleAction:
 		return
 	case MovingAction:
-		unit.MoveToDestination(sim)
+		unit.MoveToDestination(sim, false)
 	case AttackMovingAction:
 		if unit.NearestEnemy != nil && unit.TargetInRange(*unit.Position) {
 			unit.NearestEnemy.Stats.HPCur -= unit.Stats.Damage
 			// pew pew animation
 		} else {
-			unit.MoveToDestination(sim) // destination might be a unit?
+			unit.MoveToDestination(sim, false) // destination might be a unit?
 		}
 	case HoldingPositionAction:
 		if unit.NearestEnemy != nil && unit.TargetInRange(*unit.Position) {
@@ -105,8 +134,7 @@ func (unit *Unit) Update(sim *T) {
 		}
 	case CollectingAction:
 		// if we are holding some resources, set home, then set deliveringAction
-		if unit.Stats.SugarCarried > 0 || unit.Stats.WoodCarried > 0 { // better logic so it doesnt always bring back one resource
-
+		if unit.Stats.ResourceCarried > 0 { // better logic so it doesnt always bring back minimal resource amount
 			if unit.NearestHome == nil {
 				for _, hive := range sim.GetAllBuildings() {
 					if hive.Faction == unit.Faction {
@@ -115,136 +143,107 @@ func (unit *Unit) Update(sim *T) {
 					}
 				}
 			}
+			unit.LastResourcePos = unit.Destination
 			unit.Destination = unit.NearestHome.Position
-			unit.LastResourcePos = unit.Position
 			unit.Action = DeliveringAction
 		} else {
 			// move to and collect resource
 
-			unit.MoveToDestination(sim)
+			unit.MoveToDestination(sim, false) // setting this to True causes jank behavior and its better as false?
 			dist := unit.DistanceTo(*unit.Destination)
-			if dist < 100 {
-				unit.Stats.SugarCarried = 5
+			if dist < 150 {
+				// TODO: play animation and wait some time to harvest?
+				tile := sim.world.TileMap.GetTileByPosition(unit.Destination.X, unit.Destination.Y)
+				if tile != nil && tile.Type != "none" {
+					unit.Stats.ResourceCarried = 5
+					unit.Stats.ResourceTypeCarried = tile.Type
+				}
 			}
 		}
 	case DeliveringAction:
 		// return resource to home base
 		// set home if unset
-		unit.MoveToDestination(sim)
+		unit.MoveToDestination(sim, false) // setting this to True causes jank behavior and its better as false?
 		dist := unit.DistanceTo(*unit.Destination)
-		if dist < 200 {
-			unit.NearestHome.Resource += unit.Stats.SugarCarried
-			unit.Stats.SugarCarried = 0
+		if dist < 300 {
+			if unit.Stats.ResourceTypeCarried == "wood" {
+				sim.AddWood(unit.Stats.ResourceCarried)
+				unit.Stats.ResourceCarried = 0
+				unit.Stats.ResourceTypeCarried = ""
+			} else if unit.Stats.ResourceTypeCarried == "sucrose" {
+				sim.AddSucrose(unit.Stats.ResourceCarried)
+				unit.Stats.ResourceCarried = 0
+				unit.Stats.ResourceTypeCarried = ""
+			}
 			unit.Destination = unit.LastResourcePos
-
 			unit.Action = CollectingAction
 		}
 
 	}
 }
-
-func (unit *Unit) MoveToDestination(sim *T) {
+func (unit *Unit) MoveToDestination(sim *T, harvesting bool) {
+	speed := float64(unit.Stats.MoveSpeed)
 	oldX := unit.Position.X
-	if unit.Position.X != unit.Destination.X {
-		newX := 0
-		if unit.Position.X < unit.Destination.X {
-			newX = unit.Position.X + int(unit.Stats.MoveSpeed)
-		} else if unit.Position.X > unit.Destination.X {
-			newX = unit.Position.X - int(unit.Stats.MoveSpeed)
-		}
-		newRect := &image.Rectangle{
-			Min: image.Point{
-				X: newX,
-				Y: unit.Position.Y,
-			},
-			Max: image.Point{
-				X: newX + unit.Rect.Dx(),
-				Y: unit.Position.Y + unit.Rect.Dy(),
-			},
-		}
-		// check X collision
-		collidesX := false
-		for _, colliderRect := range sim.GetAllNearbyColliders(unit.Position.X, unit.Position.Y) {
-			if colliderRect.Overlaps(*newRect) {
-				collidesX = true
-				break
-			}
-		}
-		if !collidesX {
-			// check X collision with world
-			for _, worldCollision := range sim.world.CollisionObjects {
-				if worldCollision.Overlaps(*newRect) {
-					collidesX = true
-					break
-				}
-			}
-		}
-		if collidesX {
-			// dont move in X then
-		} else {
-			unit.SetPosition(&image.Point{X: newX, Y: unit.Position.Y})
-			// if the distance to desitination is smaller than movespeed, set Pos to Dest to prevent flicker/wobbling
-			if math.Abs(float64(unit.Position.X-unit.Destination.X)) <= float64(unit.Stats.MoveSpeed) {
-				unit.SetPosition(&image.Point{X: unit.Destination.X, Y: unit.Position.Y})
-			}
-
-		}
-	}
-
 	oldY := unit.Position.Y
-	// move in Y
-	if unit.Position.Y != unit.Destination.Y {
-		newY := 0
-		if unit.Position.Y < unit.Destination.Y {
-			newY = unit.Position.Y + int(unit.Stats.MoveSpeed)
-		} else if unit.Position.Y > unit.Destination.Y {
-			newY = unit.Position.Y - int(unit.Stats.MoveSpeed)
+
+	dx := float64(unit.Destination.X - unit.Position.X)
+	dy := float64(unit.Destination.Y - unit.Position.Y)
+
+	// Movement request
+	moveX := math.Copysign(math.Min(math.Abs(dx), speed), dx) // move by at most `speed` towards target X
+	moveY := math.Copysign(math.Min(math.Abs(dy), speed), dy) // move by at most `speed` towards target Y
+
+	// Attempt X movement
+	if moveX != 0 {
+		candidate := &image.Rectangle{
+			Min: image.Point{X: int(unit.Position.X + int(moveX)), Y: int(unit.Position.Y)},
+			Max: image.Point{X: int(unit.Position.X+int(moveX)) + unit.Rect.Dx(), Y: int(unit.Position.Y) + unit.Rect.Dy()},
 		}
-		newRect := &image.Rectangle{
-			Min: image.Point{
-				X: unit.Position.X,
-				Y: newY,
-			},
-			Max: image.Point{
-				X: unit.Position.X + unit.Rect.Dx(),
-				Y: newY + unit.Rect.Dy(),
-			},
+		if !unit.isColliding(candidate, sim) {
+			unit.SetPosition(&image.Point{X: unit.Position.X + int(moveX), Y: unit.Position.Y})
 		}
-		// check Y collision with units
-		collidesY := false
-		for _, colliderRect := range sim.GetAllNearbyColliders(unit.Position.X, unit.Position.Y) {
-			if colliderRect.Overlaps(*newRect) {
-				collidesY = true
-				break
-			}
-		}
-		if !collidesY {
-			// check Y collision with world
-			for _, worldCollision := range sim.world.CollisionObjects {
-				if worldCollision.Overlaps(*newRect) {
-					collidesY = true
-					break
-				}
-			}
-		}
-		if collidesY {
-			// dont move in Y then
-		} else {
-			unit.SetPosition(&image.Point{X: unit.Position.X, Y: newY})
-			if math.Abs(float64(unit.Position.Y-unit.Destination.Y)) <= float64(unit.Stats.MoveSpeed) {
-				unit.SetPosition(&image.Point{X: unit.Position.X, Y: unit.Destination.Y})
-			}
-		}
-	}
-	dx := float64(unit.Position.X - oldX)
-	dy := float64(unit.Position.Y - oldY)
-	if dx != 0 || dy != 0 { // this check is needed so the ant angle is not reset to zer
-		unit.MovingAngle = math.Atan2(dy, dx) + math.Pi/2 // math.pi/2 fixes default sprite rotation.
 	}
 
-	if unit.Position == unit.Destination { // If we've arrived, go Idle -- TODO make this more broad and use some distance to destination instead of exact match
+	// Attempt Y movement
+	if moveY != 0 {
+		candidate := &image.Rectangle{
+			Min: image.Point{X: int(unit.Position.X), Y: int(unit.Position.Y + int(moveY))},
+			Max: image.Point{X: int(unit.Position.X) + unit.Rect.Dx(), Y: int(unit.Position.Y+int(moveY)) + unit.Rect.Dy()},
+		}
+		if !unit.isColliding(candidate, sim) {
+			unit.SetPosition(&image.Point{X: unit.Position.X, Y: unit.Position.Y + int(moveY)})
+		}
+	}
+
+	dxRot := float64(unit.Position.X - oldX)
+	dyRot := float64(unit.Position.Y - oldY)
+	if dxRot != 0 || dyRot != 0 { // update angle only if moved
+		unit.MovingAngle = math.Atan2(dyRot, dxRot) + math.Pi/2 // adjust for sprite orientation
+	}
+
+	// Final snapping
+	if math.Abs(dx) <= float64(ArrivalThreshold) && math.Abs(dy) <= float64(ArrivalThreshold) {
+		unit.SetPosition(&image.Point{X: unit.Destination.X, Y: unit.Destination.Y})
 		unit.Action = IdleAction
 	}
+}
+
+func (unit *Unit) isColliding(rect *image.Rectangle, sim *T) bool {
+	colliders := sim.GetAllCollidersOverlapping(rect)
+	for _, collider := range colliders {
+		if collider.OwnerID == unit.ID.String() {
+			continue // skip self
+		}
+		if collider.Rect.Overlaps(*rect) {
+			return true
+		}
+	}
+	for _, worldCollider := range sim.world.CollisionObjects {
+		if worldCollider.Overlaps(*rect) {
+			return true
+		}
+	}
+	return false
 }
 
 func (unit *Unit) SetNearestEnemy(target *Unit) {

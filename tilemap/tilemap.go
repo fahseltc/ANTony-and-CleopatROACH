@@ -1,7 +1,6 @@
 package tilemap
 
 import (
-	"fmt"
 	"image"
 	"log"
 
@@ -87,7 +86,9 @@ func (tm *Tilemap) ToWorld() {
 			var tileType string
 			switch t.ID {
 			case 15:
-				tileType = "resource"
+				tileType = "sucrose"
+			case 6:
+				tileType = "wood"
 			default:
 				tileType = "none"
 			}
@@ -108,7 +109,7 @@ func (tm *Tilemap) ToWorld() {
 func (tm *Tilemap) GetTileByPosition(x, y int) *Tile {
 	xCoord := x / tm.TileSize
 	yCoord := y / tm.TileSize
-	fmt.Printf("GetTileByPosition X:%v, Y:%v\n", xCoord, yCoord)
+	//fmt.Printf("GetTileByPosition X:%v, Y:%v\n", xCoord, yCoord)
 	if xCoord < tm.Width && xCoord >= 0 &&
 		yCoord < tm.Height && yCoord >= 0 {
 		return tm.Tiles[xCoord][yCoord]
@@ -117,19 +118,14 @@ func (tm *Tilemap) GetTileByPosition(x, y int) *Tile {
 	}
 }
 
-func (tm *Tilemap) Render(screen *ebiten.Image) {
-	// for _, tile := range tm.tileMap.Layers[0].GetTilePosition() {
-	// 	if tile != nil {
-	// 		//prop := tile.Tileset.Properties.Get("anything") // nil
-	// 		// tileRect := tile.Tileset.GetTileRect(tile.ID) // nil ref error ' ts.Image' is nil
-	// 		// tileImage := tm.StaticBgT.SubImage(tileRect).(*ebiten.Image)
-	// 		// tile.Tileset.Properties.Get("passable")
-	// 		// opts := &ebiten.DrawImageOptions{}
-	// 		// opts.GeoM.Translate(float64(tileRect.Min.X), float64(tileRect.Min.Y))
-	// 		// screen.DrawImage(tileImage, opts)
-	// 	}
-
-	// // }
+func (tm *Tilemap) RemoveCollisionRect(rectToRemove *image.Rectangle) {
+	newRects := tm.CollisionRects[:0]
+	for _, rect := range tm.CollisionRects {
+		if rect != rectToRemove {
+			newRects = append(newRects, rect)
+		}
+	}
+	tm.CollisionRects = newRects
 }
 
 // // Import the library
