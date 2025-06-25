@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<map version="1.10" tiledversion="1.11.2" orientation="orthogonal" renderorder="right-down" width="30" height="20" tilewidth="128" tileheight="128" infinite="0" nextlayerid="5" nextobjectid="143">
+<map version="1.10" tiledversion="1.11.2" orientation="orthogonal" renderorder="right-down" width="30" height="20" tilewidth="128" tileheight="128" infinite="0" nextlayerid="5" nextobjectid="185">
  <tileset firstgid="1" source="tiles.tsx"/>
  <layer id="1" name="Tile Layer 1" width="30" height="20">
   <data encoding="csv">
@@ -42,16 +42,6 @@
   <object id="91" x="2176" y="256" width="1664" height="128"/>
   <object id="92" x="2432" y="384" width="1280" height="128"/>
   <object id="93" x="2560" y="512" width="768" height="128"/>
-  <object id="94" x="2688" y="640" width="512" height="128"/>
-  <object id="95" x="2688" y="768" width="512" height="128"/>
-  <object id="96" x="2688" y="896" width="512" height="128"/>
-  <object id="97" x="2688" y="1024" width="512" height="128"/>
-  <object id="98" x="2688" y="1152" width="512" height="128"/>
-  <object id="99" x="2688" y="1280" width="512" height="128"/>
-  <object id="100" x="2688" y="1408" width="512" height="128"/>
-  <object id="101" x="2688" y="1536" width="512" height="128"/>
-  <object id="102" x="2688" y="1664" width="512" height="128"/>
-  <object id="103" x="2688" y="1792" width="512" height="128"/>
   <object id="104" x="2560" y="1920" width="768" height="128"/>
   <object id="105" x="2432" y="2048" width="1024" height="128"/>
   <object id="106" x="2304" y="2176" width="1280" height="128"/>
@@ -73,5 +63,205 @@
   <object id="140" x="896" y="1920" width="256" height="128"/>
   <object id="141" x="0" y="1920" width="512" height="128"/>
   <object id="142" x="128" y="1792" width="128" height="128"/>
+  <object id="143" x="2816" y="640" width="128" height="128">
+   <properties>
+    <property name="buildable" type="bool" value="true"/>
+   </properties>
+  </object>
+  <object id="144" x="2688" y="640" width="128" height="128">
+   <properties>
+    <property name="buildable" type="bool" value="true"/>
+   </properties>
+  </object>
+  <object id="145" x="2944" y="640" width="128" height="128">
+   <properties>
+    <property name="buildable" type="bool" value="true"/>
+   </properties>
+  </object>
+  <object id="146" x="3072" y="640" width="128" height="128">
+   <properties>
+    <property name="buildable" type="bool" value="true"/>
+   </properties>
+  </object>
+  <object id="147" x="2688" y="768" width="128" height="128">
+   <properties>
+    <property name="buildable" type="bool" value="true"/>
+   </properties>
+  </object>
+  <object id="148" x="2816" y="768" width="128" height="128">
+   <properties>
+    <property name="buildable" type="bool" value="true"/>
+   </properties>
+  </object>
+  <object id="149" x="2944" y="768" width="128" height="128">
+   <properties>
+    <property name="buildable" type="bool" value="true"/>
+   </properties>
+  </object>
+  <object id="150" x="3072" y="768" width="128" height="128">
+   <properties>
+    <property name="buildable" type="bool" value="true"/>
+   </properties>
+  </object>
+  <object id="151" x="2688" y="896" width="128" height="128">
+   <properties>
+    <property name="buildable" type="bool" value="true"/>
+   </properties>
+  </object>
+  <object id="152" x="2816" y="896" width="128" height="128">
+   <properties>
+    <property name="buildable" type="bool" value="true"/>
+   </properties>
+  </object>
+  <object id="154" x="2944" y="896" width="128" height="128">
+   <properties>
+    <property name="buildable" type="bool" value="true"/>
+   </properties>
+  </object>
+  <object id="155" x="3072" y="896" width="128" height="128">
+   <properties>
+    <property name="buildable" type="bool" value="true"/>
+   </properties>
+  </object>
+  <object id="156" x="2688" y="1024" width="128" height="128">
+   <properties>
+    <property name="buildable" type="bool" value="true"/>
+   </properties>
+  </object>
+  <object id="157" x="2816" y="1024" width="128" height="128">
+   <properties>
+    <property name="buildable" type="bool" value="true"/>
+   </properties>
+  </object>
+  <object id="158" x="2944" y="1024" width="128" height="128">
+   <properties>
+    <property name="buildable" type="bool" value="true"/>
+   </properties>
+  </object>
+  <object id="159" x="3072" y="1024" width="128" height="128">
+   <properties>
+    <property name="buildable" type="bool" value="true"/>
+   </properties>
+  </object>
+  <object id="160" x="2688" y="1152" width="128" height="128">
+   <properties>
+    <property name="buildable" type="bool" value="true"/>
+   </properties>
+  </object>
+  <object id="161" x="2816" y="1152" width="128" height="128">
+   <properties>
+    <property name="buildable" type="bool" value="true"/>
+   </properties>
+  </object>
+  <object id="162" x="2944" y="1152" width="128" height="128">
+   <properties>
+    <property name="buildable" type="bool" value="true"/>
+   </properties>
+  </object>
+  <object id="163" x="3072" y="1152" width="128" height="128">
+   <properties>
+    <property name="buildable" type="bool" value="true"/>
+   </properties>
+  </object>
+  <object id="164" x="2688" y="1280" width="128" height="128">
+   <properties>
+    <property name="buildable" type="bool" value="true"/>
+   </properties>
+  </object>
+  <object id="165" x="2816" y="1280" width="128" height="128">
+   <properties>
+    <property name="buildable" type="bool" value="true"/>
+   </properties>
+  </object>
+  <object id="166" x="2944" y="1280" width="128" height="128">
+   <properties>
+    <property name="buildable" type="bool" value="true"/>
+   </properties>
+  </object>
+  <object id="167" x="3072" y="1280" width="128" height="128">
+   <properties>
+    <property name="buildable" type="bool" value="true"/>
+   </properties>
+  </object>
+  <object id="168" x="2688" y="1408" width="128" height="128">
+   <properties>
+    <property name="buildable" type="bool" value="true"/>
+   </properties>
+  </object>
+  <object id="169" x="2816" y="1408" width="128" height="128">
+   <properties>
+    <property name="buildable" type="bool" value="true"/>
+   </properties>
+  </object>
+  <object id="170" x="2944" y="1408" width="128" height="128">
+   <properties>
+    <property name="buildable" type="bool" value="true"/>
+   </properties>
+  </object>
+  <object id="171" x="3072" y="1408" width="128" height="128">
+   <properties>
+    <property name="buildable" type="bool" value="true"/>
+   </properties>
+  </object>
+  <object id="172" x="2688" y="1536" width="128" height="128">
+   <properties>
+    <property name="buildable" type="bool" value="true"/>
+   </properties>
+  </object>
+  <object id="173" x="2816" y="1536" width="128" height="128">
+   <properties>
+    <property name="buildable" type="bool" value="true"/>
+   </properties>
+  </object>
+  <object id="174" x="2944" y="1536" width="128" height="128">
+   <properties>
+    <property name="buildable" type="bool" value="true"/>
+   </properties>
+  </object>
+  <object id="175" x="3072" y="1536" width="128" height="128">
+   <properties>
+    <property name="buildable" type="bool" value="true"/>
+   </properties>
+  </object>
+  <object id="176" x="2688" y="1664" width="128" height="128">
+   <properties>
+    <property name="buildable" type="bool" value="true"/>
+   </properties>
+  </object>
+  <object id="177" x="2816" y="1664" width="128" height="128">
+   <properties>
+    <property name="buildable" type="bool" value="true"/>
+   </properties>
+  </object>
+  <object id="179" x="2944" y="1664" width="128" height="128">
+   <properties>
+    <property name="buildable" type="bool" value="true"/>
+   </properties>
+  </object>
+  <object id="180" x="3072" y="1664" width="128" height="128">
+   <properties>
+    <property name="buildable" type="bool" value="true"/>
+   </properties>
+  </object>
+  <object id="181" x="2688" y="1792" width="128" height="128">
+   <properties>
+    <property name="buildable" type="bool" value="true"/>
+   </properties>
+  </object>
+  <object id="182" x="2816" y="1792" width="128" height="128">
+   <properties>
+    <property name="buildable" type="bool" value="true"/>
+   </properties>
+  </object>
+  <object id="183" x="2944" y="1792" width="128" height="128">
+   <properties>
+    <property name="buildable" type="bool" value="true"/>
+   </properties>
+  </object>
+  <object id="184" x="3072" y="1792" width="128" height="128">
+   <properties>
+    <property name="buildable" type="bool" value="true"/>
+   </properties>
+  </object>
  </objectgroup>
 </map>

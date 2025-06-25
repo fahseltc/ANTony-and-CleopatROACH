@@ -2,6 +2,7 @@ package eventing
 
 import (
 	"fmt"
+	"image"
 	"time"
 )
 
@@ -14,6 +15,11 @@ type Event struct {
 	Type      string
 	Timestamp time.Time
 	Data      interface{}
+}
+
+type BuildClickedEvent struct {
+	TargetRect *image.Rectangle
+	// building type
 }
 
 type ConstructUnitEvent struct {

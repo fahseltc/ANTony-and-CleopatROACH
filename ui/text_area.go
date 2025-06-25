@@ -23,6 +23,8 @@ type TextArea struct {
 	lines    []string
 
 	TextOverflows bool
+
+	Dismissed bool
 }
 
 func NewTextArea(fonts *fonts.All, text string) *TextArea {

@@ -24,12 +24,12 @@ type HUD struct {
 	leftSideBg   *ebiten.Image
 	leftSideRect image.Rectangle
 
-	rightSideBg   *ebiten.Image
-	rightSideRect image.Rectangle
-	//RightSideVisible    bool
+	rightSideBg            *ebiten.Image
+	rightSideRect          image.Rectangle
 	RightSideState         RightSideHUDState
 	rightSideMakeAntBtn    *Button
 	rightSideMakeBridgeBtn *Button
+	rightSideZImg          *ebiten.Image
 
 	resourceDisplay *ResourceDisplay
 	//attackBtn       *Button
@@ -50,6 +50,7 @@ func NewHUD(font text.Face, sim *sim.T) *HUD {
 		rightSideRect:  rightSideRect,
 		rightSideBg:    util.ScaleImage(util.LoadImage("ui/btn/controls-bg-right.png"), float32(leftSideRect.Dx()), float32(leftSideRect.Dy())),
 		RightSideState: HiddenState,
+		rightSideZImg:  util.ScaleImage(util.LoadImage("ui/keys/z.png"), float32(40), float32(40)),
 
 		resourceDisplay: NewResourceDisplay(font),
 		log:             log.NewLogger().With("for", "HUD"),
@@ -58,29 +59,29 @@ func NewHUD(font text.Face, sim *sim.T) *HUD {
 
 	c.rightSideMakeAntBtn = NewButton(font,
 		WithRect(image.Rectangle{
-			Min: image.Pt(c.rightSideRect.Min.X+20, c.rightSideRect.Min.Y+20),
-			Max: image.Pt(c.rightSideRect.Min.X+70, c.rightSideRect.Min.Y+70)}),
+			Min: image.Pt(c.rightSideRect.Min.X+20, c.rightSideRect.Min.Y+15),
+			Max: image.Pt(c.rightSideRect.Min.X+70, c.rightSideRect.Min.Y+65)}),
 		WithClickFunc(func() {
 			c.log.Info("MakeAntButtonClickedEvent")
 			sim.EventBus.Publish(eventing.Event{
 				Type: "MakeAntButtonClickedEvent",
 			})
 		}),
-		WithImage(util.LoadImage("ui/btn/make-ant-btn.png"), util.LoadImage("ui/btn/make-ant-btn.png")),
+		WithImage(util.LoadImage("ui/btn/make-ant-btn.png"), util.LoadImage("ui/btn/make-ant-btn-pressed.png")),
 		WithKeyActivation(ebiten.KeyZ),
 	)
 
 	c.rightSideMakeBridgeBtn = NewButton(font,
 		WithRect(image.Rectangle{
-			Min: image.Pt(c.rightSideRect.Min.X+20, c.rightSideRect.Min.Y+20),
-			Max: image.Pt(c.rightSideRect.Min.X+70, c.rightSideRect.Min.Y+70)}),
+			Min: image.Pt(c.rightSideRect.Min.X+20, c.rightSideRect.Min.Y+15),
+			Max: image.Pt(c.rightSideRect.Min.X+70, c.rightSideRect.Min.Y+65)}),
 		WithClickFunc(func() {
 			c.log.Info("MakeBridgeButtonClickedEvent")
 			sim.EventBus.Publish(eventing.Event{
 				Type: "MakeBridgeButtonClickedEvent",
 			})
 		}),
-		WithImage(util.LoadImage("ui/btn/make-bridge-btn.png"), util.LoadImage("ui/btn/make-bridge-btn.png")),
+		WithImage(util.LoadImage("ui/btn/make-bridge-btn.png"), util.LoadImage("ui/btn/make-bridge-btn-pressed.png")),
 		WithKeyActivation(ebiten.KeyZ),
 	)
 
@@ -152,9 +153,17 @@ func (c *HUD) DrawRightSide(screen *ebiten.Image) {
 	case HiveSelectedState:
 		screen.DrawImage(c.rightSideBg, opts)
 		c.rightSideMakeAntBtn.Draw(screen)
+		c.DrawRightSideZImg(screen)
 	case UnitSelectedState:
 		screen.DrawImage(c.rightSideBg, opts)
 		c.rightSideMakeBridgeBtn.Draw(screen)
+		c.DrawRightSideZImg(screen)
+
 	}
 
+}
+func (c *HUD) DrawRightSideZImg(screen *ebiten.Image) {
+	opts := &ebiten.DrawImageOptions{}
+	opts.GeoM.Translate(float64(c.rightSideRect.Min.X+25), float64(c.rightSideRect.Min.Y+64))
+	screen.DrawImage(c.rightSideZImg, opts)
 }

@@ -15,11 +15,16 @@ type Tilemap struct {
 	Height   int
 	TileSize int
 
-	tileMap        *tiled.Map
-	StaticBg       *ebiten.Image
-	CollisionRects []*image.Rectangle
-	TileSet        map[int]*tiled.TilesetTile
-	Tiles          [][]*Tile
+	tileMap    *tiled.Map
+	StaticBg   *ebiten.Image
+	MapObjects []*MapObject
+	TileSet    map[int]*tiled.TilesetTile
+	Tiles      [][]*Tile
+}
+
+type MapObject struct {
+	Rect        *image.Rectangle
+	IsBuildable bool
 }
 
 func NewTilemap() *Tilemap {
@@ -36,21 +41,30 @@ func NewTilemap() *Tilemap {
 		tilesIdMap[int(tile.ID)] = tile
 	}
 
-	var mapRects []*image.Rectangle
+	var mapObjects []*MapObject
 	for _, object := range tm.ObjectGroups[0].Objects {
-		rect := image.Rect(int(object.X), int(object.Y), int(object.X+object.Width), int(object.Y+object.Height))
-		mapRects = append(mapRects, &rect)
+		mo := &MapObject{
+			Rect: &image.Rectangle{
+				Min: image.Point{X: int(object.X), Y: int(object.Y)},
+				Max: image.Point{X: int(object.X + object.Width), Y: int(object.Y + object.Height)},
+			},
+		}
+
+		if len(object.Properties) > 0 {
+			mo.IsBuildable = object.Properties.GetBool("buildable")
+		}
+		mapObjects = append(mapObjects, mo)
 	}
 
 	tmap := &Tilemap{
-		tileMap:        tm,
-		StaticBg:       staticBg,
-		TileSet:        tilesIdMap,
-		Tiles:          make([][]*Tile, tm.Width),
-		CollisionRects: mapRects,
-		Width:          tm.Width,
-		Height:         tm.Height,
-		TileSize:       tm.TileWidth,
+		tileMap:    tm,
+		StaticBg:   staticBg,
+		TileSet:    tilesIdMap,
+		Tiles:      make([][]*Tile, tm.Width),
+		MapObjects: mapObjects,
+		Width:      tm.Width,
+		Height:     tm.Height,
+		TileSize:   tm.TileWidth,
 	}
 	for i := 0; i < tm.Width; i++ {
 		tmap.Tiles[i] = make([]*Tile, tm.Height)
@@ -118,14 +132,19 @@ func (tm *Tilemap) GetTileByPosition(x, y int) *Tile {
 	}
 }
 
-func (tm *Tilemap) RemoveCollisionRect(rectToRemove *image.Rectangle) {
-	newRects := tm.CollisionRects[:0]
-	for _, rect := range tm.CollisionRects {
-		if rect != rectToRemove {
-			newRects = append(newRects, rect)
+func (tm *Tilemap) RemoveCollisionRect(rectToRemove *image.Rectangle) bool {
+	newObjs := tm.MapObjects[:0]
+	removed := false
+	for _, mo := range tm.MapObjects {
+		if mo.Rect.Min == rectToRemove.Min && mo.Rect.Max == rectToRemove.Max {
+			// This is the one we remove
+			removed = true
+			continue
 		}
+		newObjs = append(newObjs, mo)
 	}
-	tm.CollisionRects = newRects
+	tm.MapObjects = newObjs
+	return removed
 }
 
 // // Import the library

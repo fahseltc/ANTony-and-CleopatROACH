@@ -11,6 +11,8 @@ import (
 
 var NearbyDistance = uint(300)
 var UnitSucroseCost = uint16(50)
+var BuildingWoodCost = uint16(10)
+var BuilderMaxDistance = uint(300)
 
 type T struct {
 	EventBus *eventing.EventBus
@@ -23,7 +25,7 @@ type T struct {
 
 	playerSpawnX, playerSpawnY float64
 	playerUnits                []*Unit
-	playerBuildings            []*Hive
+	playerBuildings            []BuildingInterface
 	enemyUnits                 []*Unit
 	enemySpawnX, enemySpawnY   float64
 
@@ -31,9 +33,9 @@ type T struct {
 }
 
 type World struct {
-	TileMap          *tilemap.Tilemap
-	TileData         [][]*tilemap.Tile
-	CollisionObjects []*image.Rectangle
+	TileMap    *tilemap.Tilemap
+	TileData   [][]*tilemap.Tile
+	MapObjects []*tilemap.MapObject
 }
 
 type Collider struct {
@@ -52,13 +54,6 @@ func (s *T) GetPlayerState() PlayerState {
 	return s.playerState
 }
 
-// // Resource represents a collectable resource on the map
-// type Resource struct {
-// 	Type      string
-// 	X, Y      float64
-// 	Available uint
-// }
-
 func New(tps int, tileMap *tilemap.Tilemap) *T {
 	bus := eventing.NewEventBus()
 
@@ -67,9 +62,9 @@ func New(tps int, tileMap *tilemap.Tilemap) *T {
 		tps:      tps,
 		dt:       float64(1 / tps),
 		world: &World{
-			TileMap:          tileMap,
-			TileData:         tileMap.Tiles,
-			CollisionObjects: tileMap.CollisionRects,
+			TileMap:    tileMap,
+			TileData:   tileMap.Tiles,
+			MapObjects: tileMap.MapObjects,
 		},
 
 		// TODO Spawn Points
@@ -115,8 +110,13 @@ func (s *T) RemoveUnit(u *Unit) {
 func (s *T) AddUnit(u *Unit) {
 	s.playerUnits = append(s.playerUnits, u)
 }
-func (s *T) AddHive(h *Hive) {
-	s.playerBuildings = append(s.playerBuildings, h)
+func (s *T) AddBuilding(b BuildingInterface) {
+	s.playerBuildings = append(s.playerBuildings, b)
+}
+func (s *T) RemoveBuilding(b BuildingInterface) {
+	s.playerBuildings = slices.DeleteFunc(s.playerBuildings, func(other BuildingInterface) bool {
+		return other.GetID() == b.GetID()
+	})
 }
 
 func (s *T) GetUnitByID(id string) (*Unit, error) {
@@ -132,9 +132,9 @@ func (s *T) GetUnitByID(id string) (*Unit, error) {
 	}
 	return nil, fmt.Errorf("unable to find unit with ID:%v", id)
 }
-func (s *T) GetHiveByID(id string) (*Hive, error) {
+func (s *T) GetBuildingByID(id string) (BuildingInterface, error) {
 	for _, hive := range s.playerBuildings {
-		if hive.ID.String() == id {
+		if hive.GetID().String() == id {
 			return hive, nil
 		}
 	}
@@ -197,7 +197,7 @@ func (s *T) GetAllNearbyCollidersHarvesting(x, y int) []*image.Rectangle {
 			continue
 		}
 		if distance <= NearbyDistance {
-			nearbyColliders = append(nearbyColliders, building.Rect)
+			nearbyColliders = append(nearbyColliders, building.GetRect())
 		}
 	}
 	return nearbyColliders
@@ -220,8 +220,8 @@ func (s *T) GetAllNearbyColliders(x, y int) []*Collider {
 		distance := building.DistanceTo(image.Pt(x, y))
 		if distance <= NearbyDistance {
 			nearbyColliders = append(nearbyColliders, &Collider{
-				Rect:    building.Rect,
-				OwnerID: building.ID.String(),
+				Rect:    building.GetRect(),
+				OwnerID: building.GetID().String(),
 			})
 		}
 	}
@@ -242,22 +242,25 @@ func (s *T) GetAllCollidersOverlapping(rect *image.Rectangle) []*Collider {
 		}
 	}
 	for _, building := range s.playerBuildings {
-		if building.Rect.Overlaps(*rect) {
+		if building.GetType() == BuildingTypeBridge { // bridges dont have collision!
+			continue
+		}
+		if building.GetRect().Overlaps(*rect) {
 			colliders = append(colliders, &Collider{
-				Rect:    building.Rect,
-				OwnerID: building.ID.String(),
+				Rect:    building.GetRect(),
+				OwnerID: building.GetID().String(),
 			})
 		}
 	}
 	return colliders
 }
 
-func (s *T) GetAllBuildings() []*Hive {
+func (s *T) GetAllBuildings() []BuildingInterface {
 	return s.playerBuildings
 }
 
-func (s *T) DetermineUnitOrHiveById(id string) string {
-	_, err := s.GetHiveByID(id)
+func (s *T) DetermineUnitOrHiveById(id string) string { // TODO use building.GetType()
+	_, err := s.GetBuildingByID(id)
 	if err == nil {
 		return "hive"
 	}
@@ -282,7 +285,7 @@ func (s *T) GetSucroseAmount() uint16 {
 }
 
 func (s *T) ConstructUnit(hiveId string) bool {
-	hive, err := s.GetHiveByID(hiveId)
+	hive, err := s.GetBuildingByID(hiveId)
 	if err != nil {
 		return false
 	}
@@ -292,5 +295,25 @@ func (s *T) ConstructUnit(hiveId string) bool {
 		return true
 	} else {
 		return false
+	}
+}
+
+func (s *T) ConstructBuilding(target *image.Rectangle, builderID string) bool {
+	if s.playerState.Wood < BuildingWoodCost { // cant afford it
+		return false
+	}
+	unit, err := s.GetUnitByID(builderID)
+	if err != nil {
+		return false // todo print builder doesnt exist
+	}
+
+	if unit.DistanceTo(target.Min) > BuilderMaxDistance { // todo min should be center!
+		return false
+	} else {
+		// actually build the thing
+		s.playerState.Wood -= BuildingWoodCost
+		inConstructionBuilding := NewInConstructionBuilding(target.Min.X, target.Min.Y, BuildingTypeBridge) // always bridge for now, but easy to change
+		s.playerBuildings = append(s.playerBuildings, inConstructionBuilding)
+		return true
 	}
 }

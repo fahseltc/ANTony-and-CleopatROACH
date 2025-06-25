@@ -8,6 +8,8 @@ import (
 )
 
 var ArrivalThreshold = 15
+var MaxResourceCollectFrames = 30
+var PlayerFaction = 0
 
 type Action int
 
@@ -50,7 +52,7 @@ type Unit struct {
 	DestinationType DestinationType
 	Action          Action
 	NearestEnemy    *Unit
-	NearestHome     *Hive
+	NearestHome     BuildingInterface
 	LastResourcePos *image.Point
 	CurrentAnim     string
 
@@ -67,18 +69,24 @@ type UnitStats struct {
 	MaxCarryCapactiy    uint
 	ResourceCarried     uint
 	ResourceTypeCarried string
+	ResourceCollectTime uint
 }
 
 func NewRoyalRoach() *Unit {
 	u := NewDefaultAnt()
 	u.Type = UnitTypeRoyalRoach
+	size := 192 // match sprite
+	u.Rect.Min = image.Point{0, 0}
+	u.Rect.Max = image.Point{size, size}
 	return u
 }
 
 func NewRoyalAnt() *Unit {
 	u := NewDefaultAnt()
 	u.Type = UnitTypeRoyalAnt
-	u.Rect.Max = image.Point{256, 256}
+	size := 192 // match sprite
+	u.Rect.Min = image.Point{0, 0}
+	u.Rect.Max = image.Point{size, size}
 	return u
 }
 
@@ -110,7 +118,7 @@ func NewDefaultAnt() *Unit {
 		},
 		Destination: &image.Point{0, 0},
 		Action:      IdleAction,
-		Faction:     1,
+		Faction:     uint(PlayerFaction),
 	}
 }
 
@@ -137,26 +145,29 @@ func (unit *Unit) Update(sim *T) {
 		if unit.Stats.ResourceCarried > 0 { // better logic so it doesnt always bring back minimal resource amount
 			if unit.NearestHome == nil {
 				for _, hive := range sim.GetAllBuildings() {
-					if hive.Faction == unit.Faction {
+					if hive.GetFaction() == unit.Faction {
 						unit.NearestHome = hive
 						break
 					}
 				}
 			}
 			unit.LastResourcePos = unit.Destination
-			unit.Destination = unit.NearestHome.Position
+			unit.Destination = unit.NearestHome.GetClosestPosition(unit.Position.X, unit.Position.Y)
 			unit.Action = DeliveringAction
 		} else {
 			// move to and collect resource
-
 			unit.MoveToDestination(sim, false) // setting this to True causes jank behavior and its better as false?
 			dist := unit.DistanceTo(*unit.Destination)
-			if dist < 150 {
+			if dist < 200 { // lots of tweaks needed here or fixes TODO
 				// TODO: play animation and wait some time to harvest?
-				tile := sim.world.TileMap.GetTileByPosition(unit.Destination.X, unit.Destination.Y)
-				if tile != nil && tile.Type != "none" {
-					unit.Stats.ResourceCarried = 5
-					unit.Stats.ResourceTypeCarried = tile.Type
+				unit.Stats.ResourceCollectTime += 1
+				if unit.Stats.ResourceCollectTime >= uint(MaxResourceCollectFrames) {
+					unit.Stats.ResourceCollectTime = 0
+					tile := sim.world.TileMap.GetTileByPosition(unit.Destination.X, unit.Destination.Y)
+					if tile != nil && tile.Type != "none" {
+						unit.Stats.ResourceCarried = 5
+						unit.Stats.ResourceTypeCarried = tile.Type
+					}
 				}
 			}
 		}
@@ -164,8 +175,8 @@ func (unit *Unit) Update(sim *T) {
 		// return resource to home base
 		// set home if unset
 		unit.MoveToDestination(sim, false) // setting this to True causes jank behavior and its better as false?
-		dist := unit.DistanceTo(*unit.Destination)
-		if dist < 300 {
+		dist := unit.EdgeDistanceTo(*unit.Destination)
+		if dist < 140 { // lots of tweaks needed here or fixes TODO
 			if unit.Stats.ResourceTypeCarried == "wood" {
 				sim.AddWood(unit.Stats.ResourceCarried)
 				unit.Stats.ResourceCarried = 0
@@ -195,10 +206,13 @@ func (unit *Unit) MoveToDestination(sim *T, harvesting bool) {
 
 	// Attempt X movement
 	if moveX != 0 {
+		newX := unit.Position.X + int(moveX)
+		newY := unit.Position.Y
 		candidate := &image.Rectangle{
-			Min: image.Point{X: int(unit.Position.X + int(moveX)), Y: int(unit.Position.Y)},
-			Max: image.Point{X: int(unit.Position.X+int(moveX)) + unit.Rect.Dx(), Y: int(unit.Position.Y) + unit.Rect.Dy()},
+			Min: image.Point{X: newX, Y: newY},
+			Max: image.Point{X: newX + unit.Rect.Dx(), Y: newY + unit.Rect.Dy()},
 		}
+
 		if !unit.isColliding(candidate, sim) {
 			unit.SetPosition(&image.Point{X: unit.Position.X + int(moveX), Y: unit.Position.Y})
 		}
@@ -206,9 +220,11 @@ func (unit *Unit) MoveToDestination(sim *T, harvesting bool) {
 
 	// Attempt Y movement
 	if moveY != 0 {
+		newY := unit.Position.Y + int(moveY)
+		newX := unit.Position.X
 		candidate := &image.Rectangle{
-			Min: image.Point{X: int(unit.Position.X), Y: int(unit.Position.Y + int(moveY))},
-			Max: image.Point{X: int(unit.Position.X) + unit.Rect.Dx(), Y: int(unit.Position.Y+int(moveY)) + unit.Rect.Dy()},
+			Min: image.Point{X: newX, Y: newY},
+			Max: image.Point{X: newX + unit.Rect.Dx(), Y: newY + unit.Rect.Dy()},
 		}
 		if !unit.isColliding(candidate, sim) {
 			unit.SetPosition(&image.Point{X: unit.Position.X, Y: unit.Position.Y + int(moveY)})
@@ -238,8 +254,8 @@ func (unit *Unit) isColliding(rect *image.Rectangle, sim *T) bool {
 			return true
 		}
 	}
-	for _, worldCollider := range sim.world.CollisionObjects {
-		if worldCollider.Overlaps(*rect) {
+	for _, mo := range sim.world.MapObjects {
+		if mo.Rect.Overlaps(*rect) {
 			return true
 		}
 	}
@@ -251,9 +267,25 @@ func (unit *Unit) SetNearestEnemy(target *Unit) {
 }
 
 func (unit *Unit) DistanceTo(point image.Point) uint {
-	xDist := math.Abs(float64(unit.Position.X - point.X))
-	yDist := math.Abs(float64(unit.Position.Y - point.Y))
+	selfCentered := unit.GetCenteredPosition()
+	xDist := math.Abs(float64(selfCentered.X - point.X))
+	yDist := math.Abs(float64(selfCentered.Y - point.Y))
 	return uint(math.Sqrt(math.Pow(xDist, 2) + math.Pow(yDist, 2)))
+}
+
+func (unit *Unit) EdgeDistanceTo(point image.Point) uint {
+	// Calculate the shortest distance from any edge of unit.Rect to the given point.
+	rect := unit.Rect
+	px, py := point.X, point.Y
+
+	// Clamp point to the rectangle to find the closest point on the edge
+	clampedX := math.Max(float64(rect.Min.X), math.Min(float64(px), float64(rect.Max.X)))
+	clampedY := math.Max(float64(rect.Min.Y), math.Min(float64(py), float64(rect.Max.Y)))
+
+	dx := float64(px) - clampedX
+	dy := float64(py) - clampedY
+
+	return uint(math.Sqrt(dx*dx + dy*dy))
 }
 
 func (unit *Unit) TargetInRange(point image.Point) bool {
@@ -261,16 +293,23 @@ func (unit *Unit) TargetInRange(point image.Point) bool {
 }
 
 func (unit *Unit) SetPosition(pos *image.Point) {
+	sizeX := unit.Rect.Dx()
+	sizeY := unit.Rect.Dy()
 	unit.Position = pos
-	unit.Rect = &image.Rectangle{
-		Min: *pos,
-		Max: image.Point{
-			X: pos.X + unit.Rect.Dx(),
-			Y: pos.Y + unit.Rect.Dy(),
-		},
+	unit.Rect.Min = *pos
+	unit.Rect.Max = image.Point{
+		X: pos.X + sizeX,
+		Y: pos.Y + sizeY,
 	}
 }
 
 func (unit *Unit) SetTilePosition(x, y int) {
 	unit.SetPosition(&image.Point{X: x * 128, Y: y * 128})
+}
+
+func (unit *Unit) GetCenteredPosition() *image.Point {
+	return &image.Point{
+		X: unit.Position.X + unit.Rect.Dx()/2,
+		Y: unit.Position.Y + unit.Rect.Dy()/2,
+	}
 }

@@ -12,6 +12,7 @@ import (
 )
 
 type Drag struct {
+	Enabled          bool
 	dragRect         image.Rectangle
 	firstClickPoint  image.Point
 	secondClickPoint image.Point
@@ -20,6 +21,7 @@ type Drag struct {
 
 func NewDrag() *Drag {
 	return &Drag{
+		Enabled:         true,
 		dragRect:        image.Rectangle{Min: image.Pt(0, 0), Max: image.Pt(0, 0)},
 		firstClickPoint: image.Pt(0, 0),
 		log:             log.NewLogger().With("for", "Drag"),
@@ -27,6 +29,9 @@ func NewDrag() *Drag {
 }
 
 func (d *Drag) Update(sprites map[string]*Sprite, camera *Camera, HUD *HUD) {
+	if !d.Enabled {
+		return
+	}
 	mx, my := ebiten.CursorPosition()
 	pt := image.Point{X: mx, Y: my}
 	if pt.In(HUD.leftSideRect) || (HUD.RightSideState != HiddenState && pt.In(HUD.rightSideRect)) { // abort updating selected units if the click is inside the UI elements
@@ -66,7 +71,7 @@ func (d *Drag) Update(sprites map[string]*Sprite, camera *Camera, HUD *HUD) {
 				sprite.Selected = false
 				continue
 			}
-			if sprite.rect.Overlaps(mapRect) {
+			if sprite.Rect.Overlaps(mapRect) {
 				selectedIDs = append(selectedIDs, sprite.Id.String())
 				sprite.Selected = true
 			} else {

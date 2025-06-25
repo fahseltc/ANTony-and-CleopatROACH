@@ -2,7 +2,9 @@ package ui
 
 import (
 	"gamejam/log"
+	"image/color"
 	"log/slog"
+	"math"
 
 	"github.com/hajimehoshi/ebiten/v2"
 )
@@ -21,6 +23,16 @@ type Camera struct {
 
 	mapWidth  int
 	mapHeight int
+
+	panTargetX int
+	panTargetY int
+	panSpeed   float64 // pixels per frame, or set via method
+	isPanning  bool
+
+	FadeAlpha   uint8 // 0 = fully transparent, 255 = fully black
+	fadeSpeed   uint8 // how fast it fades per frame
+	IsFadingIn  bool
+	IsFadingOut bool
 }
 
 func NewCamera(TileWidthCount, TileHeightCount int) *Camera {
@@ -55,6 +67,56 @@ func (c *Camera) Update() {
 	}
 	if mouseWheelY < 0 {
 		c.Zoom(-ZoomIncrement, mx, my)
+	}
+
+	// handle panning
+	if c.isPanning {
+		dx := float64(c.panTargetX - c.ViewPortX)
+		dy := float64(c.panTargetY - c.ViewPortY)
+
+		dist := math.Sqrt(dx*dx + dy*dy)
+		if dist < 1 {
+			// We've arrived
+			c.ViewPortX = c.panTargetX
+			c.ViewPortY = c.panTargetY
+			c.isPanning = false
+		} else {
+			// Move towards target
+			step := c.panSpeed
+			if dist < step {
+				step = dist
+			}
+			c.ViewPortX += int(dx / dist * step)
+			c.ViewPortY += int(dy / dist * step)
+
+			// Optional: enforce constraints
+			c.PanX(0)
+			c.PanY(0)
+		}
+	}
+
+	// handle fade
+	if c.IsFadingIn {
+		if c.FadeAlpha > c.fadeSpeed {
+			c.FadeAlpha -= c.fadeSpeed
+		} else {
+			c.FadeAlpha = 0
+			c.IsFadingIn = false
+		}
+	} else if c.IsFadingOut {
+		if c.FadeAlpha < 255-c.fadeSpeed {
+			c.FadeAlpha += c.fadeSpeed
+		} else {
+			c.FadeAlpha = 255
+			c.IsFadingOut = false
+		}
+	}
+}
+func (c *Camera) DrawFade(screen *ebiten.Image) {
+	if c.FadeAlpha > 0 {
+		overlay := ebiten.NewImage(screen.Bounds().Dx(), screen.Bounds().Dy())
+		overlay.Fill(color.RGBA{0, 0, 0, c.FadeAlpha})
+		screen.DrawImage(overlay, nil)
 	}
 }
 func (c *Camera) Zoom(amount float64, mouseX, mouseY int) {
@@ -139,4 +201,24 @@ func (c *Camera) SetPosition(x, y int) {
 }
 func (c *Camera) SetZoom(amount float64) {
 	c.ViewPortZoom = amount
+}
+
+func (c *Camera) PanTo(x, y int, speed float64) {
+	c.panTargetX = -x // remember, camera X is negative of map position
+	c.panTargetY = -y
+	c.panSpeed = speed
+	c.isPanning = true
+}
+func (c *Camera) FadeIn(speed uint8) {
+	c.fadeSpeed = speed
+	c.IsFadingIn = true
+	c.IsFadingOut = false
+	c.FadeAlpha = 255 // Start fully black
+}
+
+func (c *Camera) FadeOut(speed uint8) {
+	c.fadeSpeed = speed
+	c.IsFadingOut = true
+	c.IsFadingIn = false
+	c.FadeAlpha = 0 // Start fully transparent
 }

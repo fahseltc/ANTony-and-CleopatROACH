@@ -5,52 +5,32 @@ import (
 	"image"
 	"math"
 	"math/rand/v2"
-
-	"github.com/google/uuid"
 )
 
-var TileDimensions = 128
 var UnitConstructionTime = 120
 
 type Hive struct {
-	ID       uuid.UUID
-	Position *image.Point
-	Rect     *image.Rectangle
-	Faction  uint
-
-	buildQueue *util.Queue[*Unit]
-
-	UnitContructing      bool
-	constructionProgress uint
+	*Building
+	buildQueue      *util.Queue[*Unit]
+	unitContructing bool
 }
 
-func NewHive(x, y int) *Hive {
-	hive := &Hive{
-		ID:       uuid.New(),
-		Position: &image.Point{0, 0},
-		Rect: &image.Rectangle{
-			Min: image.Point{0, 0},
-			Max: image.Point{TileDimensions * 2, TileDimensions * 2},
-		},
-		Faction:         1,
-		UnitContructing: false,
+func NewHive() BuildingInterface {
+	building := NewBuilding(0, 0, TileDimensions*2, TileDimensions*2, 0, BuildingTypeHive, uint(UnitConstructionTime))
+
+	h := &Hive{
+		Building:        building,
+		unitContructing: false,
 		buildQueue:      util.NewQueue[*Unit](),
 	}
-	hive.SetTilePosition(x, y)
-	return hive
-}
-
-func (h *Hive) SetTilePosition(x, y int) {
-	h.Position = &image.Point{X: x * TileDimensions, Y: y * TileDimensions}
-	h.Rect.Min = *h.Position
-	h.Rect.Max = image.Point{X: h.Position.X + TileDimensions*2, Y: h.Position.Y + TileDimensions*2}
+	return h
 }
 
 func (h *Hive) Update(sim *T) {
 	if !h.buildQueue.IsEmpty() {
-		h.UnitContructing = true
-		h.constructionProgress += 1
-		if h.constructionProgress >= uint(UnitConstructionTime) {
+		h.unitContructing = true
+		h.ProgressCurrent += 1
+		if h.ProgressCurrent >= uint(UnitConstructionTime) {
 			u, err := h.buildQueue.Dequeue()
 			if err != nil {
 				return // todo handle?
@@ -58,8 +38,8 @@ func (h *Hive) Update(sim *T) {
 			// make sure position isnt colliding with anything and try again
 			u.SetPosition(h.GetNearbyPosition(sim))
 			sim.AddUnit(u)
-			h.UnitContructing = false
-			h.constructionProgress = 0
+			h.unitContructing = false
+			h.ProgressCurrent = 0
 		}
 	}
 }
