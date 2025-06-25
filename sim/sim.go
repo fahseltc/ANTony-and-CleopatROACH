@@ -141,7 +141,7 @@ func (s *T) GetBuildingByID(id string) (BuildingInterface, error) {
 	return nil, fmt.Errorf("unable to find unit with ID:%v", id)
 }
 
-func (s *T) IssueAction(id string, action Action, point *image.Point) error {
+func (s *T) IssueAction(id string, point *image.Point) error {
 	unit, err := s.GetUnitByID(id)
 	if err != nil {
 		return err

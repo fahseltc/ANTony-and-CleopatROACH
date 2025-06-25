@@ -20,7 +20,6 @@ type Ui struct {
 	HUD      *HUD
 	Camera   *Camera
 	TileMap  *tilemap.Tilemap
-	textArea *PortraitTextArea
 	eventBus *eventing.EventBus
 }
 
@@ -32,10 +31,10 @@ func NewUi(fonts *fonts.All, tileMap *tilemap.Tilemap, sim *sim.T) *Ui {
 		HUD:     NewHUD(fonts.Med, sim),
 		Camera:  camera,
 		TileMap: tileMap,
-		textArea: NewPortraitTextArea(
-			fonts,
-			"We, ignorant of ourselves, beg often our own harms, which the wise powers deny us for our good; so find we profit by losing of our prayers.",
-			"portraits/ant-king.png"),
+		// textArea: NewPortraitTextArea(
+		// 	fonts,
+		// 	"We, ignorant of ourselves, beg often our own harms, which the wise powers deny us for our good; so find we profit by losing of our prayers.",
+		// 	"portraits/ant-king.png"),
 		eventBus: sim.EventBus,
 	}
 }

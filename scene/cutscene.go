@@ -1,10 +1,9 @@
 package scene
 
 import (
+	"gamejam/ui"
+	"image"
 	"math"
-
-	"github.com/hajimehoshi/ebiten/v2"
-	"github.com/hajimehoshi/ebiten/v2/inpututil"
 )
 
 type CutsceneAction interface {
@@ -17,28 +16,48 @@ type PanCameraAction struct {
 }
 
 func (a *PanCameraAction) Update(s *PlayScene, dt float64) bool {
-	// Get the camera and screen details
+	// Get camera and screen details
 	cam := s.Ui.Camera
 	screenWidth := 800.0
 	screenHeight := 600.0
+	tileSize := 128.0
 
-	// Target camera position so that the target point appears centered
-	targetX := -a.TargetX + screenWidth/2
-	targetY := -a.TargetY + screenHeight/2
+	// Target camera position (centered) based on tile coordinates
+	targetMapX := a.TargetX * tileSize
+	targetMapY := a.TargetY * tileSize
+	targetX := -int(targetMapX - screenWidth/2)
+	targetY := -int(targetMapY - screenHeight/2)
 
-	dx := float64(targetX - float64(cam.ViewPortX))
-	dy := float64(targetY - float64(cam.ViewPortY))
+	// Current camera position
+	dx := float64(targetX - cam.ViewPortX)
+	dy := float64(targetY - cam.ViewPortY)
 
 	dist := math.Hypot(dx, dy)
+
+	// Arrival threshold
 	if dist < 1 {
-		cam.ViewPortX = int(targetX)
-		cam.ViewPortY = int(targetY)
+		cam.ViewPortX = targetX
+		cam.ViewPortY = targetY
+		// Final clamp
+		cam.PanX(0)
+		cam.PanY(0)
 		return true
 	}
 
+	// Move towards target
 	angle := math.Atan2(dy, dx)
+	prevX, prevY := cam.ViewPortX, cam.ViewPortY
 	cam.ViewPortX += int(math.Cos(angle) * a.Speed * dt)
 	cam.ViewPortY += int(math.Sin(angle) * a.Speed * dt)
+
+	// After move, clamp the camera
+	cam.PanX(0)
+	cam.PanY(0)
+
+	// Check if camera is stuck (can't move further due to bounds)
+	if cam.ViewPortX == prevX && cam.ViewPortY == prevY {
+		return true
+	}
 
 	return false
 }
@@ -72,20 +91,17 @@ func (a *FadeCameraAction) Update(s *PlayScene, dt float64) bool {
 	return a.Done
 }
 
-type ShowTextAreaAction struct {
-	Text string
-	//TextArea ui.TextArea
-	//Duration float64
-	//Elapsed  float64
-	Skipped bool
+type ShowPortraitTextAreaAction struct {
+	portraitTextArea *ui.PortraitTextArea
 }
 
-func (a *ShowTextAreaAction) Update(s *PlayScene, dt float64) bool {
-	s.currentDialogText = a.Text // to be rendered later
-	if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) {
-		a.Skipped = true
+func (a *ShowPortraitTextAreaAction) Update(s *PlayScene, dt float64) bool {
+	s.currentDialog = a.portraitTextArea
+	if a.portraitTextArea.Ta.Dismissed {
+		s.currentDialog = nil
+		return true
 	}
-	return a.Skipped
+	return a.portraitTextArea.Ta.Dismissed
 }
 
 type WaitAction struct {
@@ -96,4 +112,16 @@ type WaitAction struct {
 func (a *WaitAction) Update(s *PlayScene, dt float64) bool {
 	a.Elapsed += dt
 	return a.Elapsed >= a.Duration
+}
+
+type IssueUnitCommandAction struct {
+	unitID     string
+	targetTile *image.Point
+}
+
+func (a *IssueUnitCommandAction) Update(s *PlayScene, dt float64) bool {
+	a.targetTile.X = a.targetTile.X * 128
+	a.targetTile.Y = a.targetTile.Y * 128
+	s.sim.IssueAction(a.unitID, a.targetTile)
+	return true
 }

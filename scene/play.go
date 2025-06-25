@@ -34,9 +34,9 @@ type PlayScene struct {
 	selectedUnitIDs []string
 
 	// Cutscene stuff
-	cutsceneActions   []CutsceneAction
-	inCutscene        bool
-	currentDialogText string
+	cutsceneActions []CutsceneAction
+	inCutscene      bool
+	currentDialog   *ui.PortraitTextArea
 }
 
 func NewPlayScene(fonts *fonts.All) *PlayScene {
@@ -93,19 +93,48 @@ func NewPlayScene(fonts *fonts.All) *PlayScene {
 	// disable UI user should have access to.
 	// show dialogs and force them to be accepted before moving on
 
-	scene.BeginCutscene()
+	scene.BeginCutscene(king.ID.String(), queen.ID.String())
 	return scene
 }
 
-func (s *PlayScene) BeginCutscene() {
+func (s *PlayScene) BeginCutscene(antony string, cleopatroach string) {
 	s.inCutscene = true
-	s.currentDialogText = ""
 	s.cutsceneActions = []CutsceneAction{
-		&FadeCameraAction{Mode: "in", Speed: 3},
+		&FadeCameraAction{Mode: "in", Speed: 4},
+		&ShowPortraitTextAreaAction{
+			portraitTextArea: ui.NewPortraitTextArea(
+				s.fonts,
+				"Antony: Welcome to da Ant Game! Where my gurl at? I need to build a bridge to get to her!",
+				"portraits/ant-royalty.png",
+			),
+		},
 		//&PanCameraAction{TargetX: 500, TargetY: 300, Speed: 200},
-		&ShowTextAreaAction{Text: "Welcome to Ant World!"},
-		&WaitAction{Duration: 2},
+		//&ShowTextAreaAction{Text: "Welcome to Ant World!"},
+		//&WaitAction{Duration: 1},
+		&IssueUnitCommandAction{
+			unitID:     antony,
+			targetTile: &image.Point{X: 14, Y: 11},
+		},
 		&PanCameraAction{TargetX: float64(27), TargetY: float64(10), Speed: 300},
+		&IssueUnitCommandAction{
+			unitID:     cleopatroach,
+			targetTile: &image.Point{X: 26, Y: 10},
+		},
+		&ShowPortraitTextAreaAction{
+			portraitTextArea: ui.NewPortraitTextArea(
+				s.fonts,
+				"Cleopatroach: There's beggary in the love that can be reckon'd. Save me Antony!",
+				"portraits/cockroach-royalty.png",
+			),
+		},
+		&PanCameraAction{TargetX: float64(3), TargetY: float64(6), Speed: 300},
+		&ShowPortraitTextAreaAction{
+			portraitTextArea: ui.NewPortraitTextArea(
+				s.fonts,
+				"Antony: Gotchu babe! Put these ants to work!",
+				"portraits/ant-royalty.png",
+			),
+		},
 	}
 }
 
@@ -197,14 +226,17 @@ func (s *PlayScene) Update() error {
 	s.UpdateRemoveInactiveSprites()
 
 	// HANDLE CUTSCENES - we might want sim.update though
+	s.sim.Update()
 
 	if s.inCutscene {
 		dt := 1.0 / 60.0 // or use actual delta time
 		if len(s.cutsceneActions) == 0 {
 			s.inCutscene = false
-			s.currentDialogText = ""
 		} else {
 			currentCutScene := s.cutsceneActions[0]
+			if s.currentDialog != nil {
+				s.currentDialog.Update()
+			}
 			if currentCutScene.Update(s, dt) {
 				s.cutsceneActions = s.cutsceneActions[1:]
 			}
@@ -270,7 +302,7 @@ func (s *PlayScene) Update() error {
 					mx, my := ebiten.CursorPosition()
 					for _, unitId := range s.selectedUnitIDs {
 						mapX, mapY := s.Ui.Camera.ScreenPosToMapPos(mx, my)
-						s.sim.IssueAction(unitId, sim.AttackMovingAction, &image.Point{X: mapX, Y: mapY})
+						s.sim.IssueAction(unitId, &image.Point{X: mapX, Y: mapY})
 					}
 				}
 
@@ -303,7 +335,7 @@ func (s *PlayScene) Update() error {
 				mx, my := ebiten.CursorPosition()
 				for _, unitId := range s.selectedUnitIDs {
 					mapX, mapY := s.Ui.Camera.ScreenPosToMapPos(mx, my)
-					s.sim.IssueAction(unitId, sim.AttackMovingAction, &image.Point{X: mapX, Y: mapY})
+					s.sim.IssueAction(unitId, &image.Point{X: mapX, Y: mapY})
 				}
 			}
 		}
@@ -320,7 +352,6 @@ func (s *PlayScene) Update() error {
 		s.drag.Enabled = true
 	}
 	s.Ui.Update()
-	s.sim.Update()
 
 	return nil
 }
@@ -341,16 +372,12 @@ func (s *PlayScene) UpdateRemoveInactiveSprites() {
 }
 
 func (s *PlayScene) Draw(screen *ebiten.Image) {
-	if s.currentDialogText != "" {
-		ebitenutil.DebugPrintAt(screen, s.currentDialogText, 100, 100)
-	}
-
 	// Draw tiles first as the BG
 	opts := &ebiten.DrawImageOptions{}
 	opts.GeoM.Scale(s.Ui.Camera.ViewPortZoom, s.Ui.Camera.ViewPortZoom)
 	opts.GeoM.Translate(float64(s.Ui.Camera.ViewPortX), float64(s.Ui.Camera.ViewPortY))
 	screen.DrawImage(s.Ui.TileMap.StaticBg, opts)
-	//s.DebugDraw(screen)
+	s.DebugDraw(screen)
 
 	// Then Static Sprites
 	for _, sprite := range s.sprites {
@@ -370,7 +397,10 @@ func (s *PlayScene) Draw(screen *ebiten.Image) {
 	s.drag.Draw(screen)
 
 	s.constructionMouse.Draw(screen, s.Ui.Camera)
-	s.Ui.Camera.DrawFade(screen)
+	if s.currentDialog != nil {
+		s.currentDialog.Draw(screen)
+	}
+	s.Ui.Camera.DrawFade(screen) // this should always be drawn last
 }
 
 func (s *PlayScene) DebugDraw(screen *ebiten.Image) {
