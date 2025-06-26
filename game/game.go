@@ -44,19 +44,7 @@ func New(cfg *config.T) *Game {
 }
 
 func (g *Game) Update() error {
-	// Pt1: Calculate DT
-	if g.LastUpdateTime.IsZero() {
-		g.LastUpdateTime = time.Now()
-	}
-	//dt := time.Since(g.LastUpdateTime).Seconds()
-
-	//
-	// call game object updates here
-	//
 	g.sceneManager.Update()
-
-	// Pt2: Calculate DT for next loop
-	g.LastUpdateTime = time.Now()
 	return nil
 }
 

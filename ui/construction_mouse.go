@@ -28,7 +28,7 @@ func (cm *ConstructionMouse) Update(tm *tilemap.Tilemap, sim *sim.T) {
 	}
 
 	for _, mo := range tm.MapObjects {
-		if mo.IsBuildable {
+		if mo.IsBuildable && cm.placementRect != nil {
 			if cm.placementRect.Overlaps(*mo.Rect) {
 				cm.placementValid = true
 				break

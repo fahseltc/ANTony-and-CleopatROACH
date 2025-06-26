@@ -176,7 +176,7 @@ func (unit *Unit) Update(sim *T) {
 		// set home if unset
 		unit.MoveToDestination(sim, false) // setting this to True causes jank behavior and its better as false?
 		dist := unit.EdgeDistanceTo(*unit.Destination)
-		if dist < 140 { // lots of tweaks needed here or fixes TODO
+		if dist < 100 { // lots of tweaks needed here or fixes TODO
 			if unit.Stats.ResourceTypeCarried == "wood" {
 				sim.AddWood(unit.Stats.ResourceCarried)
 				unit.Stats.ResourceCarried = 0

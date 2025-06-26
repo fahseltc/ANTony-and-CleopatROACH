@@ -17,9 +17,7 @@ import (
 	"github.com/hajimehoshi/ebiten/v2/inpututil"
 )
 
-var PlayerFaction = 0
-
-type PlayScene struct {
+type PlayScene2 struct {
 	BaseScene
 	eventBus *eventing.EventBus
 	sim      *sim.T
@@ -48,11 +46,11 @@ type PlayScene struct {
 	SceneCompleted      bool
 }
 
-func NewPlayScene(fonts *fonts.All, levelNum int) *PlayScene {
-	tileMap := tilemap.NewTilemap("assets/tilemap/untitled.tmx")
+func NewPlayScene2(fonts *fonts.All) *PlayScene2 {
+	tileMap := tilemap.NewTilemap("assets/tilemap/map2.tmx")
 	simulation := sim.New(60, tileMap)
 	constructionMouse := &ui.ConstructionMouse{}
-	scene := &PlayScene{
+	scene := &PlayScene2{
 		fonts:             fonts,
 		sim:               simulation,
 		Ui:                ui.NewUi(fonts, tileMap, simulation),
@@ -63,6 +61,7 @@ func NewPlayScene(fonts *fonts.All, levelNum int) *PlayScene {
 		eventBus:          simulation.EventBus,
 	}
 	scene.constructionMouse.SetSprite("tilemap/bridge.png")
+
 	scene.eventBus.Subscribe("MakeAntButtonClickedEvent", scene.HandleMakeAntButtonClickedEvent)
 	scene.eventBus.Subscribe("MakeBridgeButtonClickedEvent", scene.HandleMakeBridgeButtonClickedEvent)
 	scene.eventBus.Subscribe("BuildClickedEvent", scene.HandleBuildClickedEvent)
@@ -70,6 +69,7 @@ func NewPlayScene(fonts *fonts.All, levelNum int) *PlayScene {
 	scene.setupLvl1()
 	return scene
 }
+
 func (scene *PlayScene) setupLvl1() {
 	u := sim.NewDefaultAnt()
 	u.SetTilePosition(10, 12)
@@ -220,7 +220,7 @@ func (s *PlayScene) SceneCompleteCutscene() {
 	}
 }
 
-func (s *PlayScene) HandleMakeAntButtonClickedEvent(event eventing.Event) {
+func (s *PlayScene2) HandleMakeAntButtonClickedEvent(event eventing.Event) {
 	if len(s.selectedUnitIDs) == 1 {
 		hiveID := s.selectedUnitIDs[0]
 		unitOrHiveString := s.sim.DetermineUnitOrHiveById(hiveID)
@@ -235,7 +235,7 @@ func (s *PlayScene) HandleMakeAntButtonClickedEvent(event eventing.Event) {
 	}
 }
 
-func (s *PlayScene) HandleMakeBridgeButtonClickedEvent(event eventing.Event) {
+func (s *PlayScene2) HandleMakeBridgeButtonClickedEvent(event eventing.Event) {
 	if len(s.selectedUnitIDs) == 1 {
 		unitID := s.selectedUnitIDs[0]
 		unitOrHiveString := s.sim.DetermineUnitOrHiveById(unitID)
@@ -251,7 +251,7 @@ func (s *PlayScene) HandleMakeBridgeButtonClickedEvent(event eventing.Event) {
 		}
 	}
 }
-func (s *PlayScene) HandleBuildClickedEvent(event eventing.Event) {
+func (s *PlayScene2) HandleBuildClickedEvent(event eventing.Event) {
 	targetRect := event.Data.(eventing.BuildClickedEvent).TargetRect
 	if len(s.selectedUnitIDs) == 1 {
 		s.sim.ConstructBuilding(targetRect, s.selectedUnitIDs[0])
@@ -260,7 +260,7 @@ func (s *PlayScene) HandleBuildClickedEvent(event eventing.Event) {
 	s.constructionMouse.Enabled = false
 }
 
-func (s *PlayScene) Update() error {
+func (s *PlayScene2) Update() error {
 	if s.CompletionCondition.IsComplete(s.sim) && !s.SceneCompleted {
 		s.SceneCompleted = true
 		s.SceneCompleteCutscene()
@@ -319,7 +319,7 @@ func (s *PlayScene) Update() error {
 		dt := 1.0 / 60.0 // or use actual delta time
 		if len(s.cutsceneActions) == 0 {
 			if s.SceneCompleted {
-				s.BaseScene.sm.SwitchTo(NewPlayScene(s.fonts))
+				//s.BaseScene.sm.SwitchTo(NewPlayScene(s.fonts))
 			}
 			s.inCutscene = false
 			s.Ui.DrawEnabled = true
@@ -467,7 +467,7 @@ func (s *PlayScene) Update() error {
 	return nil
 }
 
-func (s *PlayScene) UpdateRemoveInactiveSprites() {
+func (s *PlayScene2) UpdateRemoveInactiveSprites() {
 	activeIDs := make(map[string]struct{})
 	for _, building := range s.sim.GetAllBuildings() {
 		activeIDs[building.GetID().String()] = struct{}{}
@@ -485,7 +485,7 @@ func (s *PlayScene) UpdateRemoveInactiveSprites() {
 	}
 }
 
-func (s *PlayScene) Draw(screen *ebiten.Image) {
+func (s *PlayScene2) Draw(screen *ebiten.Image) {
 	// Draw tiles first as the BG
 	opts := &ebiten.DrawImageOptions{}
 	opts.GeoM.Scale(s.Ui.Camera.ViewPortZoom, s.Ui.Camera.ViewPortZoom)
@@ -524,7 +524,7 @@ func (s *PlayScene) Draw(screen *ebiten.Image) {
 	s.Ui.Camera.DrawFade(screen) // this should always be drawn last
 }
 
-func (s *PlayScene) DebugDraw(screen *ebiten.Image) {
+func (s *PlayScene2) DebugDraw(screen *ebiten.Image) {
 	for _, mo := range s.tileMap.MapObjects {
 		rect := mo.Rect
 		x0, y0 := s.Ui.Camera.MapPosToScreenPos(rect.Min.X, rect.Min.Y)

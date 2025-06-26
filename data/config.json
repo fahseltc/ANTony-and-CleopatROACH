@@ -5,8 +5,8 @@
     "skipMenu": false,
     "resolution": {
         "external": {
-            "w": 1000,
-            "h": 800
+            "w": 800,
+            "h": 600
         },
         "internal": {
             "w": 800,

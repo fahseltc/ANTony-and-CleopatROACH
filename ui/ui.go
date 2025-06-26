@@ -10,7 +10,6 @@ import (
 	"log/slog"
 
 	"github.com/hajimehoshi/ebiten/v2"
-	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
 	"github.com/hajimehoshi/ebiten/v2/inpututil"
 )
 
@@ -21,16 +20,19 @@ type Ui struct {
 	Camera   *Camera
 	TileMap  *tilemap.Tilemap
 	eventBus *eventing.EventBus
+
+	DrawEnabled bool
 }
 
 func NewUi(fonts *fonts.All, tileMap *tilemap.Tilemap, sim *sim.T) *Ui {
 	camera := NewCamera(tileMap.Width, tileMap.Height)
 	return &Ui{
-		log:     log.NewLogger().With("for", "ui"),
-		fonts:   fonts,
-		HUD:     NewHUD(fonts.Med, sim),
-		Camera:  camera,
-		TileMap: tileMap,
+		log:         log.NewLogger().With("for", "ui"),
+		fonts:       fonts,
+		HUD:         NewHUD(fonts.Med, sim),
+		Camera:      camera,
+		TileMap:     tileMap,
+		DrawEnabled: true,
 		// textArea: NewPortraitTextArea(
 		// 	fonts,
 		// 	"We, ignorant of ourselves, beg often our own harms, which the wise powers deny us for our good; so find we profit by losing of our prayers.",
@@ -45,23 +47,17 @@ func (ui *Ui) Update() {
 }
 
 func (ui *Ui) Draw(screen *ebiten.Image) {
-	// opts := &ebiten.DrawImageOptions{}
+	if ui.DrawEnabled {
+		if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) {
+			mx, my := ebiten.CursorPosition()
+			x, y := ui.Camera.ScreenPosToMapPos(mx, my)
 
-	// opts.GeoM.Scale(ui.Camera.ViewPortZoom, ui.Camera.ViewPortZoom)
-	// opts.GeoM.Translate(float64(ui.Camera.ViewPortX), float64(ui.Camera.ViewPortY))
-	//	ui.tileMap.Render(screen)
-	if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) {
-		mx, my := ebiten.CursorPosition()
-		x, y := ui.Camera.ScreenPosToMapPos(mx, my)
-
-		clickedTile := ui.TileMap.GetTileByPosition(x, y)
-		if clickedTile != nil {
-			fmt.Printf("tile clicked type:%v", clickedTile.Type)
+			clickedTile := ui.TileMap.GetTileByPosition(x, y)
+			if clickedTile != nil {
+				fmt.Printf("tile clicked type:%v", clickedTile.Type)
+			}
 		}
+
+		ui.HUD.Draw(screen)
 	}
-
-	ebitenutil.DebugPrintAt(screen, fmt.Sprintf("zoom:%v", ui.Camera.ViewPortZoom), 1, 20)
-
-	ui.HUD.Draw(screen)
-	//ui.textArea.Draw(screen)
 }

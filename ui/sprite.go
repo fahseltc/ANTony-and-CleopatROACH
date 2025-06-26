@@ -20,6 +20,7 @@ const (
 	SpriteTypeHive
 	SpriteTypeUnit
 	SpriteTypeStatic
+	SpriteTypeInConstruction
 	// Add more sprite types as needed
 )
 
@@ -60,9 +61,11 @@ func NewHiveSprite(uuid uuid.UUID) *Sprite {
 func NewBridgeSprite(uuid uuid.UUID) *Sprite {
 	return NewSprite(uuid, image.Rect(0, 0, TileDimensions, TileDimensions), "tilemap/bridge.png", SpriteTypeStatic)
 }
-
 func NewInConstructionSprite(uuid uuid.UUID) *Sprite {
-	return NewSprite(uuid, image.Rect(0, 0, TileDimensions, TileDimensions), "tilemap/in-construction.png", SpriteTypeStatic)
+	return NewSprite(uuid, image.Rect(0, 0, TileDimensions, TileDimensions), "tilemap/in-construction.png", SpriteTypeInConstruction)
+}
+func NewHeartSprite(uuid uuid.UUID) *Sprite {
+	return NewSprite(uuid, image.Rect(0, 0, TileDimensions/2, TileDimensions/2), "ui/heart.png", SpriteTypeStatic)
 }
 
 func NewSprite(uuid uuid.UUID, Rect image.Rectangle, imgPath string, spriteType SpriteType) *Sprite {

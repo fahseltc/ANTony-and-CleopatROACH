@@ -17,6 +17,11 @@ type Event struct {
 	Data      interface{}
 }
 
+type SceneCompletionEvent struct {
+	RoyalAntID   string
+	RoyalRoachID string
+}
+
 type BuildClickedEvent struct {
 	TargetRect *image.Rectangle
 	// building type
@@ -41,7 +46,7 @@ func NewEventBus() *EventBus {
 }
 
 func (eb *EventBus) Subscribe(eventType string, handler func(event Event)) {
-	fmt.Printf("EventBus: Event Subscribed To: %v", eventType)
+	fmt.Printf("EventBus: Event Subscribed To: %v\n", eventType)
 	eb.subscribers[eventType] = append(eb.subscribers[eventType], handler)
 }
 

@@ -9,6 +9,29 @@ import (
 type CutsceneAction interface {
 	Update(s *PlayScene, dt float64) bool // returns true if finished
 }
+type ZoomCameraAction struct {
+	TargetZoom float64
+	Speed      float64
+	FocusX     float64 // world X coordinate to zoom towards
+	FocusY     float64 // world Y coordinate to zoom towards
+}
+
+func (a *ZoomCameraAction) Update(s *PlayScene, dt float64) bool {
+	currentZoom := s.Ui.Camera.ViewPortZoom
+	// Calculate how much to adjust the zoom towards the target
+	diff := a.TargetZoom - currentZoom
+	step := a.Speed * dt
+	if math.Abs(diff) < step {
+		// Finalize zoom
+		step = diff
+	}
+	// Convert world focus point to screen coordinates
+	screenX, screenY := s.Ui.Camera.MapPosToScreenPos(int(a.FocusX), int(a.FocusY))
+	// Perform the zoom
+	s.Ui.Camera.Zoom(step, screenX, screenY)
+	// Done when zoom is very close to target
+	return math.Abs(s.Ui.Camera.ViewPortZoom-a.TargetZoom) < 0.001
+}
 
 type PanCameraAction struct {
 	TargetX, TargetY float64
@@ -124,4 +147,37 @@ func (a *IssueUnitCommandAction) Update(s *PlayScene, dt float64) bool {
 	a.targetTile.Y = a.targetTile.Y * 128
 	s.sim.IssueAction(a.unitID, a.targetTile)
 	return true
+}
+
+type DrawTemporarySpriteAction struct {
+	spr             *ui.Sprite
+	TargetPosition  *image.Point
+	MaxDuration     int
+	CurrentDuration int
+}
+
+func NewDrawTemporarySpriteAction(sprite *ui.Sprite, targetTile *image.Point, duration int) *DrawTemporarySpriteAction {
+	return &DrawTemporarySpriteAction{
+		spr:            sprite,
+		TargetPosition: targetTile,
+		MaxDuration:    duration,
+	}
+}
+
+func (a *DrawTemporarySpriteAction) Update(s *PlayScene, dt float64) bool {
+	if a.CurrentDuration == 0 {
+		a.spr.SetPosition(&image.Point{
+			X: a.TargetPosition.X,
+			Y: a.TargetPosition.Y,
+		})
+		s.Sprites[a.spr.Id.String()] = a.spr
+	}
+	a.CurrentDuration++
+	if a.CurrentDuration >= a.MaxDuration {
+		delete(s.Sprites, a.spr.Id.String())
+		a.CurrentDuration = 0
+		return true
+	}
+
+	return false
 }

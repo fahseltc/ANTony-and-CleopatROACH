@@ -15,20 +15,24 @@ type Tilemap struct {
 	Height   int
 	TileSize int
 
-	tileMap    *tiled.Map
-	StaticBg   *ebiten.Image
-	MapObjects []*MapObject
-	TileSet    map[int]*tiled.TilesetTile
-	Tiles      [][]*Tile
+	tileMap              *tiled.Map
+	StaticBg             *ebiten.Image
+	MapObjects           []*MapObject
+	MapCompletionObjects []*MapCompletionObject
+	TileSet              map[int]*tiled.TilesetTile
+	Tiles                [][]*Tile
 }
 
 type MapObject struct {
 	Rect        *image.Rectangle
 	IsBuildable bool
 }
+type MapCompletionObject struct {
+	Rect *image.Rectangle
+}
 
-func NewTilemap() *Tilemap {
-	tm, err := tiled.LoadFile("assets/tilemap/untitled.tmx") // this wont work in wasm! need to embed files but it breaks
+func NewTilemap(mapPath string) *Tilemap {
+	tm, err := tiled.LoadFile(mapPath) // this wont work in wasm! need to embed files but it breaks
 	if err != nil {
 		log.Fatalf("unable to load tmx: %v", err.Error())
 	}
@@ -41,30 +45,62 @@ func NewTilemap() *Tilemap {
 		tilesIdMap[int(tile.ID)] = tile
 	}
 
-	var mapObjects []*MapObject
-	for _, object := range tm.ObjectGroups[0].Objects {
-		mo := &MapObject{
-			Rect: &image.Rectangle{
-				Min: image.Point{X: int(object.X), Y: int(object.Y)},
-				Max: image.Point{X: int(object.X + object.Width), Y: int(object.Y + object.Height)},
-			},
+	var mapCollisionObjects []*MapObject
+	var mapCompletionObjects []*MapCompletionObject
+	for _, objectGroup := range tm.ObjectGroups {
+		if objectGroup.Name == "collision" {
+			for _, object := range objectGroup.Objects {
+				mo := &MapObject{
+					Rect: &image.Rectangle{
+						Min: image.Point{X: int(object.X), Y: int(object.Y)},
+						Max: image.Point{X: int(object.X + object.Width), Y: int(object.Y + object.Height)},
+					},
+				}
+				if len(object.Properties) > 0 {
+					mo.IsBuildable = object.Properties.GetBool("buildable")
+				} else {
+					mo.IsBuildable = false
+				} // default to true if no properties
+				mapCollisionObjects = append(mapCollisionObjects, mo)
+			}
 		}
-
-		if len(object.Properties) > 0 {
-			mo.IsBuildable = object.Properties.GetBool("buildable")
+		if objectGroup.Name == "completion-area" {
+			for _, object := range objectGroup.Objects {
+				mo := &MapCompletionObject{
+					Rect: &image.Rectangle{
+						Min: image.Point{X: int(object.X), Y: int(object.Y)},
+						Max: image.Point{X: int(object.X + object.Width), Y: int(object.Y + object.Height)},
+					},
+				}
+				mapCompletionObjects = append(mapCompletionObjects, mo)
+			}
 		}
-		mapObjects = append(mapObjects, mo)
 	}
 
+	// for _, object := range tm.ObjectGroups[0].Objects {
+	// 	mo := &MapObject{
+	// 		Rect: &image.Rectangle{
+	// 			Min: image.Point{X: int(object.X), Y: int(object.Y)},
+	// 			Max: image.Point{X: int(object.X + object.Width), Y: int(object.Y + object.Height)},
+	// 		},
+	// 	}
+
+	// 	if len(object.Properties) > 0 {
+	// 		mo.IsBuildable = object.Properties.GetBool("buildable")
+	// 	}
+	// 	mapObjects = append(mapObjects, mo)
+	// }
+
 	tmap := &Tilemap{
-		tileMap:    tm,
-		StaticBg:   staticBg,
-		TileSet:    tilesIdMap,
-		Tiles:      make([][]*Tile, tm.Width),
-		MapObjects: mapObjects,
-		Width:      tm.Width,
-		Height:     tm.Height,
-		TileSize:   tm.TileWidth,
+		tileMap:              tm,
+		StaticBg:             staticBg,
+		TileSet:              tilesIdMap,
+		Tiles:                make([][]*Tile, tm.Width),
+		MapObjects:           mapCollisionObjects,
+		MapCompletionObjects: mapCompletionObjects,
+		Width:                tm.Width,
+		Height:               tm.Height,
+		TileSize:             tm.TileWidth,
 	}
 	for i := 0; i < tm.Width; i++ {
 		tmap.Tiles[i] = make([]*Tile, tm.Height)

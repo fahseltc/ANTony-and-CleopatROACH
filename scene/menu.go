@@ -39,7 +39,9 @@ func (s *MenuScene) Update() error {
 
 func (s *MenuScene) Draw(screen *ebiten.Image) {
 	screen.DrawImage(s.bg, nil)
-	util.DrawCenteredText(screen, s.fonts.Med, s.txt, 400, 50, nil)
+	util.DrawCenteredText(screen, s.fonts.XLarge, "ANTony", 400, 50, nil)
+	util.DrawCenteredText(screen, s.fonts.XLarge, "&", 400, 120, nil)
+	util.DrawCenteredText(screen, s.fonts.XLarge, "CleopatROACH", 400, 190, nil)
 
 	s.startBtn.Draw(screen)
 }

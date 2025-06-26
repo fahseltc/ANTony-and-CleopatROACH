@@ -11,6 +11,7 @@ type All struct {
 	Small  text.Face
 	Med    text.Face
 	Large  text.Face
+	XLarge text.Face
 }
 
 func Load(path string) *All {
@@ -23,6 +24,8 @@ func Load(path string) *All {
 	fonts.Med = m
 	l, _ := loadTTFFont(path, 30)
 	fonts.Large = l
+	xl, _ := loadTTFFont(path, 42)
+	fonts.XLarge = xl
 	return fonts
 }
 

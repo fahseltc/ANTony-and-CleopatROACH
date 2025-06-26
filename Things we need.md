@@ -40,12 +40,15 @@ WHAT REMAINS
 - [x] camera fading
 - [x] timer for units to collect resources and build
 - [x] builder must be nearby new building for it to start construction - KINDA WRONG
+- [x]mouse click indicator on text dialogs
 - BUG - building site should be made at any distance and only progress when the builder is nearby.
 - fullscreen text dialog
-- in-engine emoji stuff (ants smooching)
-- tutorial of any variety
+- [x] in-engine emoji stuff (ants smooching)
+- [x]tutorial of any variety
+- more tutorial
+- MAKE IT WORK ON THE WEBSITE (slashes fix in TMX)
 
-- level system
+- [x] level system (kinda but jank)
 - [x] scripting what happens in each level, or a system for that which doesnt suck
 
 - Animation system
@@ -59,7 +62,6 @@ WHAT REMAINS
 - 'selected units' UI element
 - SFX
 - music
-
 
 other
 
