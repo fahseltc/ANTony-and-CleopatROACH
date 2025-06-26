@@ -11,7 +11,6 @@ import (
 	"image/color"
 	"slices"
 
-	"github.com/google/uuid"
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
 	"github.com/hajimehoshi/ebiten/v2/inpututil"
@@ -21,6 +20,11 @@ var PlayerFaction = 0
 
 type PlayScene struct {
 	BaseScene
+	LevelData *LevelData
+
+	QueenID string
+	KingID  string
+
 	eventBus *eventing.EventBus
 	sim      *sim.T
 	Ui       *ui.Ui
@@ -49,10 +53,14 @@ type PlayScene struct {
 }
 
 func NewPlayScene(fonts *fonts.All, levelNum int) *PlayScene {
-	tileMap := tilemap.NewTilemap("assets/tilemap/untitled.tmx")
+	collection := NewLevelCollection()
+	thisLevel := collection.Levels[levelNum] // load the level data
+
+	tileMap := tilemap.NewTilemap(thisLevel.TileMapPath)
 	simulation := sim.New(60, tileMap)
 	constructionMouse := &ui.ConstructionMouse{}
 	scene := &PlayScene{
+		LevelData:         &thisLevel,
 		fonts:             fonts,
 		sim:               simulation,
 		Ui:                ui.NewUi(fonts, tileMap, simulation),
@@ -67,159 +75,10 @@ func NewPlayScene(fonts *fonts.All, levelNum int) *PlayScene {
 	scene.eventBus.Subscribe("MakeBridgeButtonClickedEvent", scene.HandleMakeBridgeButtonClickedEvent)
 	scene.eventBus.Subscribe("BuildClickedEvent", scene.HandleBuildClickedEvent)
 
-	scene.setupLvl1()
+	scene.QueenID, scene.KingID = thisLevel.SetupFunc(scene)
+	thisLevel.SetupInitialCutscene(scene, scene.QueenID, scene.KingID)
 	return scene
 }
-func (scene *PlayScene) setupLvl1() {
-	u := sim.NewDefaultAnt()
-	u.SetTilePosition(10, 12)
-	scene.sim.AddUnit(u)
-
-	u2 := sim.NewDefaultAnt()
-	u2.SetTilePosition(7, 12)
-	scene.sim.AddUnit(u2)
-
-	king := sim.NewRoyalAnt()
-	king.SetTilePosition(12, 11)
-	scene.sim.AddUnit(king)
-
-	queen := sim.NewRoyalRoach()
-	queen.SetTilePosition(27, 10)
-	queen.Faction = 1
-	scene.sim.AddUnit(queen)
-
-	scene.Ui.Camera.SetZoom(ui.MinZoom)
-	scene.Ui.Camera.SetPosition(10, 160)
-	scene.Ui.Camera.FadeAlpha = 255
-
-	h := sim.NewHive()
-	h.SetTilePosition(8, 8)
-	scene.sim.AddBuilding(h)
-
-	scene.CompletionCondition = NewSceneCompletion(queen, king, scene.tileMap.MapCompletionObjects[0].Rect)
-
-	scene.beginCutscene1(king.ID.String(), queen.ID.String())
-}
-
-func (s *PlayScene) beginCutscene1(antony string, cleopatroach string) {
-	s.inCutscene = true
-	s.Ui.DrawEnabled = false
-	s.drag.Enabled = false
-	s.cutsceneActions = []CutsceneAction{
-		&FadeCameraAction{Mode: "in", Speed: 2},
-		&ShowPortraitTextAreaAction{
-			portraitTextArea: ui.NewPortraitTextArea(
-				s.fonts,
-				"Antony: Welcome to da Ant Game! Where my gurl at? I need to build a bridge to get to her!",
-				"portraits/ant-royalty.png",
-			),
-		},
-		&IssueUnitCommandAction{
-			unitID:     antony,
-			targetTile: &image.Point{X: 14, Y: 11},
-		},
-		&PanCameraAction{TargetX: float64(27), TargetY: float64(10), Speed: 300},
-		&IssueUnitCommandAction{
-			unitID:     cleopatroach,
-			targetTile: &image.Point{X: 26, Y: 10},
-		},
-		&ShowPortraitTextAreaAction{
-			portraitTextArea: ui.NewPortraitTextArea(
-				s.fonts,
-				"Cleopatroach: There's beggary in the love that can be reckon'd. Save me Antony!",
-				"portraits/cockroach-royalty.png",
-			),
-		},
-		&PanCameraAction{TargetX: float64(3), TargetY: float64(6), Speed: 300},
-		&ShowPortraitTextAreaAction{
-			portraitTextArea: ui.NewPortraitTextArea(
-				s.fonts,
-				"Antony: Gotchu babe! Put these ants to work!",
-				"portraits/ant-royalty.png",
-			),
-		},
-	}
-
-	s.tutorialDialogs = []ui.Tutorial{
-		ui.NewTutorialStep(
-			"tutorials/tutorial-1.png",
-			&image.Rectangle{Min: image.Point{X: 412, Y: 341}, Max: image.Point{X: 800, Y: 600}},
-			nil, nil,
-		),
-		ui.NewTutorialStep(
-			"tutorials/tutorial-2.png",
-			&image.Rectangle{Min: image.Point{X: 412, Y: 341}, Max: image.Point{X: 800, Y: 600}},
-			nil, nil,
-		),
-	}
-
-}
-func (s *PlayScene) SceneCompleteCutscene() {
-	s.inCutscene = true
-	s.inCutscene = true
-	s.Ui.DrawEnabled = false
-	s.drag.Enabled = false
-
-	s.selectedUnitIDs = []string{} // clear selected unit IDs
-
-	// make them move towards each other
-	cleopatroach := s.CompletionCondition.UnitOne.ID.String()
-	antony := s.CompletionCondition.UnitTwo.ID.String()
-
-	s.cutsceneActions = []CutsceneAction{
-		&IssueUnitCommandAction{
-			unitID:     cleopatroach,
-			targetTile: &image.Point{X: 27, Y: 5},
-		},
-		&IssueUnitCommandAction{
-			unitID:     antony,
-			targetTile: &image.Point{X: 27, Y: 13},
-		},
-		&WaitAction{
-			Duration: 1.0, // wait for 1 second
-		},
-		&IssueUnitCommandAction{
-			unitID:     cleopatroach,
-			targetTile: &image.Point{X: 27, Y: 8},
-		},
-
-		&IssueUnitCommandAction{
-			unitID:     antony,
-			targetTile: &image.Point{X: 27, Y: 10},
-		},
-		&WaitAction{
-			Duration: 1.0, // wait for 1 second
-		},
-		&PanCameraAction{TargetX: float64(30), TargetY: float64(10), Speed: 300},
-		&ZoomCameraAction{
-			TargetZoom: 0.8,
-			Speed:      1,
-			FocusX:     29 * 128,
-			FocusY:     9 * 128,
-		},
-		&DrawTemporarySpriteAction{
-			spr:            ui.NewHeartSprite(uuid.New()),
-			TargetPosition: &image.Point{X: 3525, Y: 1200},
-			MaxDuration:    180,
-		},
-		&ShowPortraitTextAreaAction{
-			portraitTextArea: ui.NewPortraitTextArea(
-				s.fonts,
-				"Antony: Saved u gurl",
-				"portraits/ant-royalty.png",
-			),
-		},
-		&ShowPortraitTextAreaAction{
-			portraitTextArea: ui.NewPortraitTextArea(
-				s.fonts,
-				"Cleopatroach: **smooch noises**",
-				"portraits/cockroach-royalty.png",
-			),
-		},
-		&FadeCameraAction{Mode: "out", Speed: 1},
-	}
-}
-
 func (s *PlayScene) HandleMakeAntButtonClickedEvent(event eventing.Event) {
 	if len(s.selectedUnitIDs) == 1 {
 		hiveID := s.selectedUnitIDs[0]
@@ -263,12 +122,11 @@ func (s *PlayScene) HandleBuildClickedEvent(event eventing.Event) {
 func (s *PlayScene) Update() error {
 	if s.CompletionCondition.IsComplete(s.sim) && !s.SceneCompleted {
 		s.SceneCompleted = true
-		s.SceneCompleteCutscene()
+		s.LevelData.SetupCompletionCutscene(s, s.QueenID, s.KingID)
 	}
 	// make sure all the sim units are in the list of spritess
 	for _, unit := range s.sim.GetAllUnits() {
 		if s.Sprites[unit.ID.String()] == nil {
-			// TODO switch based on sim.unitType and use the right sprite for each unit
 			switch unit.Type {
 			case sim.UnitTypeDefaultAnt:
 				s.Sprites[unit.ID.String()] = ui.NewDefaultAntSprite(unit.ID)
@@ -319,7 +177,7 @@ func (s *PlayScene) Update() error {
 		dt := 1.0 / 60.0 // or use actual delta time
 		if len(s.cutsceneActions) == 0 {
 			if s.SceneCompleted {
-				s.BaseScene.sm.SwitchTo(NewPlayScene(s.fonts))
+				s.BaseScene.sm.SwitchTo(NewPlayScene(s.fonts, s.LevelData.LevelNumber+1)) // switch to next level
 			}
 			s.inCutscene = false
 			s.Ui.DrawEnabled = true
