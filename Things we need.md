@@ -41,20 +41,25 @@ WHAT REMAINS
 - [x] timer for units to collect resources and build
 - [x] builder must be nearby new building for it to start construction - KINDA WRONG
 - BUG - building site should be made at any distance and only progress when the builder is nearby.
+- fullscreen text dialog
+- in-engine emoji stuff (ants smooching)
+- tutorial of any variety
 
 - level system
-- scripting what happens in each level, or a system for that which doesnt suck
-- fullscreen text dialog
+- [x] scripting what happens in each level, or a system for that which doesnt suck
+
 - Animation system
 - walk / attack animation
 - units attacking - COULD BE CUT perhaps
 - life bars?
 - pathfinding
 - ART - makeant+makebridge btn-pressed art
-- in-engine emoji stuff (ants smooching)
+
 - text content from chez
-- tutorial of any variety
 - 'selected units' UI element
+- SFX
+- music
+
 
 other
 
