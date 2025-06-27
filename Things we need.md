@@ -41,31 +41,85 @@ WHAT REMAINS
 - [x] timer for units to collect resources and build
 - [x] builder must be nearby new building for it to start construction - KINDA WRONG
 - [x]mouse click indicator on text dialogs
-- BUG - building site should be made at any distance and only progress when the builder is nearby.
-- fullscreen text dialog
 - [x] in-engine emoji stuff (ants smooching)
 - [x]tutorial of any variety
-- more tutorial
-- MAKE IT WORK ON THE WEBSITE (slashes fix in TMX)
-
 - [x] level system (kinda but jank)
 - [x] scripting what happens in each level, or a system for that which doesnt suck
-
-- Animation system
-- walk / attack animation
-- units attacking - COULD BE CUT perhaps
-- life bars?
-- pathfinding
-- ART - makeant+makebridge btn-pressed art
-
-- text content from chez
-- 'selected units' UI element
+- [x] ART - makeant+makebridge btn-pressed art
+- [x] fix bug with units not finding nearest hive
+- [x] STARTED - Second Level! - It should be about having two bases and using resources gathered from the other to make progress.
+- [x] fullscreen text narrator
+- [x] movement based on unit center instead of top-left
+- MAKE IT WORK ON THE WEBSITE (slashes fix in TMX)
+- finish level 2 scripting intro + ending scenario (love in flower area)
+- more tutorial
+- some UI text about "not enough money to build X"
 - SFX
 - music
-
-other
-
-- tooltips on buttons to show costs
-- blood stains on ground? static sprites that expire?
 - bugs carry resources visually
+- Animation system
+- walk animation
+- hotkeys to unit groups
+- hotkeys to saved areas
+- BUG - building site should be made at any distance and only progress when the builder is nearby.
+- BUG - hives sometimes build units on top of other units
+- better pathfinding
+- text content from chez
+- 'selected units' UI element
+- tooltips on buttons to show costs
 - Patrol functionality
+
+COMBAT
+
+- blood stains on ground? static sprites that expire?
+- attack animation
+- units attacking - COULD BE CUT perhaps
+- life bars?
+
+funny chatgpt quotes
+“A sting! A sting! My kingdom for a sting!”
+“Buzz off, thou knavish gnat!”
+“We were six legs in a pod…”
+“Is this a crumb I see before me?”
+“No more scuttling — this calls for full-wing flight!”
+“He speaks like a drunken firefly — bright, but makes no sense.”
+“She hath a thorax like no other.”
+“Even the termites bow before Cleopatroach.”
+“The roach is mightier than the flea.”
+
+Antony preparing for battle
+
+    Antony: “Let the bugle call, for war is upon us! Sharpen thy stingers!”
+
+Cleopatroach taunting a rival
+
+    Cleopatroach: “Thou beetle-brained scuttler! Darest thou approach the queen of Nile-larvae?”
+
+Antony contemplating his duty
+
+    Antony: “Between love and colony, my feelers are torn. Yet I must march!”
+
+Cleopatroach showing affection
+
+    Cleopatroach: “I wore perfume of the dung beetle, just for thee.”
+
+Antony mourning a lost ant
+
+    Antony: “O brave Foragerius! He hath fallen 'neath a human’s sandal...”
+
+Cleopatroach, dramatic as ever
+
+    Cleopatroach: “My thorax trembles with longing! Come, sweet Antony, before the pheromones fade!”
+
+NARRATOR 1
+In the land of Nilopolis, where the sand meets sugar and the air hums with wingèd gossip, two empires crawl toward destiny. One: the mighty Ant-tonian Legion, proud builders and brave foragers. The other: Queen Cleopatroach’s royal roachdom, ancient, secretive, and ever-scheming.
+Long hath love fluttered betwixt Antony, soldier of soil, and Cleopatroach, goddess of grime. But lo! A chasm divides them, wide as a footprint and deep as a drain. Wood must be gathered. A bridge must be built. And their love… must scuttle onward.
+Arise, player! Command thy swarm! The Ant Game begins!
+
+    Narrator (Post-Level 1 Completion)
+
+“And so, with twig and grit and tiny limbs unnumbered, the bridge was wrought! Across the void did Antony march, bold as a wasp in a wineglass, toward his queen!”
+
+“Their antennae touched in triumph, and though their path remaineth plagued with pest and peril, this moment—this mandible-kiss of destiny—shall be sung in the tunnels of time.”
+
+“But peace is never long in the insect world. New foes stir. New challenges arise. Onward… to Level the Second!”

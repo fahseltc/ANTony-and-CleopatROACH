@@ -33,11 +33,7 @@ func NewUi(fonts *fonts.All, tileMap *tilemap.Tilemap, sim *sim.T) *Ui {
 		Camera:      camera,
 		TileMap:     tileMap,
 		DrawEnabled: true,
-		// textArea: NewPortraitTextArea(
-		// 	fonts,
-		// 	"We, ignorant of ourselves, beg often our own harms, which the wise powers deny us for our good; so find we profit by losing of our prayers.",
-		// 	"portraits/ant-king.png"),
-		eventBus: sim.EventBus,
+		eventBus:    sim.EventBus,
 	}
 }
 

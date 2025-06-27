@@ -54,7 +54,10 @@ func NewDefaultRoachSprite(uuid uuid.UUID) *Sprite {
 
 // Buildings
 func NewHiveSprite(uuid uuid.UUID) *Sprite {
-	return NewSprite(uuid, image.Rect(0, 0, TileDimensions*2, TileDimensions*2), "units/anthill.png", SpriteTypeHive)
+	return NewSprite(uuid, image.Rect(0, 0, TileDimensions*2, TileDimensions*2), "units/ant-hill.png", SpriteTypeHive)
+}
+func NewRoachHiveSprite(uuid uuid.UUID) *Sprite {
+	return NewSprite(uuid, image.Rect(0, 0, TileDimensions*2, TileDimensions*2), "units/roach-hill.png", SpriteTypeHive)
 }
 
 // Static Sprites

@@ -26,13 +26,14 @@ type Game struct {
 func New(cfg *config.T) *Game {
 	state := scene.GameState{}
 	fonts := fonts.Load(fontPath)
+	levelData := scene.NewLevelCollection().Levels
 	var manager *stagehand.SceneManager[scene.GameState]
 	if cfg.SkipMenu {
-		sceneInstance := scene.NewPlayScene(fonts, 1)
-		manager = stagehand.NewSceneManager(sceneInstance, state)
+		scene := scene.NewNarratorScene(fonts, levelData[cfg.StartingLevel])
+		manager = stagehand.NewSceneManager(scene, state)
 	} else {
-		sceneInstance := scene.NewMenuScene(fonts)
-		manager = stagehand.NewSceneManager(sceneInstance, state)
+		scene := scene.NewNarratorScene(fonts, levelData[0])
+		manager = stagehand.NewSceneManager(scene, state)
 	}
 
 	return &Game{

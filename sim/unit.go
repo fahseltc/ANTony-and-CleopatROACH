@@ -143,14 +143,19 @@ func (unit *Unit) Update(sim *T) {
 	case CollectingAction:
 		// if we are holding some resources, set home, then set deliveringAction
 		if unit.Stats.ResourceCarried > 0 { // better logic so it doesnt always bring back minimal resource amount
-			if unit.NearestHome == nil {
-				for _, hive := range sim.GetAllBuildings() {
-					if hive.GetFaction() == unit.Faction {
-						unit.NearestHome = hive
-						break
+			// Find the nearest hive and set it as the unit's home
+			var nearest BuildingInterface
+			minDist := uint(math.MaxUint32)
+			for _, hive := range sim.GetAllBuildings() {
+				if hive.GetFaction() == unit.Faction {
+					dist := unit.DistanceTo(*hive.GetCenteredPosition())
+					if nearest == nil || dist < minDist {
+						nearest = hive
+						minDist = dist
 					}
 				}
 			}
+			unit.NearestHome = nearest
 			unit.LastResourcePos = unit.Destination
 			unit.Destination = unit.NearestHome.GetClosestPosition(unit.Position.X, unit.Position.Y)
 			unit.Action = DeliveringAction
@@ -194,8 +199,9 @@ func (unit *Unit) Update(sim *T) {
 }
 func (unit *Unit) MoveToDestination(sim *T, harvesting bool) {
 	speed := float64(unit.Stats.MoveSpeed)
-	oldX := unit.Position.X
-	oldY := unit.Position.Y
+	oldPos := unit.GetCenteredPosition()
+	oldX := oldPos.X
+	oldY := oldPos.Y
 
 	dx := float64(unit.Destination.X - unit.Position.X)
 	dy := float64(unit.Destination.Y - unit.Position.Y)
@@ -231,8 +237,9 @@ func (unit *Unit) MoveToDestination(sim *T, harvesting bool) {
 		}
 	}
 
-	dxRot := float64(unit.Position.X - oldX)
-	dyRot := float64(unit.Position.Y - oldY)
+	newCentered := unit.GetCenteredPosition()
+	dxRot := float64(newCentered.X - oldX)
+	dyRot := float64(newCentered.Y - oldY)
 	if dxRot != 0 || dyRot != 0 { // update angle only if moved
 		unit.MovingAngle = math.Atan2(dyRot, dxRot) + math.Pi/2 // adjust for sprite orientation
 	}

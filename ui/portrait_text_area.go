@@ -15,12 +15,12 @@ type PortraitTextArea struct {
 	portraitPos *image.Point
 }
 
-func NewPortraitTextArea(fonts *fonts.All, text string, portraitPath string) *PortraitTextArea {
+func NewPortraitTextArea(fonts *fonts.All, text string, portraitType PortraitType) *PortraitTextArea {
 	pta := &PortraitTextArea{
 		Ta: NewTextArea(
 			fonts, text,
 		),
-		portrait:    util.LoadImage(portraitPath),
+		portrait:    util.LoadImage(portraitType.String()),
 		portraitPos: &image.Point{X: 6, Y: 406},
 	}
 	pta.Ta.bgRect = &image.Rectangle{

@@ -27,7 +27,8 @@ func NewMenuScene(fonts *fonts.All) *MenuScene {
 		Min: image.Point{X: 250, Y: 520},
 		Max: image.Point{X: 550, Y: 570},
 	}), ui.WithClickFunc(func() {
-		scene.BaseScene.sm.SwitchTo(NewPlayScene(scene.fonts, 1))
+		levelData := NewLevelCollection().Levels[0]
+		scene.sm.SwitchTo(NewNarratorScene(scene.fonts, levelData))
 	}))
 	return scene
 }

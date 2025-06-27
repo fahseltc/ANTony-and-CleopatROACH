@@ -9,7 +9,7 @@ import (
 	"github.com/hajimehoshi/ebiten/v2"
 )
 
-var MapScrollSpeed = 10
+var MapScrollSpeed = 15
 
 var MaxZoom = 1.0
 var MinZoom = 0.3

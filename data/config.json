@@ -1,8 +1,9 @@
 {
     "windowTitle": "ANTony & CleopatROACH",
     "targetFPS": 60,
-    "debugDraw": false,
+    "debugDraw": true,
     "skipMenu": false,
+    "startingLevel": 2,
     "resolution": {
         "external": {
             "w": 800,

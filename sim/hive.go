@@ -17,7 +17,16 @@ type Hive struct {
 
 func NewHive() BuildingInterface {
 	building := NewBuilding(0, 0, TileDimensions*2, TileDimensions*2, 0, BuildingTypeHive, uint(UnitConstructionTime))
+	h := &Hive{
+		Building:        building,
+		unitContructing: false,
+		buildQueue:      util.NewQueue[*Unit](),
+	}
+	return h
+}
 
+func NewRoachHive() BuildingInterface {
+	building := NewBuilding(0, 0, TileDimensions*2, TileDimensions*2, 0, BuildingTypeRoachHive, uint(UnitConstructionTime))
 	h := &Hive{
 		Building:        building,
 		unitContructing: false,
@@ -51,7 +60,14 @@ func (h *Hive) DistanceTo(point image.Point) uint {
 }
 
 func (h *Hive) AddUnitToBuildQueue() {
-	h.buildQueue.Enqueue(NewDefaultAnt())
+	var unit *Unit
+	switch h.Type {
+	case BuildingTypeHive:
+		unit = NewDefaultAnt()
+	case BuildingTypeRoachHive:
+		unit = NewDefaultRoach()
+	}
+	h.buildQueue.Enqueue(unit)
 }
 func (h *Hive) GetNearbyPosition(sim *T) *image.Point {
 	directions := []image.Point{

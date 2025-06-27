@@ -11,6 +11,7 @@ import (
 type LevelData struct {
 	LevelNumber             int
 	TileMapPath             string
+	LevelIntroText          string
 	SetupFunc               func(*PlayScene) (queenID string, kingID string)
 	SetupInitialCutscene    func(*PlayScene, string, string)
 	SetupCompletionCutscene func(*PlayScene, string, string)
@@ -24,9 +25,21 @@ func NewLevelCollection() *LevelCollection {
 	coll := &LevelCollection{
 		Levels: make(map[int]LevelData),
 	}
-	coll.Levels[1] = LevelData{
-		LevelNumber: 1,
-		TileMapPath: "assets/tilemap/untitled.tmx",
+	coll.Levels[0] = LevelData{
+		LevelNumber: 0,
+		TileMapPath: "assets/tilemap/map1.tmx",
+		LevelIntroText: `In the land of Nilopolis, where the sand meets sugar and the air hums with winged gossip, two empires crawl toward destiny.
+
+		One: the mighty Ant-tonian Legion, proud builders and brave foragers. 
+
+		The other: Queen Cleopatroach's royal roachdom, ancient, secretive, and ever-scheming.
+
+		Long hath love fluttered betwixt Antony, soldier of soil, and Cleopatroach, goddess of grime. 
+
+		But lo! A chasm divides them, wide as a footprint and deep as a drain. Wood must be gathered. A bridge must be built. And their love… must scuttle onward.
+		
+
+		Arise, player! Command thy swarm!`,
 		SetupFunc: func(scene *PlayScene) (string, string) {
 			u := sim.NewDefaultAnt()
 			u.SetTilePosition(10, 12)
@@ -56,7 +69,7 @@ func NewLevelCollection() *LevelCollection {
 			scene.CompletionCondition = NewSceneCompletion(queen, king, scene.tileMap.MapCompletionObjects[0].Rect)
 			return queen.ID.String(), king.ID.String()
 		},
-		SetupInitialCutscene: func(s *PlayScene, antony string, cleopatroach string) {
+		SetupInitialCutscene: func(s *PlayScene, cleopatroach string, antony string) {
 			s.inCutscene = true
 			s.Ui.DrawEnabled = false
 			s.drag.Enabled = false
@@ -65,8 +78,8 @@ func NewLevelCollection() *LevelCollection {
 				&ShowPortraitTextAreaAction{
 					portraitTextArea: ui.NewPortraitTextArea(
 						s.fonts,
-						"Antony: Welcome to da Ant Game! Where my gurl at? I need to build a bridge to get to her!",
-						"portraits/ant-royalty.png",
+						"Antony: O brave new bugworld! Where art thou, my chitinous queen? I must construct yon bridge, ere my love is lost!",
+						ui.PortraitTypeRoyalAnt,
 					),
 				},
 				&IssueUnitCommandAction{
@@ -81,17 +94,21 @@ func NewLevelCollection() *LevelCollection {
 				&ShowPortraitTextAreaAction{
 					portraitTextArea: ui.NewPortraitTextArea(
 						s.fonts,
-						"Cleopatroach: There's beggary in the love that can be reckon'd. Save me Antony!",
-						"portraits/cockroach-royalty.png",
+						"Cleopatroach:  Love that is count'd is love too small. Rescue me, my six-legged soldier!",
+						ui.PortraitTypeRoyalRoach,
 					),
 				},
 				&PanCameraAction{TargetX: float64(3), TargetY: float64(6), Speed: 300},
 				&ShowPortraitTextAreaAction{
 					portraitTextArea: ui.NewPortraitTextArea(
 						s.fonts,
-						"Antony: Gotchu babe! Put these ants to work!",
-						"portraits/ant-royalty.png",
+						"Antony: By mandible and might, I shall summon my swarm! To toil, my brethren!",
+						ui.PortraitTypeRoyalAnt,
 					),
+				},
+				&IssueUnitCommandAction{
+					unitID:     cleopatroach,
+					targetTile: &image.Point{X: 28, Y: 10},
 				},
 			}
 
@@ -152,27 +169,92 @@ func NewLevelCollection() *LevelCollection {
 					TargetPosition: &image.Point{X: 3525, Y: 1200},
 					MaxDuration:    180,
 				},
-				&DrawTemporarySpriteAction{
-					spr:            ui.NewHeartSprite(uuid.New()),
-					TargetPosition: &image.Point{X: 3525, Y: 1200},
-					MaxDuration:    180,
-				},
 				&ShowPortraitTextAreaAction{
 					portraitTextArea: ui.NewPortraitTextArea(
 						s.fonts,
-						"Antony: Saved u gurl",
-						"portraits/ant-royalty.png",
+						"Antony: Fear not, thorax of my heart! I have crushed the peril beneath my heel",
+						ui.PortraitTypeRoyalAnt,
 					),
 				},
 				&ShowPortraitTextAreaAction{
 					portraitTextArea: ui.NewPortraitTextArea(
 						s.fonts,
-						"Cleopatroach: **smooch noises**",
-						"portraits/cockroach-royalty.png",
+						"Cleopatroach: Come hither, sweet thorax. Let us entwine our antennae in triumph.",
+						ui.PortraitTypeRoyalRoach,
 					),
 				},
 				&FadeCameraAction{Mode: "out", Speed: 1},
 			}
+		},
+	}
+
+	coll.Levels[1] = LevelData{
+		LevelNumber:    1,
+		TileMapPath:    "assets/tilemap/map2.tmx",
+		LevelIntroText: "Test123 jeff add text later",
+		SetupFunc: func(s *PlayScene) (string, string) {
+			// hives
+			h := sim.NewHive()
+			h.SetTilePosition(6, 8)
+			s.sim.AddBuilding(h)
+
+			rh := sim.NewRoachHive()
+			rh.SetTilePosition(40, 12)
+			s.sim.AddBuilding(rh)
+
+			// royalty
+			queen := sim.NewRoyalRoach()
+			queen.SetTilePosition(33, 9)
+			s.sim.AddUnit(queen)
+
+			king := sim.NewRoyalAnt()
+			king.SetTilePosition(10, 10)
+			s.sim.AddUnit(king)
+
+			// regular guys
+			u := sim.NewDefaultAnt()
+			u.SetTilePosition(4, 7)
+			s.sim.AddUnit(u)
+			// starting them mining here doesnt work!
+			//s.sim.IssueAction(u.ID.String(), &image.Point{X: 70, Y: 235}) // start him mining
+
+			s.Ui.Camera.SetZoom(ui.MinZoom)
+			s.Ui.Camera.SetPosition(10, 20)
+
+			s.inCutscene = true
+			s.Ui.DrawEnabled = false
+			s.drag.Enabled = false
+			s.constructionMouse.Enabled = false
+
+			s.CompletionCondition = NewSceneCompletion(queen, king, s.tileMap.MapCompletionObjects[0].Rect)
+			return queen.ID.String(), king.ID.String()
+		},
+		SetupInitialCutscene: func(s *PlayScene, cleopatroach string, antony string) {
+			s.cutsceneActions = []CutsceneAction{
+				&FadeCameraAction{Mode: "in", Speed: 2},
+				&ShowPortraitTextAreaAction{
+					portraitTextArea: ui.NewPortraitTextArea(
+						s.fonts,
+						"Antony: Yon queen doth beckon from beyond the ravine. But soft! I lack timber for my grand mandibleway…",
+						ui.PortraitTypeRoyalAnt,
+					),
+				},
+				&PanCameraAction{TargetX: float64(33), TargetY: float64(9), Speed: 300},
+				&IssueUnitCommandAction{
+					unitID:     cleopatroach,
+					targetTile: &image.Point{X: 31, Y: 9},
+				},
+				&ShowPortraitTextAreaAction{
+					portraitTextArea: ui.NewPortraitTextArea(
+						s.fonts,
+						"Cleopatroach: The planks lie here, my love! But in return, thou must aid me in raising our mighty brood!",
+						ui.PortraitTypeRoyalRoach,
+					),
+				},
+			}
+		},
+		SetupCompletionCutscene: func(s *PlayScene, cleopatroach string, antony string) {
+
 		},
 	}
 	return coll

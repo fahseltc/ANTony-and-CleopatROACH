@@ -2,6 +2,7 @@ package scene
 
 import (
 	"fmt"
+	"gamejam/config"
 	"gamejam/eventing"
 	"gamejam/fonts"
 	"gamejam/sim"
@@ -19,6 +20,7 @@ import (
 var PlayerFaction = 0
 
 type PlayScene struct {
+	Config *config.T // embedded from
 	BaseScene
 	LevelData *LevelData
 
@@ -47,20 +49,19 @@ type PlayScene struct {
 	tutorialDialogs []ui.Tutorial
 	inTutorial      bool
 
-	// CompletionCondition *SceneCompletion
 	CompletionCondition *SceneCompletion
 	SceneCompleted      bool
 }
 
-func NewPlayScene(fonts *fonts.All, levelNum int) *PlayScene {
-	collection := NewLevelCollection()
-	thisLevel := collection.Levels[levelNum] // load the level data
+func NewPlayScene(fonts *fonts.All, levelData LevelData) *PlayScene {
+	config, _ := config.New()
 
-	tileMap := tilemap.NewTilemap(thisLevel.TileMapPath)
+	tileMap := tilemap.NewTilemap(levelData.TileMapPath)
 	simulation := sim.New(60, tileMap)
 	constructionMouse := &ui.ConstructionMouse{}
 	scene := &PlayScene{
-		LevelData:         &thisLevel,
+		Config:            config,
+		LevelData:         &levelData,
 		fonts:             fonts,
 		sim:               simulation,
 		Ui:                ui.NewUi(fonts, tileMap, simulation),
@@ -75,8 +76,8 @@ func NewPlayScene(fonts *fonts.All, levelNum int) *PlayScene {
 	scene.eventBus.Subscribe("MakeBridgeButtonClickedEvent", scene.HandleMakeBridgeButtonClickedEvent)
 	scene.eventBus.Subscribe("BuildClickedEvent", scene.HandleBuildClickedEvent)
 
-	scene.QueenID, scene.KingID = thisLevel.SetupFunc(scene)
-	thisLevel.SetupInitialCutscene(scene, scene.QueenID, scene.KingID)
+	scene.QueenID, scene.KingID = levelData.SetupFunc(scene)
+	levelData.SetupInitialCutscene(scene, scene.QueenID, scene.KingID)
 	return scene
 }
 func (s *PlayScene) HandleMakeAntButtonClickedEvent(event eventing.Event) {
@@ -147,20 +148,20 @@ func (s *PlayScene) Update() error {
 	// same for buildings
 	for _, building := range s.sim.GetAllBuildings() {
 		if s.Sprites[building.GetID().String()] == nil {
+			var spr *ui.Sprite
 			switch building.GetType() {
 			case sim.BuildingTypeBridge:
-				spr := ui.NewBridgeSprite(building.GetID())
-				s.Sprites[building.GetID().String()] = spr
-				s.Sprites[building.GetID().String()].SetPosition(building.GetPosition())
+				spr = ui.NewBridgeSprite(building.GetID())
 			case sim.BuildingTypeHive:
-				spr := ui.NewHiveSprite(building.GetID())
-				s.Sprites[building.GetID().String()] = spr
-				s.Sprites[building.GetID().String()].SetPosition(building.GetPosition())
+				spr = ui.NewHiveSprite(building.GetID())
+			case sim.BuildingTypeRoachHive:
+				spr = ui.NewRoachHiveSprite(building.GetID())
 			case sim.BuildingTypeInConstruction:
-				spr := ui.NewInConstructionSprite(building.GetID())
-				s.Sprites[building.GetID().String()] = spr
-				s.Sprites[building.GetID().String()].SetPosition(building.GetPosition())
+				spr = ui.NewInConstructionSprite(building.GetID())
 			}
+			s.Sprites[building.GetID().String()] = spr
+			s.Sprites[building.GetID().String()].SetPosition(building.GetPosition())
+			s.Sprites[building.GetID().String()].ProgressBar.SetProgress(building.GetProgress())
 		} else {
 			s.Sprites[building.GetID().String()].SetPosition(building.GetPosition())
 			s.Sprites[building.GetID().String()].ProgressBar.SetProgress(building.GetProgress())
@@ -177,12 +178,12 @@ func (s *PlayScene) Update() error {
 		dt := 1.0 / 60.0 // or use actual delta time
 		if len(s.cutsceneActions) == 0 {
 			if s.SceneCompleted {
-				s.BaseScene.sm.SwitchTo(NewPlayScene(s.fonts, s.LevelData.LevelNumber+1)) // switch to next level
+				LevelData := NewLevelCollection().Levels[s.LevelData.LevelNumber+1]
+				s.BaseScene.sm.SwitchTo(NewNarratorScene(s.fonts, LevelData)) // switch to next level
 			}
 			s.inCutscene = false
 			s.Ui.DrawEnabled = true
 			s.drag.Enabled = true
-			s.constructionMouse.Enabled = true
 		} else {
 			currentCutScene := s.cutsceneActions[0]
 			if s.currentDialog != nil {
@@ -349,7 +350,10 @@ func (s *PlayScene) Draw(screen *ebiten.Image) {
 	opts.GeoM.Scale(s.Ui.Camera.ViewPortZoom, s.Ui.Camera.ViewPortZoom)
 	opts.GeoM.Translate(float64(s.Ui.Camera.ViewPortX), float64(s.Ui.Camera.ViewPortY))
 	screen.DrawImage(s.Ui.TileMap.StaticBg, opts)
-	//s.DebugDraw(screen)
+
+	if s.Config.DebugDraw {
+		s.DebugDraw(screen)
+	}
 
 	// Then Static Sprites
 	for _, sprite := range s.Sprites {
@@ -413,8 +417,15 @@ func (s *PlayScene) DebugDraw(screen *ebiten.Image) {
 	ebitenutil.DebugPrintAt(screen, fmt.Sprintf("camera:%v,%v", s.Ui.Camera.ViewPortX, s.Ui.Camera.ViewPortY), 1, 1)
 	mx, my := ebiten.CursorPosition()
 	x, y := s.Ui.Camera.ScreenPosToMapPos(mx, my)
+	ebitenutil.DebugPrintAt(screen, fmt.Sprintf("zoom:%v", s.Ui.Camera.ViewPortZoom), 1, 20)
 	ebitenutil.DebugPrintAt(screen, fmt.Sprintf("mouseScreenCoords:%v,%v", mx, my), 1, 40)
 	ebitenutil.DebugPrintAt(screen, fmt.Sprintf("mouseMapCoords:%v,%v", x, y), 1, 60)
-	ebitenutil.DebugPrintAt(screen, fmt.Sprintf("zoom:%v", s.Ui.Camera.ViewPortZoom), 1, 20)
 
+	// print hovered tile coordinates
+	if s.tileMap != nil {
+		tile := s.tileMap.GetTileByPosition(x, y)
+		if tile != nil {
+			ebitenutil.DebugPrintAt(screen, fmt.Sprintf("HoveredTileCoords: %v,%v", tile.Coordinates.X, tile.Coordinates.Y), 1, 80)
+		}
+	}
 }

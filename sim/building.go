@@ -25,6 +25,7 @@ type BuildingType int
 const (
 	BuildingTypeInConstruction BuildingType = iota
 	BuildingTypeHive
+	BuildingTypeRoachHive
 	BuildingTypeBridge
 )
 

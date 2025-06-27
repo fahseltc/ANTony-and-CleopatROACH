@@ -24,7 +24,7 @@ func NewSceneCompletion(first *sim.Unit, second *sim.Unit, area *image.Rectangle
 }
 
 func (sc *SceneCompletion) IsComplete(sim *sim.T) bool {
-	if sc.CompletionArea != nil {
+	if sc != nil && sc.CompletionArea != nil {
 		if sc.CompletionArea.Overlaps(*sc.UnitOne.Rect) && sc.CompletionArea.Overlaps(*sc.UnitTwo.Rect) {
 			sc.log.Warn("Scene completion condition met")
 			return true

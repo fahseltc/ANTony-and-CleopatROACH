@@ -12,7 +12,7 @@ import (
 var NearbyDistance = uint(300)
 var UnitSucroseCost = uint16(50)
 var BuildingWoodCost = uint16(10)
-var BuilderMaxDistance = uint(300)
+var BuilderMaxDistance = uint(340)
 
 type T struct {
 	EventBus *eventing.EventBus
@@ -307,7 +307,12 @@ func (s *T) ConstructBuilding(target *image.Rectangle, builderID string) bool {
 		return false // todo print builder doesnt exist
 	}
 
-	if unit.DistanceTo(target.Min) > BuilderMaxDistance { // todo min should be center!
+	targetCenter := image.Pt(
+		target.Min.X+(target.Dx()/2),
+		target.Min.Y+(target.Dy()/2),
+	)
+
+	if unit.DistanceTo(targetCenter) > BuilderMaxDistance { // todo min should be center!
 		return false
 	} else {
 		// actually build the thing

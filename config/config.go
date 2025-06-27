@@ -9,10 +9,12 @@ import (
 
 // T represents a Config file for the Game
 type T struct {
-	WindowTitle string `json:"windowTitle"`
-	TargetFPS   uint   `json:"targetFPS"`
-	SkipMenu    bool   `json:"skipMenu"`
-	Resolutions struct {
+	WindowTitle   string `json:"windowTitle"`
+	TargetFPS     uint   `json:"targetFPS"`
+	SkipMenu      bool   `json:"skipMenu"`
+	StartingLevel int    `json:"startingLevel"`
+	DebugDraw     bool   `json:"debugDraw"`
+	Resolutions   struct {
 		Internal Resolution `json:"internal"`
 		External Resolution `json:"external"`
 	} `json:"resolution"`

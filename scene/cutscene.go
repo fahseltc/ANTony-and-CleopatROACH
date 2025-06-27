@@ -1,6 +1,7 @@
 package scene
 
 import (
+	"gamejam/sim"
 	"gamejam/ui"
 	"image"
 	"math"
@@ -169,6 +170,47 @@ func (a *DrawTemporarySpriteAction) Update(s *PlayScene, dt float64) bool {
 		a.spr.SetPosition(&image.Point{
 			X: a.TargetPosition.X,
 			Y: a.TargetPosition.Y,
+		})
+		s.Sprites[a.spr.Id.String()] = a.spr
+	}
+	a.CurrentDuration++
+	if a.CurrentDuration >= a.MaxDuration {
+		delete(s.Sprites, a.spr.Id.String())
+		a.CurrentDuration = 0
+		return true
+	}
+
+	return false
+}
+
+type DrawTemporarySpriteBetweenUnitsAction struct {
+	spr             *ui.Sprite
+	FirstUnit       *sim.Unit
+	SecondUnit      *sim.Unit
+	MaxDuration     int
+	CurrentDuration int
+}
+
+func NewDrawTemporarySpriteBetweenUnitsAction(sprite *ui.Sprite, unit1, unit2 *sim.Unit, duration int) *DrawTemporarySpriteBetweenUnitsAction {
+	return &DrawTemporarySpriteBetweenUnitsAction{
+		spr:         sprite,
+		FirstUnit:   unit1,
+		SecondUnit:  unit2,
+		MaxDuration: duration,
+	}
+}
+
+func (a *DrawTemporarySpriteBetweenUnitsAction) Update(s *PlayScene, dt float64) bool {
+	if a.CurrentDuration == 0 {
+		// Calculate the midpoint between the two units
+		pos1 := a.FirstUnit.GetCenteredPosition()
+		pos2 := a.SecondUnit.GetCenteredPosition()
+		midX := (pos1.X + pos2.X) / 2
+		midY := (pos1.Y + pos2.Y) / 2
+
+		a.spr.SetPosition(&image.Point{
+			X: midX + a.spr.Rect.Dx()/2,
+			Y: midY + a.spr.Rect.Dy()/2,
 		})
 		s.Sprites[a.spr.Id.String()] = a.spr
 	}
