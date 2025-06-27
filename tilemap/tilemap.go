@@ -1,6 +1,7 @@
 package tilemap
 
 import (
+	"gamejam/assets"
 	"image"
 	"log"
 
@@ -32,7 +33,9 @@ type MapCompletionObject struct {
 }
 
 func NewTilemap(mapPath string) *Tilemap {
-	tm, err := tiled.LoadFile(mapPath) // this wont work in wasm! need to embed files but it breaks
+	tm, err := tiled.LoadFile(mapPath, tiled.WithFileSystem(assets.Files)) // this wont work in wasm! need to embed files but it breaks
+	//tm, err := tiled.LoadFile(mapPath)                                     // this wont work in wasm! need to embed files but it breaks
+
 	if err != nil {
 		log.Fatalf("unable to load tmx: %v", err.Error())
 	}
@@ -110,7 +113,7 @@ func NewTilemap(mapPath string) *Tilemap {
 }
 
 func generateLayer0Image(tm *tiled.Map) *ebiten.Image {
-	r, err := render.NewRenderer(tm)
+	r, err := render.NewRendererWithFileSystem(tm, assets.Files)
 	if err != nil {
 		log.Fatal("unable to load tmx renderer")
 	}

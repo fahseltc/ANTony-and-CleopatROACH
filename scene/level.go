@@ -27,7 +27,7 @@ func NewLevelCollection() *LevelCollection {
 	}
 	coll.Levels[0] = LevelData{
 		LevelNumber: 0,
-		TileMapPath: "assets/tilemap/map1.tmx",
+		TileMapPath: "tilemap/map1.tmx",
 		LevelIntroText: `In the land of Nilopolis, where the sand meets sugar and the air hums with winged gossip, two empires crawl toward destiny.
 
 		One: the mighty Ant-tonian Legion, proud builders and brave foragers. 
