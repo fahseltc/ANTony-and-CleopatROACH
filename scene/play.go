@@ -49,8 +49,12 @@ type PlayScene struct {
 	tutorialDialogs []Tutorial
 	inTutorial      bool
 
+	// Level completion
 	CompletionCondition *SceneCompletion
 	SceneCompleted      bool
+
+	// Notifications
+	CurrentNotification *ui.Notification
 }
 
 func NewPlayScene(fonts *fonts.All, levelData LevelData) *PlayScene {
@@ -75,10 +79,25 @@ func NewPlayScene(fonts *fonts.All, levelData LevelData) *PlayScene {
 	scene.eventBus.Subscribe("MakeAntButtonClickedEvent", scene.HandleMakeAntButtonClickedEvent)
 	scene.eventBus.Subscribe("MakeBridgeButtonClickedEvent", scene.HandleMakeBridgeButtonClickedEvent)
 	scene.eventBus.Subscribe("BuildClickedEvent", scene.HandleBuildClickedEvent)
+	scene.eventBus.Subscribe("NotEnoughResourcesEvent", scene.NotEnoughResourcesEvent)
 
 	scene.QueenID, scene.KingID = levelData.SetupFunc(scene)
 	levelData.SetupInitialCutscene(scene, scene.QueenID, scene.KingID)
 	return scene
+}
+
+func (s *PlayScene) NotEnoughResourcesEvent(event eventing.Event) {
+	resName := event.Data.(eventing.NotEnoughResourcesEvent).ResourceName
+	target := event.Data.(eventing.NotEnoughResourcesEvent).TargetBeingBuilt
+
+	var str string
+	if target == "Bridge" {
+		str = fmt.Sprintf("Not enough %v to build %v\nOr builder is not close enough!", resName, target)
+	} else {
+		str = fmt.Sprintf("Not enough %v to build %v", resName, target)
+	}
+
+	s.CurrentNotification = ui.NewNotification(&s.fonts.Med, str)
 }
 func (s *PlayScene) HandleMakeAntButtonClickedEvent(event eventing.Event) {
 	if len(s.selectedUnitIDs) == 1 {
@@ -114,7 +133,16 @@ func (s *PlayScene) HandleMakeBridgeButtonClickedEvent(event eventing.Event) {
 func (s *PlayScene) HandleBuildClickedEvent(event eventing.Event) {
 	targetRect := event.Data.(eventing.BuildClickedEvent).TargetRect
 	if len(s.selectedUnitIDs) == 1 {
-		s.sim.ConstructBuilding(targetRect, s.selectedUnitIDs[0])
+		success := s.sim.ConstructBuilding(targetRect, s.selectedUnitIDs[0])
+		if !success {
+			s.eventBus.Publish(eventing.Event{
+				Type: "NotEnoughResourcesEvent",
+				Data: eventing.NotEnoughResourcesEvent{ // todo: add reason why, for example "unit not close enough" etc
+					ResourceName:     "Wood",
+					TargetBeingBuilt: "Bridge",
+				},
+			})
+		}
 	}
 	s.drag.Enabled = true
 	s.constructionMouse.Enabled = false
@@ -172,6 +200,9 @@ func (s *PlayScene) Update() error {
 
 	// Update sim before cutscenes so things happen in the world as they play.
 	s.sim.Update()
+	if s.CurrentNotification != nil {
+		s.CurrentNotification.Update()
+	}
 	// HANDLE CUTSCENES - we might want sim.update though
 
 	if s.inCutscene {
@@ -382,6 +413,9 @@ func (s *PlayScene) Draw(screen *ebiten.Image) {
 		// Check if any tutorial dialog is active
 		s.inTutorial = true
 		s.tutorialDialogs[0].Draw(screen)
+	}
+	if s.CurrentNotification != nil {
+		s.CurrentNotification.Draw(screen)
 	}
 	s.Ui.Camera.DrawFade(screen) // this should always be drawn last
 }

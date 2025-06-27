@@ -78,7 +78,16 @@ func New(tps int, tileMap *tilemap.Tilemap) *T {
 }
 func (s *T) HandleConstructUnitEvent(event eventing.Event) {
 	hiveID := event.Data.(eventing.ConstructUnitEvent).HiveID
-	s.ConstructUnit(hiveID)
+	success := s.ConstructUnit(hiveID)
+	if !success {
+		s.EventBus.Publish(eventing.Event{
+			Type: "NotEnoughResourcesEvent",
+			Data: eventing.NotEnoughResourcesEvent{
+				ResourceName:     "Sucrose",
+				TargetBeingBuilt: "Ant",
+			},
+		})
+	}
 }
 
 func (s *T) Update() {

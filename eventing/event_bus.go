@@ -17,6 +17,11 @@ type Event struct {
 	Data      interface{}
 }
 
+type NotEnoughResourcesEvent struct {
+	ResourceName     string
+	TargetBeingBuilt string
+}
+
 type SceneCompletionEvent struct {
 	RoyalAntID   string
 	RoyalRoachID string

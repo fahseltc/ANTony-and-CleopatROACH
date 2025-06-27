@@ -53,15 +53,17 @@ WHAT REMAINS
 - [x] MAKE IT WORK ON THE WEBSITE (slashes fix in TMX)
 
 - [x] finish level 2 scripting intro + ending scenario (love in flower area)
-- more tutorial
+- [x] more tutorial
+- [x] some UI text about "not enough money to build X"
+- level 2 tutorial?
 - graphical feedback when clicking on things
 
-- some UI text about "not enough money to build X"
 - SFX
-- music
-- bugs carry resources visually
 - Animation system
 - walk animation
+
+- bugs carry resources visually
+- music
 - hotkeys to unit groups
 - hotkeys to saved areas
 - BUG - building site should be made at any distance and only progress when the builder is nearby.
