@@ -12,14 +12,14 @@ var UnitConstructionTime = 120
 type Hive struct {
 	*Building
 	buildQueue      *util.Queue[*Unit]
-	unitContructing bool
+	UnitContructing bool
 }
 
 func NewHive() BuildingInterface {
 	building := NewBuilding(0, 0, TileDimensions*2, TileDimensions*2, 0, BuildingTypeHive, uint(UnitConstructionTime))
 	h := &Hive{
 		Building:        building,
-		unitContructing: false,
+		UnitContructing: false,
 		buildQueue:      util.NewQueue[*Unit](),
 	}
 	return h
@@ -29,7 +29,7 @@ func NewRoachHive() BuildingInterface {
 	building := NewBuilding(0, 0, TileDimensions*2, TileDimensions*2, 0, BuildingTypeRoachHive, uint(UnitConstructionTime))
 	h := &Hive{
 		Building:        building,
-		unitContructing: false,
+		UnitContructing: false,
 		buildQueue:      util.NewQueue[*Unit](),
 	}
 	return h
@@ -37,7 +37,7 @@ func NewRoachHive() BuildingInterface {
 
 func (h *Hive) Update(sim *T) {
 	if !h.buildQueue.IsEmpty() {
-		h.unitContructing = true
+		h.UnitContructing = true
 		h.ProgressCurrent += 1
 		if h.ProgressCurrent >= uint(UnitConstructionTime) {
 			u, err := h.buildQueue.Dequeue()
@@ -47,7 +47,7 @@ func (h *Hive) Update(sim *T) {
 			// make sure position isnt colliding with anything and try again
 			u.SetPosition(h.GetNearbyPosition(sim))
 			sim.AddUnit(u)
-			h.unitContructing = false
+			h.UnitContructing = false
 			h.ProgressCurrent = 0
 		}
 	}

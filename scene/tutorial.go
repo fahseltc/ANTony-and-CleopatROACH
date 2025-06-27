@@ -1,7 +1,6 @@
-package ui
+package scene
 
 import (
-	"gamejam/sim"
 	"gamejam/util"
 	"image"
 
@@ -10,7 +9,7 @@ import (
 )
 
 type Tutorial interface {
-	CheckTrigger(sim *sim.T)
+	CheckTrigger(s *PlayScene)
 	Draw(screen *ebiten.Image)
 	IsComplete() bool
 }
@@ -18,25 +17,25 @@ type Tutorial interface {
 type TutorialStep struct {
 	Image        *ebiten.Image
 	Rect         *image.Rectangle
-	TriggerFunc  func(*sim.T) bool // Function to check if the step should be triggered
-	CompleteFunc func(*sim.T) bool // Function to check if the step is completed
+	TriggerFunc  func(*PlayScene) bool // Function to check if the step should be triggered
+	CompleteFunc func(*PlayScene) bool // Function to check if the step is completed
 	Enabled      bool
 	Completed    bool
 }
 
-func NewTutorialStep(imagePath string, rect *image.Rectangle, triggerFunc func(*sim.T) bool, completeFunc func(*sim.T) bool) *TutorialStep {
+func NewTutorialStep(imagePath string, rect *image.Rectangle, triggerFunc func(*PlayScene) bool, completeFunc func(*PlayScene) bool) *TutorialStep {
 	tutorial := &TutorialStep{
 		Image: util.ScaleImage(util.LoadImage(imagePath), float32(rect.Bounds().Dx()), float32(rect.Bounds().Dy())),
 		Rect:  rect,
 	}
 
 	if triggerFunc == nil {
-		tutorial.TriggerFunc = func(*sim.T) bool { return true }
+		tutorial.TriggerFunc = func(*PlayScene) bool { return true }
 	} else {
 		tutorial.TriggerFunc = triggerFunc
 	}
 	if completeFunc == nil {
-		tutorial.CompleteFunc = func(*sim.T) bool { return inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) }
+		tutorial.CompleteFunc = func(*PlayScene) bool { return inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) }
 	} else {
 		tutorial.CompleteFunc = completeFunc
 	}
@@ -44,12 +43,12 @@ func NewTutorialStep(imagePath string, rect *image.Rectangle, triggerFunc func(*
 	return tutorial
 }
 
-func (ts *TutorialStep) CheckTrigger(sim *sim.T) {
-	if ts.TriggerFunc != nil && ts.TriggerFunc(sim) {
+func (ts *TutorialStep) CheckTrigger(s *PlayScene) {
+	if ts.TriggerFunc != nil && ts.TriggerFunc(s) {
 		ts.Enabled = true
 	}
 	if ts.Enabled && !ts.Completed {
-		ts.Completed = ts.CompleteFunc(sim)
+		ts.Completed = ts.CompleteFunc(s)
 	}
 }
 

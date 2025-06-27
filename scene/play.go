@@ -46,7 +46,7 @@ type PlayScene struct {
 	currentDialog   *ui.PortraitTextArea
 
 	// Tutorial stuff
-	tutorialDialogs []ui.Tutorial
+	tutorialDialogs []Tutorial
 	inTutorial      bool
 
 	CompletionCondition *SceneCompletion
@@ -200,7 +200,7 @@ func (s *PlayScene) Update() error {
 	if len(s.tutorialDialogs) > 0 && !s.inCutscene {
 		// Check if any tutorial dialog is active
 		s.inTutorial = true
-		s.tutorialDialogs[0].CheckTrigger(s.sim) // Check the first tutorial dialog trigger
+		s.tutorialDialogs[0].CheckTrigger(s) // Check the first tutorial dialog trigger
 		if s.tutorialDialogs[0].IsComplete() {
 			s.tutorialDialogs = s.tutorialDialogs[1:] // Remove the completed dialog
 			if len(s.tutorialDialogs) == 0 {

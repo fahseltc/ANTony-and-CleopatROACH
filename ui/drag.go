@@ -44,6 +44,9 @@ func (d *Drag) Update(sprites map[string]*Sprite, camera *Camera, HUD *HUD) {
 	}
 	// Detect if the mouse is being held down
 	if ebiten.IsMouseButtonPressed(ebiten.MouseButtonLeft) {
+		if d.firstClickPoint.Eq(image.Pt(0, 0)) {
+			return
+		}
 		d.secondClickPoint = image.Point{X: mx, Y: my}
 		minX := d.firstClickPoint.X
 		maxX := mx

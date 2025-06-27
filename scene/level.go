@@ -42,11 +42,11 @@ func NewLevelCollection() *LevelCollection {
 		Arise, player! Command thy swarm!`,
 		SetupFunc: func(scene *PlayScene) (string, string) {
 			u := sim.NewDefaultAnt()
-			u.SetTilePosition(10, 12)
+			u.SetTilePosition(6, 12)
 			scene.sim.AddUnit(u)
 
 			u2 := sim.NewDefaultAnt()
-			u2.SetTilePosition(7, 12)
+			u2.SetTilePosition(6, 5)
 			scene.sim.AddUnit(u2)
 
 			king := sim.NewRoyalAnt()
@@ -98,11 +98,11 @@ func NewLevelCollection() *LevelCollection {
 						ui.PortraitTypeRoyalRoach,
 					),
 				},
-				&PanCameraAction{TargetX: float64(3), TargetY: float64(6), Speed: 300},
+				&PanCameraAction{TargetX: float64(3), TargetY: float64(2), Speed: 300},
 				&ShowPortraitTextAreaAction{
 					portraitTextArea: ui.NewPortraitTextArea(
 						s.fonts,
-						"Antony: By mandible and might, I shall summon my swarm! To toil, my brethren!",
+						"Antony: By mandible and might, I shall summon my swarm! To toil, my brethren! Reap the crystal'd sweet!",
 						ui.PortraitTypeRoyalAnt,
 					),
 				},
@@ -112,19 +112,114 @@ func NewLevelCollection() *LevelCollection {
 				},
 			}
 
-			s.tutorialDialogs = []ui.Tutorial{
-				ui.NewTutorialStep(
+			s.tutorialDialogs = []Tutorial{
+				NewTutorialStep( // click and drag units
 					"tutorials/tutorial-1.png",
 					&image.Rectangle{Min: image.Point{X: 412, Y: 341}, Max: image.Point{X: 800, Y: 600}},
-					nil, nil,
+					nil, // trigger always
+					func(ps *PlayScene) bool { // only complete once a unit is selected
+						if len(ps.selectedUnitIDs) > 0 {
+							return true
+						}
+						return false
+					},
 				),
-				ui.NewTutorialStep(
+				NewTutorialStep( // move camera
 					"tutorials/tutorial-2.png",
 					&image.Rectangle{Min: image.Point{X: 412, Y: 341}, Max: image.Point{X: 800, Y: 600}},
-					nil, nil,
+					nil,
+					func(ps *PlayScene) bool { // only complete once a unit is selected
+						if ps.Ui.Camera.ViewPortX != 0 && ps.Ui.Camera.ViewPortY != 0 { // TODO fragile!!
+							return true
+						}
+						return false
+					},
+				),
+				NewTutorialStep( // collected some sucrose + select hive
+					"tutorials/tutorial-3.png",
+					&image.Rectangle{Min: image.Point{X: 412, Y: 341}, Max: image.Point{X: 800, Y: 600}},
+					func(ps *PlayScene) bool {
+						if ps.sim.GetSucroseAmount() > 10 {
+							return true
+						}
+						return false
+					},
+					func(ps *PlayScene) bool {
+						for _, id := range ps.selectedUnitIDs {
+							if ps.sim.DetermineUnitOrHiveById(id) == "hive" {
+								return true
+							}
+						}
+						return false
+					},
+				),
+				NewTutorialStep( // hive selected + build unit
+					"tutorials/tutorial-4.png",
+					&image.Rectangle{Min: image.Point{X: 0, Y: 0}, Max: image.Point{X: 388, Y: 259}},
+					nil,
+					func(ps *PlayScene) bool {
+						for _, bld := range ps.sim.GetAllBuildings() {
+							if bld.GetProgress() != 0 {
+								return true
+							}
+						}
+						return false
+					},
+				),
+				NewTutorialStep( // wood collected + select single unit
+					"tutorials/tutorial-5.png",
+					&image.Rectangle{Min: image.Point{X: 0, Y: 0}, Max: image.Point{X: 388, Y: 259}},
+					func(ps *PlayScene) bool {
+						if ps.sim.GetWoodAmount() > 10 {
+							return true
+						}
+						return false
+					},
+					func(ps *PlayScene) bool {
+						if len(ps.selectedUnitIDs) == 1 {
+							if ps.sim.DetermineUnitOrHiveById(ps.selectedUnitIDs[0]) == "unit" {
+								return true
+							}
+						}
+						return false
+					},
+				),
+				NewTutorialStep( // unit selected + start building bridge
+					"tutorials/tutorial-6.png",
+					&image.Rectangle{Min: image.Point{X: 0, Y: 0}, Max: image.Point{X: 388, Y: 259}},
+					nil,
+					func(ps *PlayScene) bool {
+						return ps.constructionMouse.Enabled
+					},
+				),
+				NewTutorialStep( // info about building bridges
+					"tutorials/tutorial-7.png",
+					&image.Rectangle{Min: image.Point{X: 0, Y: 341}, Max: image.Point{X: 388, Y: 600}},
+					nil,
+					nil,
+				),
+				NewTutorialStep( // Build a bridge
+					"tutorials/tutorial-8.png",
+					&image.Rectangle{Min: image.Point{X: 0, Y: 341}, Max: image.Point{X: 388, Y: 600}},
+					nil,
+					func(ps *PlayScene) bool {
+						for _, bld := range ps.sim.GetAllBuildings() {
+							if bld.GetType() == sim.BuildingTypeInConstruction {
+								return true
+							}
+						}
+						return false
+					},
+				),
+				NewTutorialStep( // finish the bridge
+					"tutorials/tutorial-9.png",
+					&image.Rectangle{Min: image.Point{X: 0, Y: 341}, Max: image.Point{X: 388, Y: 600}},
+					nil,
+					nil,
 				),
 			}
 		},
+
 		SetupCompletionCutscene: func(s *PlayScene, cleopatroach string, antony string) {
 			s.inCutscene = true
 			s.inCutscene = true

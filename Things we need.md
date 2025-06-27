@@ -66,7 +66,7 @@ WHAT REMAINS
 - hotkeys to saved areas
 - BUG - building site should be made at any distance and only progress when the builder is nearby.
 - BUG - hives sometimes build units on top of other units
-- BUG - units are selected after initial cutscene - WHY?
+- [x] BUG - units are selected after initial cutscene - WHY?
 - better pathfinding
 - text content from chez
 - 'selected units' UI element
