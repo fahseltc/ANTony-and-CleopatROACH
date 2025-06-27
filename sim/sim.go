@@ -11,7 +11,7 @@ import (
 
 var NearbyDistance = uint(300)
 var UnitSucroseCost = uint16(50)
-var BuildingWoodCost = uint16(10)
+var BuildingWoodCost = uint16(50)
 var BuilderMaxDistance = uint(340)
 
 type T struct {

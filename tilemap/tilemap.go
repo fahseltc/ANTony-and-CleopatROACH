@@ -80,20 +80,6 @@ func NewTilemap(mapPath string) *Tilemap {
 		}
 	}
 
-	// for _, object := range tm.ObjectGroups[0].Objects {
-	// 	mo := &MapObject{
-	// 		Rect: &image.Rectangle{
-	// 			Min: image.Point{X: int(object.X), Y: int(object.Y)},
-	// 			Max: image.Point{X: int(object.X + object.Width), Y: int(object.Y + object.Height)},
-	// 		},
-	// 	}
-
-	// 	if len(object.Properties) > 0 {
-	// 		mo.IsBuildable = object.Properties.GetBool("buildable")
-	// 	}
-	// 	mapObjects = append(mapObjects, mo)
-	// }
-
 	tmap := &Tilemap{
 		tileMap:              tm,
 		StaticBg:             staticBg,

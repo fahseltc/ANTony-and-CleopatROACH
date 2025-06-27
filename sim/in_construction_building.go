@@ -1,6 +1,6 @@
 package sim
 
-var BridgeBuildTime = 100
+var BridgeBuildTime = 160
 
 type InConstructionBuilding struct {
 	*Building

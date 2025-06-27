@@ -189,9 +189,15 @@ func NewLevelCollection() *LevelCollection {
 	}
 
 	coll.Levels[1] = LevelData{
-		LevelNumber:    1,
-		TileMapPath:    "assets/tilemap/map2.tmx",
-		LevelIntroText: "Test123 jeff add text later",
+		LevelNumber: 1,
+		TileMapPath: "tilemap/map2.tmx",
+		LevelIntroText: `The Senate-mound murmurs with unrest -
+	Some say Ant-tony hath bent his thorax too far,
+	Given up tunnels and treaties for the shimmer of a roach's wing.
+
+	But hark! The queen doth summon him from beyond the ravine again.
+	A bridge must rise! Broods must hatch!
+	And amid wood chips and whispers, history must crawl forward.`,
 		SetupFunc: func(s *PlayScene) (string, string) {
 			// hives
 			h := sim.NewHive()
@@ -219,7 +225,8 @@ func NewLevelCollection() *LevelCollection {
 			//s.sim.IssueAction(u.ID.String(), &image.Point{X: 70, Y: 235}) // start him mining
 
 			s.Ui.Camera.SetZoom(ui.MinZoom)
-			s.Ui.Camera.SetPosition(10, 20)
+			s.Ui.Camera.SetPosition(0, 105)
+			s.Ui.Camera.FadeAlpha = 255
 
 			s.inCutscene = true
 			s.Ui.DrawEnabled = false
@@ -232,14 +239,16 @@ func NewLevelCollection() *LevelCollection {
 		SetupInitialCutscene: func(s *PlayScene, cleopatroach string, antony string) {
 			s.cutsceneActions = []CutsceneAction{
 				&FadeCameraAction{Mode: "in", Speed: 2},
+				// &PanCameraAction{TargetX: float64(2), TargetY: float64(4), Speed: 300},
+
 				&ShowPortraitTextAreaAction{
 					portraitTextArea: ui.NewPortraitTextArea(
 						s.fonts,
-						"Antony: Yon queen doth beckon from beyond the ravine. But soft! I lack timber for my grand mandibleway…",
+						"Antony: Yon queen doth beckon from beyond the ravine. But soft! I lack timber for my grand mandibleway...",
 						ui.PortraitTypeRoyalAnt,
 					),
 				},
-				&PanCameraAction{TargetX: float64(33), TargetY: float64(9), Speed: 300},
+				&PanCameraAction{TargetX: float64(12), TargetY: float64(4), Speed: 400},
 				&IssueUnitCommandAction{
 					unitID:     cleopatroach,
 					targetTile: &image.Point{X: 31, Y: 9},
@@ -251,11 +260,171 @@ func NewLevelCollection() *LevelCollection {
 						ui.PortraitTypeRoyalRoach,
 					),
 				},
+				&PanCameraAction{TargetX: float64(4), TargetY: float64(4), Speed: 500},
+				&IssueUnitCommandAction{
+					unitID:     antony,
+					targetTile: &image.Point{X: 15, Y: 12},
+				},
+				&ShowPortraitTextAreaAction{
+					portraitTextArea: ui.NewPortraitTextArea(
+						s.fonts,
+						"Antony: Come, Cleopatroach, my thorax burns for thee - Let us entwine where petals crown the dirt, ",
+						ui.PortraitTypeRoyalAnt,
+					),
+				},
+				&ShowPortraitTextAreaAction{
+					portraitTextArea: ui.NewPortraitTextArea(
+						s.fonts,
+						"Antony: In yonder ring where daisies dare to bloom. ",
+						ui.PortraitTypeRoyalAnt,
+					),
+				},
+				&ShowPortraitTextAreaAction{
+					portraitTextArea: ui.NewPortraitTextArea(
+						s.fonts,
+						"Antony: There shall we clasp antennae, love, and fate, And make a kingdom of that perfumed ground.",
+						ui.PortraitTypeRoyalAnt,
+					),
+				},
+				&IssueUnitCommandAction{
+					unitID:     antony,
+					targetTile: &image.Point{X: 9, Y: 9},
+				},
+				&PanCameraAction{TargetX: float64(1), TargetY: float64(1), Speed: 300},
 			}
 		},
 		SetupCompletionCutscene: func(s *PlayScene, cleopatroach string, antony string) {
+			s.inCutscene = true
+			s.inCutscene = true
+			s.Ui.DrawEnabled = false
+			s.drag.Enabled = false
 
+			s.selectedUnitIDs = []string{} // clear selected unit IDs
+
+			s.cutsceneActions = []CutsceneAction{
+				&IssueUnitCommandAction{
+					unitID:     cleopatroach,
+					targetTile: &image.Point{X: 18, Y: 15},
+				},
+				&IssueUnitCommandAction{
+					unitID:     antony,
+					targetTile: &image.Point{X: 14, Y: 11},
+				},
+				&WaitAction{
+					Duration: 1.0, // wait for 1 second
+				},
+				&IssueUnitCommandAction{
+					unitID:     cleopatroach,
+					targetTile: &image.Point{X: 17, Y: 14},
+				},
+				&IssueUnitCommandAction{
+					unitID:     antony,
+					targetTile: &image.Point{X: 15, Y: 12},
+				},
+				&WaitAction{
+					Duration: 0.5, // wait for 1 second
+				},
+				&PanCameraAction{TargetX: float64(4), TargetY: float64(4), Speed: 500},
+				&ZoomCameraAction{
+					TargetZoom: 0.8,
+					Speed:      1,
+					FocusX:     17 * 128,
+					FocusY:     15 * 128,
+				},
+				&DrawTemporarySpriteAction{
+					spr:            ui.NewHeartSprite(uuid.New()),
+					TargetPosition: &image.Point{X: 2104, Y: 1724},
+					MaxDuration:    180,
+				},
+				&ShowPortraitTextAreaAction{
+					portraitTextArea: ui.NewPortraitTextArea(
+						s.fonts,
+						"Antony: Sweet Cleopatroach, beneath these perfumed petals we meet, Yet even in this bloom,",
+						ui.PortraitTypeRoyalAnt,
+					),
+				},
+				&ShowPortraitTextAreaAction{
+					portraitTextArea: ui.NewPortraitTextArea(
+						s.fonts,
+						"Antony: the thorn of Rome doth prick my side. Octavian's shadow crawls o'er all our kingdoms vast,",
+						ui.PortraitTypeRoyalAnt,
+					),
+				},
+				&ShowPortraitTextAreaAction{
+					portraitTextArea: ui.NewPortraitTextArea(
+						s.fonts,
+						"Antony: His claws poised to snatch the crown from humble thorax and wing alike",
+						ui.PortraitTypeRoyalAnt,
+					),
+				},
+				&ShowPortraitTextAreaAction{
+					portraitTextArea: ui.NewPortraitTextArea(
+						s.fonts,
+						"Cleopatroach: Antony, my lord, the Emperor Bugustus's gaze is cold and cruel,",
+						ui.PortraitTypeRoyalRoach,
+					),
+				},
+				&ShowPortraitTextAreaAction{
+					portraitTextArea: ui.NewPortraitTextArea(
+						s.fonts,
+						"Cleopatroach: His legions swarm the sands, his whispers poison the air.",
+						ui.PortraitTypeRoyalRoach,
+					),
+				},
+				&ShowPortraitTextAreaAction{
+					portraitTextArea: ui.NewPortraitTextArea(
+						s.fonts,
+						"Cleopatroach: Let us bind our broods, that none may sunder this fragile alliance.",
+						ui.PortraitTypeRoyalRoach,
+					),
+				},
+				&ShowPortraitTextAreaAction{
+					portraitTextArea: ui.NewPortraitTextArea(
+						s.fonts,
+						"Cleopatroach: Then let the courts of Bugustus tremble and the senate-mounds whisper,",
+						ui.PortraitTypeRoyalRoach,
+					),
+				},
+				&ShowPortraitTextAreaAction{
+					portraitTextArea: ui.NewPortraitTextArea(
+						s.fonts,
+						"Cleopatroach: For love, like the smallest insect, can move mountains and topple thrones.",
+						ui.PortraitTypeRoyalRoach,
+					),
+				},
+				&FadeCameraAction{Mode: "out", Speed: 1},
+			}
 		},
+	}
+	coll.Levels[2] = LevelData{
+		LevelNumber: 2,
+		TileMapPath: "tilemap/map3.tmx",
+		LevelIntroText: `Thanks for playing the demo of ANTony & CleopatROACH! It was created for the Ebitengine Game Jam 2025, and is a work in progress.
+		
+		I wanted to add much more - combat, more levels, more story, more shakespeare puns (Enobarkbug!) and more features - but ran out of time in the two weeks alotted.
+		
+		I appreciate you playing this demo, and hope you enjoyed it!
+		
+		CREDITS:
+		
+		PROGRAMMING & EVERYTHING ELSE:
+		Charles Fahselt
+		
+		GOLANG CONSULTANT:
+		Medge
+
+		SHAKESPEARE CONSULTANT:
+		Chez Oxendine
+
+		ART:
+		ChatGPT (and I did a little bit myself)
+		`,
+		SetupFunc: func(s *PlayScene) (string, string) {
+			s.Ui.Camera.SetZoom(ui.MinZoom)
+			return "", ""
+		},
+		SetupInitialCutscene:    func(s *PlayScene, cleopatroach string, antony string) {},
+		SetupCompletionCutscene: func(s *PlayScene, cleopatroach string, antony string) {},
 	}
 	return coll
 }
