@@ -57,12 +57,10 @@ WHAT REMAINS
 - [x] some UI text about "not enough money to build X"
 - level 2 tutorial?
 - graphical feedback when clicking on things
-
 - SFX
-- Animation system
-- walk animation
-
-- bugs carry resources visually
+- [x] Animation system
+- [x] walk animation
+- [x] bugs carry resources visually
 - music
 - hotkeys to unit groups
 - hotkeys to saved areas
@@ -70,7 +68,7 @@ WHAT REMAINS
 - BUG - hives sometimes build units on top of other units
 - [x] BUG - units are selected after initial cutscene - WHY?
 - better pathfinding
-- text content from chez
+
 - 'selected units' UI element
 - tooltips on buttons to show costs
 - Patrol functionality

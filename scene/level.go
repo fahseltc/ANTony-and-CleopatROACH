@@ -194,13 +194,13 @@ func NewLevelCollection() *LevelCollection {
 				),
 				NewTutorialStep( // info about building bridges
 					"tutorials/tutorial-7.png",
-					&image.Rectangle{Min: image.Point{X: 0, Y: 341}, Max: image.Point{X: 388, Y: 600}},
+					&image.Rectangle{Min: image.Point{X: 0, Y: 0}, Max: image.Point{X: 388, Y: 259}},
 					nil,
 					nil,
 				),
 				NewTutorialStep( // Build a bridge
 					"tutorials/tutorial-8.png",
-					&image.Rectangle{Min: image.Point{X: 0, Y: 341}, Max: image.Point{X: 388, Y: 600}},
+					&image.Rectangle{Min: image.Point{X: 0, Y: 0}, Max: image.Point{X: 388, Y: 259}},
 					nil,
 					func(ps *PlayScene) bool {
 						for _, bld := range ps.sim.GetAllBuildings() {

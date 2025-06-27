@@ -171,6 +171,8 @@ func (s *PlayScene) Update() error {
 			// else update sprites to match their sim positions
 			s.Sprites[unit.ID.String()].SetPosition(unit.Position)
 			s.Sprites[unit.ID.String()].SetAngle(unit.MovingAngle)
+			s.Sprites[unit.ID.String()].CarryingSucrose = (unit.Stats.ResourceTypeCarried == "sucrose" && unit.Stats.ResourceCarried > 0)
+			s.Sprites[unit.ID.String()].CarryingWood = (unit.Stats.ResourceTypeCarried == "wood" && unit.Stats.ResourceCarried > 0)
 		}
 	}
 	// same for buildings
