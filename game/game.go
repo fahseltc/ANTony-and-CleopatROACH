@@ -32,8 +32,8 @@ func New(cfg *config.T) *Game {
 		scene := scene.NewNarratorScene(fonts, levelData[cfg.StartingLevel])
 		manager = stagehand.NewSceneManager(scene, state)
 	} else {
-		scene := scene.NewNarratorScene(fonts, levelData[0])
-		manager = stagehand.NewSceneManager(scene, state)
+		menu := scene.NewMenuScene(fonts)
+		manager = stagehand.NewSceneManager(menu, state)
 	}
 
 	return &Game{
