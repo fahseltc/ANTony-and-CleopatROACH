@@ -42,9 +42,9 @@ func NewButton(font text.Face, opts ...BtnOptFunc) *Button {
 func defaultBtnOpts(font text.Face) Button {
 	defaultWidth := float32(250.0)
 	defaultHeight := float32(100.0)
-	defaultImg := util.LoadImage("ui/btn/yellow-btn.png")
+	defaultImg := util.LoadImage("ui/btn/menu-btn.png")
 	defaultImg = util.ScaleImage(defaultImg, defaultWidth, defaultHeight)
-	pressed := util.LoadImage("ui/btn/yellow-btn.png") // todo pressed
+	pressed := util.LoadImage("ui/btn/menu-btn-pressed.png") // todo pressed
 	pressed = util.ScaleImage(pressed, defaultWidth, defaultHeight)
 	return Button{
 		rect: image.Rectangle{
@@ -72,9 +72,9 @@ func WithText(txt string) BtnOptFunc {
 func WithRect(rect image.Rectangle) BtnOptFunc {
 	return func(btn *Button) {
 		btn.rect = rect
-		defaultImg := util.LoadImage("ui/btn/yellow-btn.png")
+		defaultImg := util.LoadImage("ui/btn/menu-btn.png")
 		defaultImg = util.ScaleImage(defaultImg, float32(rect.Dx()), float32(rect.Dy()))
-		pressed := util.LoadImage("ui/btn/yellow-btn.png")
+		pressed := util.LoadImage("ui/btn/menu-btn-pressed.png")
 		pressed = util.ScaleImage(pressed, float32(rect.Bounds().Dx()), float32(rect.Bounds().Dy()))
 
 		btn.currentImg = defaultImg
@@ -128,7 +128,12 @@ func (btn *Button) Draw(screen *ebiten.Image) {
 	if btn.text != "" {
 		// draw text centered
 		centerX, centerY := btn.GetCenter()
-		util.DrawCenteredText(screen, btn.font, btn.text, centerX, centerY, color.RGBA{R: 0, G: 0, B: 0, A: 255})
+		if btn.currentImg == btn.pressedImg {
+			util.DrawCenteredText(screen, btn.font, btn.text, centerX, centerY+4, color.RGBA{R: 0, G: 0, B: 0, A: 255})
+		} else {
+			util.DrawCenteredText(screen, btn.font, btn.text, centerX, centerY, color.RGBA{R: 0, G: 0, B: 0, A: 255})
+		}
+
 	}
 	// ebitenutil.DrawRect(screen, float64(btn.rect.Min.X), float64(btn.rect.Min.Y), float64(btn.rect.Dx()), float64(btn.rect.Dy()), color.RGBA{0, 255, 0, 255})
 }

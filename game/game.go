@@ -30,6 +30,12 @@ func New(cfg *config.T, sound *audio.SoundManager) *Game {
 	fonts := fonts.Load(fontPath)
 	levelData := scene.NewLevelCollection().Levels
 	var manager *stagehand.SceneManager[scene.GameState]
+
+	if cfg.MuteAudio {
+		sound.GlobalMSXVolume = 0.0
+		sound.GlobalSFXVolume = 0.0
+	}
+
 	if cfg.SkipMenu {
 		scene := scene.NewNarratorScene(fonts, sound, levelData[cfg.StartingLevel])
 		manager = stagehand.NewSceneManager(scene, state)

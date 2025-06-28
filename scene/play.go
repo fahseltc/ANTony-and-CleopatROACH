@@ -11,6 +11,7 @@ import (
 	"gamejam/ui"
 	"image"
 	"image/color"
+	"math"
 	"slices"
 
 	"github.com/hajimehoshi/ebiten/v2"
@@ -58,6 +59,9 @@ type PlayScene struct {
 
 	// Notifications
 	CurrentNotification *ui.Notification
+
+	ActionIssuedLocation   *image.Point
+	actionIssuedFrameTimer uint
 
 	Pause *ui.Pause
 }
@@ -114,6 +118,7 @@ func (s *PlayScene) setupSFX() {
 	//s.sound.GlobalVolume = 0.5
 	//s.eventBus.Subscribe("PlayWalkSFX", s.sound.PlayWalkSFX)
 	s.eventBus.Subscribe("PlayIssueActionSFX", s.sound.PlayIssueActionSFX)
+	s.eventBus.Subscribe("PlaySelectHiveSFX", s.sound.PlaySelectHiveSFX)
 }
 func (s *PlayScene) HandleMakeAntButtonClickedEvent(event eventing.Event) {
 	if len(s.selectedUnitIDs) == 1 {
@@ -320,7 +325,7 @@ func (s *PlayScene) Update() error {
 
 				if s.Ui.HUD.RightSideState != ui.HiveSelectedState {
 					s.eventBus.Publish(eventing.Event{
-						Type: "PlayIssueActionSFX",
+						Type: "PlaySelectHiveSFX",
 					})
 					s.Ui.HUD.RightSideState = ui.HiveSelectedState
 					s.constructionMouse.Enabled = false
@@ -342,7 +347,8 @@ func (s *PlayScene) Update() error {
 					mx, my := ebiten.CursorPosition()
 					for _, unitId := range s.selectedUnitIDs {
 						mapX, mapY := s.Ui.Camera.ScreenPosToMapPos(mx, my)
-						s.sim.IssueAction(unitId, &image.Point{X: mapX, Y: mapY})
+						s.ActionIssuedLocation = &image.Point{X: mapX, Y: mapY}
+						s.sim.IssueAction(unitId, s.ActionIssuedLocation)
 						s.eventBus.Publish(eventing.Event{
 							Type: "PlayIssueActionSFX",
 						})
@@ -426,6 +432,9 @@ func (s *PlayScene) Draw(screen *ebiten.Image) {
 			sprite.Draw(screen, s.Ui.Camera)
 		}
 	}
+	// draw expanding circle to indicate action issued at location
+	s.drawExpandingActionIssuedCircle(screen)
+
 	s.Ui.Draw(screen)
 
 	s.drag.Draw(screen)
@@ -450,6 +459,27 @@ func (s *PlayScene) Draw(screen *ebiten.Image) {
 	if !s.Pause.Hidden { // pause should always come last
 		s.Pause.Draw(screen)
 		return
+	}
+}
+
+func (s *PlayScene) drawExpandingActionIssuedCircle(screen *ebiten.Image) {
+	if s.ActionIssuedLocation != nil && s.actionIssuedFrameTimer < 20 {
+		mx, my := s.Ui.Camera.MapPosToScreenPos(s.ActionIssuedLocation.X, s.ActionIssuedLocation.Y)
+		radius := 2 + int(float64(s.actionIssuedFrameTimer)*1.5)
+		// Draw a simple circle using Set (not efficient, but fine for debug/notification)
+		for angle := 0; angle < 360; angle++ {
+			rad := float64(angle) * (3.14159265 / 180)
+			x := mx + int(float64(radius)*math.Cos(rad))
+			y := my + int(float64(radius)*math.Sin(rad))
+			if x >= 0 && y >= 0 && x < screen.Bounds().Dx() && y < screen.Bounds().Dy() {
+				screen.Set(x, y, color.RGBA{127, 255, 0, 255})
+			}
+		}
+		s.actionIssuedFrameTimer++
+		if s.actionIssuedFrameTimer >= 20 {
+			s.ActionIssuedLocation = nil
+			s.actionIssuedFrameTimer = 0
+		}
 	}
 }
 

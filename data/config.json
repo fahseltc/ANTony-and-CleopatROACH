@@ -1,6 +1,7 @@
 {
     "windowTitle": "ANTony & CleopatROACH",
     "targetFPS": 60,
+    "muteAudio": false,
     "debugDraw": false,
     "skipMenu": false,
     "startingLevel": 0,

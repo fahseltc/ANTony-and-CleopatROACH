@@ -131,12 +131,11 @@ func (sm *SoundManager) PlayRandom(prefix string, count int) {
 	sm.Play(fmt.Sprintf("%s_%d", prefix, n))
 }
 
-func (sm *SoundManager) PlayWalkSFX(event eventing.Event) {
-	sm.Play("walk")
-}
-
 func (sm *SoundManager) PlayIssueActionSFX(event eventing.Event) {
 	sm.PlayRandom("sfx_command", 5) //format is 'sfx_command1'
+}
+func (sm *SoundManager) PlaySelectHiveSFX(event eventing.Event) {
+	sm.PlayRandom("sfx_hive", 4)
 }
 
 func (sm *SoundManager) Stop(name string) {

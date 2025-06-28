@@ -14,12 +14,16 @@ var Sound *audio.SoundManager
 func init() {
 	Sound = audio.NewSoundManager()
 
-	//	Sound.LoadSound("walk", "sfx/walk/sfx_step_grass_l.wav")
 	Sound.LoadSound("sfx_command_0", "sfx/issue_command/bug_01.wav")
 	Sound.LoadSound("sfx_command_1", "sfx/issue_command/bug_02.wav")
 	Sound.LoadSound("sfx_command_2", "sfx/issue_command/bug_03.wav")
 	Sound.LoadSound("sfx_command_3", "sfx/issue_command/bug_04.wav")
 	Sound.LoadSound("sfx_command_4", "sfx/issue_command/bug_05.wav")
+
+	Sound.LoadSound("sfx_hive_0", "sfx/select_hive/hive_0.wav")
+	Sound.LoadSound("sfx_hive_1", "sfx/select_hive/hive_1.wav")
+	Sound.LoadSound("sfx_hive_2", "sfx/select_hive/hive_2.wav")
+	Sound.LoadSound("sfx_hive_3", "sfx/select_hive/hive_3.wav")
 
 	Sound.LoadSound("msx_gamesong1", "music/Sketchbook 2024-11-07.wav")
 	Sound.LoadSound("msx_menusong", "music/Sketchbook 2024-01-24_02.wav")

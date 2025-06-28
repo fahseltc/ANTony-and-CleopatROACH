@@ -86,7 +86,7 @@ func (f *FullscreenText) Draw(screen *ebiten.Image) {
 	for _, line := range f.TextLines {
 		opts := &text.DrawOptions{}
 		opts.GeoM.Translate(float64(f.PaddingLeft), float64(y))
-		opts.ColorScale.ScaleWithColor(color.White)
+		opts.ColorScale.ScaleWithColor(color.Black)
 		text.Draw(screen, line, f.FontFace, opts)
 		y += int(float64(f.lineHeight) * f.LineSpacing)
 	}

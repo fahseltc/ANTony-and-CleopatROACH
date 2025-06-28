@@ -62,10 +62,14 @@ WHAT REMAINS
 - [x] pathfinding improvements
 - [x] BUG - hives sometimes build units on top of other units
 - [x] PAUSE and volume adjustment options
-- menu BTN onclick animation?
-- level 2 tutorial?
-- graphical feedback when clicking on things
-- SFX - hive click, unit build, construction, levelsuccess
+- [x] SFX - hive click,
+- [x] graphical feedback when clicking on things
+- [x] menu BTN onclick animation?
+- [x] scroll bg on narration screen.
+- [x] level 2 tutorial?
+- [x] fix tutorial royalty using old images
+
+- SFX -unit build, construction, levelsuccess
 - 'selected units' UI element
 - hotkeys to unit groups
 - hotkeys to saved areas

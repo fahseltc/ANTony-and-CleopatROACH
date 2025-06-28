@@ -4,6 +4,7 @@ import (
 	"gamejam/audio"
 	"gamejam/fonts"
 	"gamejam/ui"
+	"gamejam/util"
 
 	"github.com/hajimehoshi/ebiten/v2"
 )
@@ -12,6 +13,7 @@ type NarratorScene struct {
 	BaseScene
 	LevelData      LevelData
 	sound          *audio.SoundManager
+	bg             *ebiten.Image
 	songStarted    bool
 	fonts          *fonts.All
 	fullscreenText *ui.FullscreenText
@@ -22,6 +24,7 @@ func NewNarratorScene(fonts *fonts.All, sound *audio.SoundManager, levelData Lev
 	return &NarratorScene{
 		LevelData:      levelData,
 		sound:          sound,
+		bg:             util.LoadImage("ui/narrator-bg.png"),
 		fonts:          fonts,
 		fullscreenText: ui.NewFullscreenText(fonts.Large, levelData.LevelIntroText, 2),
 	}
@@ -46,6 +49,7 @@ func (n *NarratorScene) Update() error {
 }
 
 func (n *NarratorScene) Draw(screen *ebiten.Image) {
+	screen.DrawImage(n.bg, nil)
 	n.fullscreenText.Draw(screen)
 }
 

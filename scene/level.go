@@ -286,6 +286,14 @@ func NewLevelCollection() *LevelCollection {
 				},
 				&FadeCameraAction{Mode: "out", Speed: 1},
 			}
+			s.tutorialDialogs = []Tutorial{
+				NewTutorialStep( // goal of level
+					"tutorials/lvl2-tutorial-1.png",
+					&image.Rectangle{Min: image.Point{X: 0, Y: 341}, Max: image.Point{X: 388, Y: 600}},
+					nil,
+					nil,
+				),
+			}
 		},
 	}
 
