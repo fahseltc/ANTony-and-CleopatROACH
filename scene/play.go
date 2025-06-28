@@ -2,6 +2,7 @@ package scene
 
 import (
 	"fmt"
+	"gamejam/audio"
 	"gamejam/config"
 	"gamejam/eventing"
 	"gamejam/fonts"
@@ -23,6 +24,7 @@ type PlayScene struct {
 	Config *config.T // embedded from
 	BaseScene
 	LevelData *LevelData
+	sound     *audio.SoundManager
 
 	QueenID string
 	KingID  string
@@ -57,7 +59,7 @@ type PlayScene struct {
 	CurrentNotification *ui.Notification
 }
 
-func NewPlayScene(fonts *fonts.All, levelData LevelData) *PlayScene {
+func NewPlayScene(fonts *fonts.All, sound *audio.SoundManager, levelData LevelData) *PlayScene {
 	config, _ := config.New()
 
 	tileMap := tilemap.NewTilemap(levelData.TileMapPath)
@@ -65,6 +67,7 @@ func NewPlayScene(fonts *fonts.All, levelData LevelData) *PlayScene {
 	constructionMouse := &ui.ConstructionMouse{}
 	scene := &PlayScene{
 		Config:            config,
+		sound:             sound,
 		LevelData:         &levelData,
 		fonts:             fonts,
 		sim:               simulation,
@@ -82,7 +85,10 @@ func NewPlayScene(fonts *fonts.All, levelData LevelData) *PlayScene {
 	scene.eventBus.Subscribe("NotEnoughResourcesEvent", scene.NotEnoughResourcesEvent)
 
 	scene.QueenID, scene.KingID = levelData.SetupFunc(scene)
+
+	scene.setupSFX()
 	levelData.SetupInitialCutscene(scene, scene.QueenID, scene.KingID)
+
 	return scene
 }
 
@@ -98,6 +104,10 @@ func (s *PlayScene) NotEnoughResourcesEvent(event eventing.Event) {
 	}
 
 	s.CurrentNotification = ui.NewNotification(&s.fonts.Med, str)
+}
+
+func (s *PlayScene) setupSFX() {
+	s.eventBus.Subscribe("PlayWalkSFX", s.sound.PlayWalkSFX)
 }
 func (s *PlayScene) HandleMakeAntButtonClickedEvent(event eventing.Event) {
 	if len(s.selectedUnitIDs) == 1 {
@@ -149,6 +159,7 @@ func (s *PlayScene) HandleBuildClickedEvent(event eventing.Event) {
 }
 
 func (s *PlayScene) Update() error {
+	s.sound.Update()
 	if s.CompletionCondition.IsComplete(s.sim) && !s.SceneCompleted {
 		s.SceneCompleted = true
 		s.LevelData.SetupCompletionCutscene(s, s.QueenID, s.KingID)
@@ -169,6 +180,7 @@ func (s *PlayScene) Update() error {
 
 		} else {
 			// else update sprites to match their sim positions
+			s.Sprites[unit.ID.String()].EventBus = s.eventBus
 			s.Sprites[unit.ID.String()].SetPosition(unit.Position)
 			s.Sprites[unit.ID.String()].SetAngle(unit.MovingAngle)
 			s.Sprites[unit.ID.String()].CarryingSucrose = (unit.Stats.ResourceTypeCarried == "sucrose" && unit.Stats.ResourceCarried > 0)
@@ -212,7 +224,7 @@ func (s *PlayScene) Update() error {
 		if len(s.cutsceneActions) == 0 {
 			if s.SceneCompleted {
 				LevelData := NewLevelCollection().Levels[s.LevelData.LevelNumber+1]
-				s.BaseScene.sm.SwitchTo(NewNarratorScene(s.fonts, LevelData)) // switch to next level
+				s.BaseScene.sm.SwitchTo(NewNarratorScene(s.fonts, s.sound, LevelData)) // switch to next level
 			}
 			s.inCutscene = false
 			s.Ui.DrawEnabled = true

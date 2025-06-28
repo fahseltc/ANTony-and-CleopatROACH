@@ -1,6 +1,7 @@
 package game
 
 import (
+	"gamejam/audio"
 	"gamejam/config"
 	"gamejam/fonts"
 	"gamejam/log"
@@ -17,27 +18,29 @@ var fontPath = "fonts/PressStart2P-Regular.ttf"
 type Game struct {
 	LastUpdateTime time.Time
 	sceneManager   *stagehand.SceneManager[scene.GameState]
+	sound          *audio.SoundManager
 	fonts          *fonts.All
 
 	cfg *config.T
 	log *slog.Logger
 }
 
-func New(cfg *config.T) *Game {
+func New(cfg *config.T, sound *audio.SoundManager) *Game {
 	state := scene.GameState{}
 	fonts := fonts.Load(fontPath)
 	levelData := scene.NewLevelCollection().Levels
 	var manager *stagehand.SceneManager[scene.GameState]
 	if cfg.SkipMenu {
-		scene := scene.NewNarratorScene(fonts, levelData[cfg.StartingLevel])
+		scene := scene.NewNarratorScene(fonts, sound, levelData[cfg.StartingLevel])
 		manager = stagehand.NewSceneManager(scene, state)
 	} else {
-		menu := scene.NewMenuScene(fonts)
+		menu := scene.NewMenuScene(fonts, sound)
 		manager = stagehand.NewSceneManager(menu, state)
 	}
 
 	return &Game{
 		sceneManager: manager,
+		sound:        sound,
 		fonts:        fonts,
 		cfg:          cfg,
 		log:          log.NewLogger().With("for", "game"),

@@ -1,6 +1,7 @@
 package scene
 
 import (
+	"gamejam/audio"
 	"gamejam/fonts"
 	"gamejam/ui"
 	"gamejam/util"
@@ -15,20 +16,22 @@ type MenuScene struct {
 	bg       *ebiten.Image
 	txt      string
 	fonts    *fonts.All
+	sound    *audio.SoundManager
 }
 
-func NewMenuScene(fonts *fonts.All) *MenuScene {
+func NewMenuScene(fonts *fonts.All, sound *audio.SoundManager) *MenuScene {
 	scene := &MenuScene{
 		bg:    util.LoadImage("ui/menu-bg.png"),
 		txt:   "ANTony & CleopatROACH",
 		fonts: fonts,
+		sound: sound,
 	}
 	scene.startBtn = ui.NewButton(fonts.Med, ui.WithText("START"), ui.WithRect(image.Rectangle{
 		Min: image.Point{X: 250, Y: 520},
 		Max: image.Point{X: 550, Y: 570},
 	}), ui.WithClickFunc(func() {
 		levelData := NewLevelCollection().Levels[0]
-		scene.sm.SwitchTo(NewNarratorScene(scene.fonts, levelData))
+		scene.sm.SwitchTo(NewNarratorScene(scene.fonts, scene.sound, levelData))
 	}))
 	return scene
 }
