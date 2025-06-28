@@ -3,11 +3,12 @@ package sim
 import (
 	"image"
 	"math"
+	"math/rand/v2"
 
 	"github.com/google/uuid"
 )
 
-var ArrivalThreshold = 15
+var ArrivalThreshold = 25
 var MaxResourceCollectFrames = 30
 var PlayerFaction = 0
 
@@ -48,14 +49,15 @@ type Unit struct {
 	Rect        *image.Rectangle
 	MovingAngle float64
 
-	Destination     *image.Point
-	DestinationType DestinationType
-	Action          Action
-	NearestEnemy    *Unit
-	NearestHome     BuildingInterface
-	LastResourcePos *image.Point
-	CurrentAnim     string
-	StuckFrames     int
+	Destination           *image.Point
+	DestinationType       DestinationType
+	Action                Action
+	NearestEnemy          *Unit
+	NearestHome           BuildingInterface
+	LastResourcePos       *image.Point
+	CurrentAnim           string
+	StuckFrames           int
+	StuckSidestepAttempts int
 
 	Faction uint
 }
@@ -164,7 +166,7 @@ func (unit *Unit) Update(sim *T) {
 			// move to and collect resource
 			unit.MoveToDestination(sim, false) // setting this to True causes jank behavior and its better as false?
 			dist := unit.DistanceTo(*unit.Destination)
-			if dist < 200 { // lots of tweaks needed here or fixes TODO
+			if dist < 230 { // lots of tweaks needed here or fixes TODO
 				// TODO: play animation and wait some time to harvest?
 				unit.Stats.ResourceCollectTime += 1
 				if unit.Stats.ResourceCollectTime >= uint(MaxResourceCollectFrames) {
@@ -237,28 +239,70 @@ func (unit *Unit) MoveToDestination(sim *T, harvesting bool) {
 			unit.SetPosition(&image.Point{X: unit.Position.X, Y: newY})
 		}
 	}
+
+	// Handle Rotation
 	newCentered := unit.GetCenteredPosition()
 	dxRot := float64(newCentered.X - oldX)
 	dyRot := float64(newCentered.Y - oldY)
 	if dxRot != 0 || dyRot != 0 { // update angle only if moved
 		unit.MovingAngle = math.Atan2(dyRot, dxRot) + math.Pi/2 // adjust for sprite orientation
 	}
-	const stuckEpsilon = 1.0
+	arrived := math.Abs(dx) <= float64(ArrivalThreshold) && math.Abs(dy) <= float64(ArrivalThreshold)
+	const stuckEpsilon = 1.5
 	moved := math.Abs(dxRot) > stuckEpsilon || math.Abs(dyRot) > stuckEpsilon
-	if !moved && unit.Stats.ResourceCollectTime == 0 {
+
+	if !moved && !arrived && unit.Stats.ResourceCollectTime == 0 {
 		unit.StuckFrames++
-		if unit.StuckFrames > 10 {
+
+		if unit.StuckFrames%10 == 0 {
+
 			unit.TrySidestep(sim)
+			//unit.StuckSidestepAttempts++
 		}
-	} else {
-		unit.StuckFrames = 0
+
+		if unit.StuckFrames > 200 { //|| unit.StuckSidestepAttempts > 3
+			//Only sidestep if the destination itself isn't clearly blocked
+			if unit.isDestinationBlocked(sim) {
+				unit.Action = IdleAction
+				unit.StuckFrames = 0
+				return
+			}
+		}
 	}
+	// } else {
+	// 	unit.StuckFrames = 0
+	// 	unit.StuckSidestepAttempts = 0
+	// }
 
 	// Final snapping
-	if math.Abs(dx) <= float64(ArrivalThreshold) && math.Abs(dy) <= float64(ArrivalThreshold) {
-		unit.SetPosition(&image.Point{X: unit.Destination.X, Y: unit.Destination.Y})
+	snapRect := &image.Rectangle{
+		Min: *unit.Destination,
+		Max: image.Point{
+			X: unit.Destination.X + unit.Rect.Dx(),
+			Y: unit.Destination.Y + unit.Rect.Dy(),
+		},
+	}
+	if math.Abs(dx) <= float64(ArrivalThreshold) &&
+		math.Abs(dy) <= float64(ArrivalThreshold) &&
+		!unit.isColliding(snapRect, sim) {
+
+		unit.SetPosition(unit.Destination)
 		unit.Action = IdleAction
 	}
+
+	// if unit.EdgeDistanceTo(*unit.Destination) <= uint(ArrivalThreshold/2) {
+	// 	unit.SetPosition(unit.Destination)
+	// 	unit.Action = IdleAction
+	// 	return
+	// }
+}
+
+func (unit *Unit) edgeDist(pos image.Point, goal image.Point) float64 {
+	cx := pos.X + unit.Rect.Dx()/2
+	cy := pos.Y + unit.Rect.Dy()/2
+	dx := float64(goal.X - cx)
+	dy := float64(goal.Y - cy)
+	return math.Sqrt(dx*dx + dy*dy)
 }
 
 func (unit *Unit) isColliding(rect *image.Rectangle, sim *T) bool {
@@ -279,26 +323,69 @@ func (unit *Unit) isColliding(rect *image.Rectangle, sim *T) bool {
 	return false
 }
 
+// func (unit *Unit) TrySidestep(sim *T) {
+// 	speed := float64(unit.Stats.MoveSpeed)
+// 	offsets := []image.Point{
+// 		{X: 0, Y: -int(speed)}, // up
+// 		{X: 0, Y: int(speed)},  // down
+// 		{X: -int(speed), Y: 0}, // left
+// 		{X: int(speed), Y: 0},  // right
+// 	}
+
+// 	for _, off := range offsets {
+// 		newX := unit.Position.X + off.X
+// 		newY := unit.Position.Y + off.Y
+// 		candidate := &image.Rectangle{
+// 			Min: image.Point{X: newX, Y: newY},
+// 			Max: image.Point{X: newX + unit.Rect.Dx(), Y: newY + unit.Rect.Dy()},
+// 		}
+// 		if !unit.isColliding(candidate, sim) {
+// 			unit.SetPosition(&image.Point{X: newX, Y: newY})
+// 			break
+// 		}
+// 	}
+// }
+
 func (unit *Unit) TrySidestep(sim *T) {
-	speed := float64(unit.Stats.MoveSpeed)
+	dest := unit.Destination
+	bestOffset := image.Point{}
+	shortestDist := unit.DistanceTo(*dest)
+
+	// Try 8 directions (N, NE, E, SE, S, SW, W, NW)
 	offsets := []image.Point{
-		{X: 0, Y: -int(speed)}, // up
-		{X: 0, Y: int(speed)},  // down
-		{X: -int(speed), Y: 0}, // left
-		{X: int(speed), Y: 0},  // right
+		{X: -1, Y: 0}, {X: 1, Y: 0},
+		{X: 0, Y: -1}, {X: 0, Y: 1},
+		{X: -1, Y: -1}, {X: 1, Y: -1},
+		{X: -1, Y: 1}, {X: 1, Y: 1},
 	}
 
+	// Shuffle offsets to avoid always biasing same direction
+	rand.Shuffle(len(offsets), func(i, j int) {
+		offsets[i], offsets[j] = offsets[j], offsets[i]
+	})
+
 	for _, off := range offsets {
-		newX := unit.Position.X + off.X
-		newY := unit.Position.Y + off.Y
+		newX := unit.Position.X + off.X*int(unit.Stats.MoveSpeed)
+		newY := unit.Position.Y + off.Y*int(unit.Stats.MoveSpeed)
 		candidate := &image.Rectangle{
 			Min: image.Point{X: newX, Y: newY},
 			Max: image.Point{X: newX + unit.Rect.Dx(), Y: newY + unit.Rect.Dy()},
 		}
 		if !unit.isColliding(candidate, sim) {
-			unit.SetPosition(&image.Point{X: newX, Y: newY})
-			break
+			// Check if this move gets us closer to the destination
+			newDist := unit.edgeDist(image.Point{X: newX, Y: newY}, *dest)
+			if newDist < float64(shortestDist) {
+				bestOffset = off
+				shortestDist = uint(newDist)
+			}
 		}
+	}
+
+	// Apply best offset if found
+	if bestOffset != (image.Point{}) {
+		newX := unit.Position.X + bestOffset.X*int(unit.Stats.MoveSpeed)
+		newY := unit.Position.Y + bestOffset.Y*int(unit.Stats.MoveSpeed)
+		unit.SetPosition(&image.Point{X: newX, Y: newY})
 	}
 }
 
@@ -352,4 +439,57 @@ func (unit *Unit) GetCenteredPosition() *image.Point {
 		X: unit.Position.X + unit.Rect.Dx()/2,
 		Y: unit.Position.Y + unit.Rect.Dy()/2,
 	}
+}
+
+// func (unit *Unit) isDestinationReachable(sim *T) bool {
+// 	destRect := &image.Rectangle{
+// 		Min: image.Point{
+// 			X: unit.Destination.X,
+// 			Y: unit.Destination.Y,
+// 		},
+// 		Max: image.Point{
+// 			X: unit.Destination.X + unit.Rect.Dx(),
+// 			Y: unit.Destination.Y + unit.Rect.Dy(),
+// 		},
+// 	}
+// 	return !unit.isColliding(destRect, sim)
+// }
+
+func (unit *Unit) isDestinationBlocked(sim *T) bool {
+	destRect := &image.Rectangle{
+		Min: *unit.Destination,
+		Max: image.Point{
+			X: unit.Destination.X + unit.Rect.Dx(),
+			Y: unit.Destination.Y + unit.Rect.Dy(),
+		},
+	}
+
+	// If the destination itself is colliding, it's likely invalid
+	if unit.isColliding(destRect, sim) {
+		return true
+	}
+
+	// Check 8 adjacent tiles for walls — if all are blocked, it's surrounded
+	blockedSides := 0
+	offsets := []image.Point{
+		{X: -1, Y: 0}, {X: 1, Y: 0},
+		{X: 0, Y: -1}, {X: 0, Y: 1},
+		{X: -1, Y: -1}, {X: 1, Y: -1},
+		{X: -1, Y: 1}, {X: 1, Y: 1},
+	}
+	for _, off := range offsets {
+		pos := image.Point{
+			X: unit.Destination.X + off.X*unit.Rect.Dx(),
+			Y: unit.Destination.Y + off.Y*unit.Rect.Dy(),
+		}
+		rect := &image.Rectangle{
+			Min: pos,
+			Max: image.Point{X: pos.X + unit.Rect.Dx(), Y: pos.Y + unit.Rect.Dy()},
+		}
+		if unit.isColliding(rect, sim) {
+			blockedSides++
+		}
+	}
+
+	return blockedSides >= len(offsets) // surrounded
 }

@@ -33,7 +33,7 @@ type SoundManager struct {
 func NewSoundManager() *SoundManager {
 	return &SoundManager{
 		GlobalSFXVolume: 0.3,
-		GlobalMSXVolume: 0.5,
+		GlobalMSXVolume: 0.4,
 		sounds:          make(map[string][]byte),
 		activePlayers:   make(map[string][]*audio.Player),
 		lastPlayedFrame: make(map[string]int),
@@ -151,4 +151,17 @@ func (sm *SoundManager) Stop(name string) {
 		}
 	}
 	sm.activePlayers[name] = nil
+}
+
+func (sm *SoundManager) SetGlobalMSXVolume(volume float64) {
+	sm.GlobalMSXVolume = volume
+	for name, players := range sm.activePlayers {
+		if len(name) >= 4 && name[:4] == "msx_" {
+			for _, player := range players {
+				if player.IsPlaying() {
+					player.SetVolume(volume)
+				}
+			}
+		}
+	}
 }

@@ -58,6 +58,8 @@ type PlayScene struct {
 
 	// Notifications
 	CurrentNotification *ui.Notification
+
+	Pause *ui.Pause
 }
 
 func NewPlayScene(fonts *fonts.All, sound *audio.SoundManager, levelData LevelData) *PlayScene {
@@ -78,6 +80,7 @@ func NewPlayScene(fonts *fonts.All, sound *audio.SoundManager, levelData LevelDa
 		constructionMouse: constructionMouse,
 		Sprites:           make(map[string]*ui.Sprite),
 		eventBus:          simulation.EventBus,
+		Pause:             ui.NewPause(sound, *fonts),
 	}
 	scene.constructionMouse.SetSprite("tilemap/bridge.png")
 	scene.eventBus.Subscribe("MakeAntButtonClickedEvent", scene.HandleMakeAntButtonClickedEvent)
@@ -167,6 +170,16 @@ func (s *PlayScene) Update() error {
 		s.sound.Play("msx_gamesong1")
 	}
 	s.sound.Update()
+
+	// Determine Pause State
+	if inpututil.IsKeyJustPressed(ebiten.KeyEscape) {
+		s.Pause.Hidden = !s.Pause.Hidden
+	}
+	if !s.Pause.Hidden { // stop the game processing when paused!
+		s.Pause.Update()
+		return nil
+	}
+
 	if s.CompletionCondition.IsComplete(s.sim) && !s.SceneCompleted {
 		s.SceneCompleted = true
 		s.LevelData.SetupCompletionCutscene(s, s.QueenID, s.KingID)
@@ -431,7 +444,13 @@ func (s *PlayScene) Draw(screen *ebiten.Image) {
 	if s.CurrentNotification != nil {
 		s.CurrentNotification.Draw(screen)
 	}
-	s.Ui.Camera.DrawFade(screen) // this should always be drawn last
+
+	s.Ui.Camera.DrawFade(screen) // this should always be drawn second to last
+
+	if !s.Pause.Hidden { // pause should always come last
+		s.Pause.Draw(screen)
+		return
+	}
 }
 
 func (s *PlayScene) DebugDraw(screen *ebiten.Image) {

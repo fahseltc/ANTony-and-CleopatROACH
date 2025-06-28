@@ -60,7 +60,9 @@ WHAT REMAINS
 - [x] bugs carry resources visually
 - [x] music
 - [x] pathfinding improvements
-- BUG - hives sometimes build units on top of other units
+- [x] BUG - hives sometimes build units on top of other units
+- [x] PAUSE and volume adjustment options
+- menu BTN onclick animation?
 - level 2 tutorial?
 - graphical feedback when clicking on things
 - SFX - hive click, unit build, construction, levelsuccess

@@ -135,6 +135,12 @@ func NewLevelCollection() *LevelCollection {
 						return false
 					},
 				),
+				NewTutorialStep( // pause
+					"tutorials/tutorial-pause.png",
+					&image.Rectangle{Min: image.Point{X: 412, Y: 341}, Max: image.Point{X: 800, Y: 600}},
+					nil,
+					nil,
+				),
 				NewTutorialStep( // collected some sucrose + select hive
 					"tutorials/tutorial-3.png",
 					&image.Rectangle{Min: image.Point{X: 0, Y: 341}, Max: image.Point{X: 388, Y: 600}},

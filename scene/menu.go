@@ -13,11 +13,14 @@ import (
 type MenuScene struct {
 	BaseScene
 	startBtn *ui.Button
+	optsBtn  *ui.Button
 	bg       *ebiten.Image
 	txt      string
 	fonts    *fonts.All
 	sound    *audio.SoundManager
 	started  bool
+
+	pause *ui.Pause
 }
 
 func NewMenuScene(fonts *fonts.All, sound *audio.SoundManager) *MenuScene {
@@ -26,14 +29,22 @@ func NewMenuScene(fonts *fonts.All, sound *audio.SoundManager) *MenuScene {
 		txt:   "ANTony & CleopatROACH",
 		fonts: fonts,
 		sound: sound,
+		pause: ui.NewPause(sound, *fonts),
 	}
 	scene.startBtn = ui.NewButton(fonts.Med, ui.WithText("START"), ui.WithRect(image.Rectangle{
-		Min: image.Point{X: 250, Y: 520},
-		Max: image.Point{X: 550, Y: 570},
+		Min: image.Point{X: 200, Y: 520},
+		Max: image.Point{X: 390, Y: 570},
 	}), ui.WithClickFunc(func() {
 		levelData := NewLevelCollection().Levels[0]
 		scene.sound.Stop("msx_menusong")
 		scene.sm.SwitchTo(NewNarratorScene(scene.fonts, scene.sound, levelData))
+	}))
+
+	scene.optsBtn = ui.NewButton(fonts.Med, ui.WithText("OPTIONS"), ui.WithRect(image.Rectangle{
+		Min: image.Point{X: 410, Y: 520},
+		Max: image.Point{X: 600, Y: 570},
+	}), ui.WithClickFunc(func() {
+		scene.pause.Hidden = false
 	}))
 
 	return scene
@@ -45,6 +56,8 @@ func (s *MenuScene) Update() error {
 		s.sound.Play("msx_menusong")
 	}
 	s.startBtn.Update()
+	s.optsBtn.Update()
+	s.pause.Update()
 	return nil
 }
 
@@ -55,4 +68,6 @@ func (s *MenuScene) Draw(screen *ebiten.Image) {
 	util.DrawCenteredText(screen, s.fonts.XLarge, "CleopatROACH", 400, 190, nil)
 
 	s.startBtn.Draw(screen)
+	s.optsBtn.Draw(screen)
+	s.pause.Draw(screen)
 }
