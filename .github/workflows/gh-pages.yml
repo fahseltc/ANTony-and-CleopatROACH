@@ -27,6 +27,8 @@ jobs:
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
+      ITCH_USERNAME: digdugdiggy
+      ITCH_GAME_ID: antony-and-cleopatroach
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -41,6 +43,16 @@ jobs:
           Remove-Item Env:GOOS
           Remove-Item Env:GOARCH
           cp gamejam.wasm html/
+          compress-archive -path html/* -destination out.zip
+
+      - uses: KikimoraGames/itch-publish@v0.0.3
+        with:
+          butlerApiKey: ${{secrets.BUTLER_API_KEY}}
+          gameData: out.zip
+          itchUsername: ${{env.ITCH_USERNAME}}
+          itchGameId: ${{ env.ITCH_GAME_ID }}
+          buildChannel: webgl
+          buildNumber: ${{ needs.version.outputs.version_hash }}
 
       - name: Archive artifacts
         uses: actions/upload-artifact@v4
