@@ -40,9 +40,9 @@ WHAT REMAINS
 - [x] camera fading
 - [x] timer for units to collect resources and build
 - [x] builder must be nearby new building for it to start construction - KINDA WRONG
-- [x]mouse click indicator on text dialogs
+- [x] mouse click indicator on text dialogs
 - [x] in-engine emoji stuff (ants smooching)
-- [x]tutorial of any variety
+- [x] tutorial of any variety
 - [x] level system (kinda but jank)
 - [x] scripting what happens in each level, or a system for that which doesnt suck
 - [x] ART - makeant+makebridge btn-pressed art
@@ -51,18 +51,18 @@ WHAT REMAINS
 - [x] fullscreen text narrator
 - [x] movement based on unit center instead of top-left
 - [x] MAKE IT WORK ON THE WEBSITE (slashes fix in TMX)
-
 - [x] finish level 2 scripting intro + ending scenario (love in flower area)
 - [x] more tutorial
 - [x] some UI text about "not enough money to build X"
-- level 2 tutorial?
-- graphical feedback when clicking on things
 - [x] SFX - need more
 - [x] Animation system
 - [x] walk animation
 - [x] bugs carry resources visually
-- SFX - hive click, unit build, construction, levelsuccess
 - [x] music
+- level 2 tutorial?
+- graphical feedback when clicking on things
+- SFX - hive click, unit build, construction, levelsuccess
+- 'selected units' UI element
 - hotkeys to unit groups
 - hotkeys to saved areas
 - BUG - building site should be made at any distance and only progress when the builder is nearby.
@@ -70,7 +70,6 @@ WHAT REMAINS
 - [x] BUG - units are selected after initial cutscene - WHY?
 - better pathfinding
 
-- 'selected units' UI element
 - tooltips on buttons to show costs
 - Patrol functionality
 
