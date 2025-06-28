@@ -57,11 +57,12 @@ WHAT REMAINS
 - [x] some UI text about "not enough money to build X"
 - level 2 tutorial?
 - graphical feedback when clicking on things
-- SFX
+- [x] SFX - need more
 - [x] Animation system
 - [x] walk animation
 - [x] bugs carry resources visually
-- music
+- SFX - hive click, unit build, construction, levelsuccess
+- [x] music
 - hotkeys to unit groups
 - hotkeys to saved areas
 - BUG - building site should be made at any distance and only progress when the builder is nearby.

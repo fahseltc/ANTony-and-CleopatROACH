@@ -17,6 +17,7 @@ type MenuScene struct {
 	txt      string
 	fonts    *fonts.All
 	sound    *audio.SoundManager
+	started  bool
 }
 
 func NewMenuScene(fonts *fonts.All, sound *audio.SoundManager) *MenuScene {
@@ -31,12 +32,18 @@ func NewMenuScene(fonts *fonts.All, sound *audio.SoundManager) *MenuScene {
 		Max: image.Point{X: 550, Y: 570},
 	}), ui.WithClickFunc(func() {
 		levelData := NewLevelCollection().Levels[0]
+		scene.sound.Stop("msx_menusong")
 		scene.sm.SwitchTo(NewNarratorScene(scene.fonts, scene.sound, levelData))
 	}))
+
 	return scene
 }
 
 func (s *MenuScene) Update() error {
+	if !s.started {
+		s.started = true
+		s.sound.Play("msx_menusong")
+	}
 	s.startBtn.Update()
 	return nil
 }

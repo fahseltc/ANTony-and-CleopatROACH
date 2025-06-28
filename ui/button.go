@@ -2,6 +2,7 @@ package ui
 
 import (
 	"image"
+	"image/color"
 
 	"gamejam/util"
 
@@ -127,7 +128,7 @@ func (btn *Button) Draw(screen *ebiten.Image) {
 	if btn.text != "" {
 		// draw text centered
 		centerX, centerY := btn.GetCenter()
-		util.DrawCenteredText(screen, btn.font, btn.text, centerX, centerY, nil)
+		util.DrawCenteredText(screen, btn.font, btn.text, centerX, centerY, color.RGBA{R: 0, G: 0, B: 0, A: 255})
 	}
 	// ebitenutil.DrawRect(screen, float64(btn.rect.Min.X), float64(btn.rect.Min.Y), float64(btn.rect.Dx()), float64(btn.rect.Dy()), color.RGBA{0, 255, 0, 255})
 }

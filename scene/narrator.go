@@ -12,6 +12,7 @@ type NarratorScene struct {
 	BaseScene
 	LevelData      LevelData
 	sound          *audio.SoundManager
+	songStarted    bool
 	fonts          *fonts.All
 	fullscreenText *ui.FullscreenText
 	done           bool
@@ -27,12 +28,17 @@ func NewNarratorScene(fonts *fonts.All, sound *audio.SoundManager, levelData Lev
 }
 
 func (n *NarratorScene) Update() error {
+	if !n.songStarted {
+		n.songStarted = true
+		n.sound.Play("msx_narratorsong")
+	}
 	if n.done {
 		return nil
 	}
 	n.fullscreenText.Update()
 	if n.fullscreenText.IsDone() {
 		n.done = true
+		n.sound.Stop("msx_narratorsong")
 		// Switch to the next scene, e.g., the play scene
 		n.sm.SwitchTo(NewPlayScene(n.fonts, n.sound, n.LevelData))
 	}

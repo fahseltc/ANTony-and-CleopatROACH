@@ -23,8 +23,9 @@ var PlayerFaction = 0
 type PlayScene struct {
 	Config *config.T // embedded from
 	BaseScene
-	LevelData *LevelData
-	sound     *audio.SoundManager
+	LevelData   *LevelData
+	sound       *audio.SoundManager
+	songStarted bool
 
 	QueenID string
 	KingID  string
@@ -107,7 +108,9 @@ func (s *PlayScene) NotEnoughResourcesEvent(event eventing.Event) {
 }
 
 func (s *PlayScene) setupSFX() {
-	s.eventBus.Subscribe("PlayWalkSFX", s.sound.PlayWalkSFX)
+	//s.sound.GlobalVolume = 0.5
+	//s.eventBus.Subscribe("PlayWalkSFX", s.sound.PlayWalkSFX)
+	s.eventBus.Subscribe("PlayIssueActionSFX", s.sound.PlayIssueActionSFX)
 }
 func (s *PlayScene) HandleMakeAntButtonClickedEvent(event eventing.Event) {
 	if len(s.selectedUnitIDs) == 1 {
@@ -159,6 +162,10 @@ func (s *PlayScene) HandleBuildClickedEvent(event eventing.Event) {
 }
 
 func (s *PlayScene) Update() error {
+	if !s.songStarted {
+		s.songStarted = true
+		s.sound.Play("msx_gamesong1")
+	}
 	s.sound.Update()
 	if s.CompletionCondition.IsComplete(s.sim) && !s.SceneCompleted {
 		s.SceneCompleted = true
@@ -224,6 +231,7 @@ func (s *PlayScene) Update() error {
 		if len(s.cutsceneActions) == 0 {
 			if s.SceneCompleted {
 				LevelData := NewLevelCollection().Levels[s.LevelData.LevelNumber+1]
+				s.sound.Stop("msx_gamesong1")
 				s.BaseScene.sm.SwitchTo(NewNarratorScene(s.fonts, s.sound, LevelData)) // switch to next level
 			}
 			s.inCutscene = false
@@ -296,7 +304,11 @@ func (s *PlayScene) Update() error {
 			case "hive":
 				// handle hive
 				// show hive UI elements
+
 				if s.Ui.HUD.RightSideState != ui.HiveSelectedState {
+					s.eventBus.Publish(eventing.Event{
+						Type: "PlayIssueActionSFX",
+					})
 					s.Ui.HUD.RightSideState = ui.HiveSelectedState
 					s.constructionMouse.Enabled = false
 				}
@@ -318,27 +330,12 @@ func (s *PlayScene) Update() error {
 					for _, unitId := range s.selectedUnitIDs {
 						mapX, mapY := s.Ui.Camera.ScreenPosToMapPos(mx, my)
 						s.sim.IssueAction(unitId, &image.Point{X: mapX, Y: mapY})
+						s.eventBus.Publish(eventing.Event{
+							Type: "PlayIssueActionSFX",
+						})
 					}
 				}
-
-			default:
-
 			}
-
-			// if inpututil.IsKeyJustReleased(ebiten.KeyQ) {
-			// 	for _, unitId := range s.selectedUnitIDs {
-			// 		hive, err := s.sim.GetHiveByID(unitId)
-			// 		if err != nil {
-			// 			continue
-			// 		}
-			// 		s.eventBus.Publish(eventing.Event{
-			// 			Type: "ConstructUnitEvent",
-			// 			Data: eventing.ConstructUnitEvent{
-			// 				HiveID: hive.ID.String(),
-			// 			},
-			// 		})
-			// 	}
-			// }
 		} else {
 			if s.Ui.HUD.RightSideState != ui.HiddenState {
 				s.Ui.HUD.RightSideState = ui.HiddenState
@@ -351,6 +348,9 @@ func (s *PlayScene) Update() error {
 				for _, unitId := range s.selectedUnitIDs {
 					mapX, mapY := s.Ui.Camera.ScreenPosToMapPos(mx, my)
 					s.sim.IssueAction(unitId, &image.Point{X: mapX, Y: mapY})
+					s.eventBus.Publish(eventing.Event{
+						Type: "PlayIssueActionSFX",
+					})
 				}
 			}
 		}

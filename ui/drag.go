@@ -34,7 +34,9 @@ func (d *Drag) Update(sprites map[string]*Sprite, camera *Camera, HUD *HUD) {
 	}
 	mx, my := ebiten.CursorPosition()
 	pt := image.Point{X: mx, Y: my}
-	if pt.In(HUD.leftSideRect) || (HUD.RightSideState != HiddenState && pt.In(HUD.rightSideRect)) { // abort updating selected units if the click is inside the UI elements
+
+	// pt.In(HUD.leftSideRect) || REMOVED not inUSE
+	if HUD.RightSideState != HiddenState && pt.In(HUD.rightSideRect) { // abort updating selected units if the click is inside the UI elements
 		d.dragRect = image.Rectangle{Min: image.Pt(0, 0), Max: image.Pt(0, 0)}
 		return
 	}

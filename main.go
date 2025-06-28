@@ -14,13 +14,16 @@ var Sound *audio.SoundManager
 func init() {
 	Sound = audio.NewSoundManager()
 
-	Sound.LoadSound("walk", "sfx/walk/sfx_step_grass_l.wav")
-	Sound.LoadSound("command1", "sfx/issue_command/bug_01.ogg")
-	Sound.LoadSound("command2", "sfx/issue_command/bug_02.ogg")
-	Sound.LoadSound("command3", "sfx/issue_command/bug_03.ogg")
-	Sound.LoadSound("command4", "sfx/issue_command/bug_04.ogg")
-	Sound.LoadSound("command5", "sfx/issue_command/bug_05.ogg")
-	Sound.LoadSound("command6", "sfx/issue_command/bug_06.ogg")
+	//	Sound.LoadSound("walk", "sfx/walk/sfx_step_grass_l.wav")
+	Sound.LoadSound("sfx_command_0", "sfx/issue_command/bug_01.wav")
+	Sound.LoadSound("sfx_command_1", "sfx/issue_command/bug_02.wav")
+	Sound.LoadSound("sfx_command_2", "sfx/issue_command/bug_03.wav")
+	Sound.LoadSound("sfx_command_3", "sfx/issue_command/bug_04.wav")
+	Sound.LoadSound("sfx_command_4", "sfx/issue_command/bug_05.wav")
+
+	Sound.LoadSound("msx_gamesong1", "music/Sketchbook 2024-11-07.wav")
+	Sound.LoadSound("msx_menusong", "music/Sketchbook 2024-01-24_02.wav")
+	Sound.LoadSound("msx_narratorsong", "music/JDSherbert Desert Sirocco.wav")
 
 }
 func main() {

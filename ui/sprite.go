@@ -234,14 +234,14 @@ func (spr *Sprite) UpdateAnimation(dt time.Duration) {
 	if spr.Rect.Min != spr.lastPos {
 		spr.Animation.Update(dt)
 		spr.lastPos = spr.Rect.Min // update for next frame
-		spr.SendWalkSFXEvent()
+		//spr.SendWalkSFXEvent()
 	}
 }
 
-func (spr *Sprite) SendWalkSFXEvent() {
-	if spr.EventBus != nil {
-		spr.EventBus.Publish(eventing.Event{
-			Type: "PlayWalkSFX",
-		})
-	}
-}
+// func (spr *Sprite) SendWalkSFXEvent() {
+// 	if spr.EventBus != nil {
+// 		spr.EventBus.Publish(eventing.Event{
+// 			Type: "PlayWalkSFX",
+// 		})
+// 	}
+// }
