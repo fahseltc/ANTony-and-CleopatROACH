@@ -137,9 +137,9 @@ func NewLevelCollection() *LevelCollection {
 				),
 				NewTutorialStep( // collected some sucrose + select hive
 					"tutorials/tutorial-3.png",
-					&image.Rectangle{Min: image.Point{X: 412, Y: 341}, Max: image.Point{X: 800, Y: 600}},
+					&image.Rectangle{Min: image.Point{X: 0, Y: 341}, Max: image.Point{X: 388, Y: 600}},
 					func(ps *PlayScene) bool {
-						if ps.sim.GetSucroseAmount() > 10 {
+						if ps.sim.GetSucroseAmount() > 30 {
 							return true
 						}
 						return false
@@ -155,7 +155,7 @@ func NewLevelCollection() *LevelCollection {
 				),
 				NewTutorialStep( // hive selected + build unit
 					"tutorials/tutorial-4.png",
-					&image.Rectangle{Min: image.Point{X: 0, Y: 0}, Max: image.Point{X: 388, Y: 259}},
+					&image.Rectangle{Min: image.Point{X: 0, Y: 341}, Max: image.Point{X: 388, Y: 600}},
 					nil,
 					func(ps *PlayScene) bool {
 						for _, bld := range ps.sim.GetAllBuildings() {
@@ -170,7 +170,7 @@ func NewLevelCollection() *LevelCollection {
 					"tutorials/tutorial-5.png",
 					&image.Rectangle{Min: image.Point{X: 0, Y: 0}, Max: image.Point{X: 388, Y: 259}},
 					func(ps *PlayScene) bool {
-						if ps.sim.GetWoodAmount() > 10 {
+						if ps.sim.GetWoodAmount() > 30 {
 							return true
 						}
 						return false

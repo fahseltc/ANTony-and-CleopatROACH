@@ -55,6 +55,7 @@ type Unit struct {
 	NearestHome     BuildingInterface
 	LastResourcePos *image.Point
 	CurrentAnim     string
+	StuckFrames     int
 
 	Faction uint
 }
@@ -198,6 +199,7 @@ func (unit *Unit) Update(sim *T) {
 	}
 }
 func (unit *Unit) MoveToDestination(sim *T, harvesting bool) {
+
 	speed := float64(unit.Stats.MoveSpeed)
 	oldPos := unit.GetCenteredPosition()
 	oldX := oldPos.X
@@ -218,9 +220,8 @@ func (unit *Unit) MoveToDestination(sim *T, harvesting bool) {
 			Min: image.Point{X: newX, Y: newY},
 			Max: image.Point{X: newX + unit.Rect.Dx(), Y: newY + unit.Rect.Dy()},
 		}
-
 		if !unit.isColliding(candidate, sim) {
-			unit.SetPosition(&image.Point{X: unit.Position.X + int(moveX), Y: unit.Position.Y})
+			unit.SetPosition(&image.Point{X: newX, Y: unit.Position.Y})
 		}
 	}
 
@@ -233,15 +234,24 @@ func (unit *Unit) MoveToDestination(sim *T, harvesting bool) {
 			Max: image.Point{X: newX + unit.Rect.Dx(), Y: newY + unit.Rect.Dy()},
 		}
 		if !unit.isColliding(candidate, sim) {
-			unit.SetPosition(&image.Point{X: unit.Position.X, Y: unit.Position.Y + int(moveY)})
+			unit.SetPosition(&image.Point{X: unit.Position.X, Y: newY})
 		}
 	}
-
 	newCentered := unit.GetCenteredPosition()
 	dxRot := float64(newCentered.X - oldX)
 	dyRot := float64(newCentered.Y - oldY)
 	if dxRot != 0 || dyRot != 0 { // update angle only if moved
 		unit.MovingAngle = math.Atan2(dyRot, dxRot) + math.Pi/2 // adjust for sprite orientation
+	}
+	const stuckEpsilon = 1.0
+	moved := math.Abs(dxRot) > stuckEpsilon || math.Abs(dyRot) > stuckEpsilon
+	if !moved && unit.Stats.ResourceCollectTime == 0 {
+		unit.StuckFrames++
+		if unit.StuckFrames > 10 {
+			unit.TrySidestep(sim)
+		}
+	} else {
+		unit.StuckFrames = 0
 	}
 
 	// Final snapping
@@ -267,6 +277,29 @@ func (unit *Unit) isColliding(rect *image.Rectangle, sim *T) bool {
 		}
 	}
 	return false
+}
+
+func (unit *Unit) TrySidestep(sim *T) {
+	speed := float64(unit.Stats.MoveSpeed)
+	offsets := []image.Point{
+		{X: 0, Y: -int(speed)}, // up
+		{X: 0, Y: int(speed)},  // down
+		{X: -int(speed), Y: 0}, // left
+		{X: int(speed), Y: 0},  // right
+	}
+
+	for _, off := range offsets {
+		newX := unit.Position.X + off.X
+		newY := unit.Position.Y + off.Y
+		candidate := &image.Rectangle{
+			Min: image.Point{X: newX, Y: newY},
+			Max: image.Point{X: newX + unit.Rect.Dx(), Y: newY + unit.Rect.Dy()},
+		}
+		if !unit.isColliding(candidate, sim) {
+			unit.SetPosition(&image.Point{X: newX, Y: newY})
+			break
+		}
+	}
 }
 
 func (unit *Unit) SetNearestEnemy(target *Unit) {

@@ -59,6 +59,8 @@ WHAT REMAINS
 - [x] walk animation
 - [x] bugs carry resources visually
 - [x] music
+- [x] pathfinding improvements
+- BUG - hives sometimes build units on top of other units
 - level 2 tutorial?
 - graphical feedback when clicking on things
 - SFX - hive click, unit build, construction, levelsuccess
@@ -66,7 +68,7 @@ WHAT REMAINS
 - hotkeys to unit groups
 - hotkeys to saved areas
 - BUG - building site should be made at any distance and only progress when the builder is nearby.
-- BUG - hives sometimes build units on top of other units
+
 - [x] BUG - units are selected after initial cutscene - WHY?
 - better pathfinding
 

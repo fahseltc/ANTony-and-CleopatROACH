@@ -4,7 +4,7 @@ import (
 	"gamejam/util"
 	"image"
 	"math"
-	"math/rand/v2"
+	"sort"
 )
 
 var UnitConstructionTime = 120
@@ -45,7 +45,7 @@ func (h *Hive) Update(sim *T) {
 				return // todo handle?
 			}
 			// make sure position isnt colliding with anything and try again
-			u.SetPosition(h.GetNearbyPosition(sim))
+			u.SetPosition(h.GetNearbyPosition(sim, 128)) // unit size static for now but could change later
 			sim.AddUnit(u)
 			h.UnitContructing = false
 			h.ProgressCurrent = 0
@@ -69,47 +69,79 @@ func (h *Hive) AddUnitToBuildQueue() {
 	}
 	h.buildQueue.Enqueue(unit)
 }
-func (h *Hive) GetNearbyPosition(sim *T) *image.Point {
-	directions := []image.Point{
-		{X: 300, Y: 0},
-		{X: -150, Y: 0},
-		{X: 0, Y: 300},
-		{X: 0, Y: -150},
+func (h *Hive) GetNearbyPosition(sim *T, unitSize int) *image.Point {
+	const maxRadius = 3
+	const tileSize = 128
+	center := h.GetCenteredPosition()
+
+	type spawnCandidate struct {
+		point   image.Point
+		rect    *image.Rectangle
+		density int
 	}
 
-	// Optional shuffle directions to spread spawn points randomly
-	rand.Shuffle(len(directions), func(i, j int) {
-		directions[i], directions[j] = directions[j], directions[i]
+	var candidates []spawnCandidate
+
+	for dx := -maxRadius; dx <= maxRadius; dx++ {
+		for dy := -maxRadius; dy <= maxRadius; dy++ {
+			x := center.X + dx*tileSize
+			y := center.Y + dy*tileSize
+
+			rect := &image.Rectangle{
+				Min: image.Point{X: x - unitSize/2, Y: y - unitSize/2},
+				Max: image.Point{X: x + unitSize/2, Y: y + unitSize/2},
+			}
+
+			if rect.Overlaps(*h.Rect) {
+				continue
+			}
+
+			// Score this tile by number of units overlapping or nearby
+			density := 0
+			for _, unit := range append(sim.playerUnits, sim.enemyUnits...) {
+				if unit == nil || unit.ID.String() == h.ID.String() {
+					continue
+				}
+				// Check proximity (not just overlap)
+				unitCenter := unit.GetCenteredPosition()
+				dist := math.Hypot(float64(unitCenter.X-x), float64(unitCenter.Y-y))
+				if dist < float64(tileSize*2) { // count units within 2-tile radius
+					density++
+				}
+			}
+
+			candidates = append(candidates, spawnCandidate{
+				point:   image.Point{X: x - unitSize/2, Y: y - unitSize/2},
+				rect:    rect,
+				density: density,
+			})
+		}
+	}
+
+	// Sort by least density first
+	sort.Slice(candidates, func(i, j int) bool {
+		return candidates[i].density < candidates[j].density
 	})
 
-	for _, dir := range directions {
-		candidate := &image.Rectangle{
-			Min: image.Point{X: h.Rect.Min.X + dir.X, Y: h.Rect.Min.Y + dir.Y},
-			Max: image.Point{X: h.Rect.Max.X + dir.X, Y: h.Rect.Max.Y + dir.Y},
-		}
-
-		// skip if overlaps hive itself
-		if candidate.Overlaps(*h.Rect) {
-			continue
-		}
-
-		colliders := sim.GetAllCollidersOverlapping(candidate)
+	// Try the best candidates in order
+	for _, c := range candidates {
+		colliders := sim.GetAllCollidersOverlapping(c.rect)
 		collision := false
 		for _, collider := range colliders {
 			if collider.OwnerID == h.ID.String() {
 				continue
 			}
-			if candidate.Overlaps(*collider.Rect) {
+			if c.rect.Overlaps(*collider.Rect) {
 				collision = true
 				break
 			}
 		}
 
 		if !collision {
-			return &candidate.Min
+			return &c.point
 		}
 	}
 
-	// fallback spot, just offset further away
-	return &image.Point{X: h.Rect.Min.X + 300, Y: h.Rect.Min.Y}
+	// Fallback position
+	return &image.Point{X: center.X + tileSize, Y: center.Y}
 }

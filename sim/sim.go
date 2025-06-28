@@ -32,12 +32,6 @@ type T struct {
 	selectedUnits []*Unit
 }
 
-type World struct {
-	TileMap    *tilemap.Tilemap
-	TileData   [][]*tilemap.Tile
-	MapObjects []*tilemap.MapObject
-}
-
 type Collider struct {
 	Rect    *image.Rectangle
 	OwnerID string
