@@ -9,6 +9,7 @@ import (
 	"gamejam/sim"
 	"gamejam/tilemap"
 	"gamejam/ui"
+	"gamejam/util"
 	"image"
 	"image/color"
 	"math"
@@ -96,6 +97,14 @@ func NewPlayScene(fonts *fonts.All, sound *audio.SoundManager, levelData LevelDa
 
 	scene.setupSFX()
 	levelData.SetupInitialCutscene(scene, scene.QueenID, scene.KingID)
+
+	if config.SkipToGameplay {
+		scene.tutorialDialogs = []Tutorial{}
+		scene.cutsceneActions = []CutsceneAction{}
+		scene.Ui.Camera.FadeAlpha = 0
+	} else {
+
+	}
 
 	return scene
 }
@@ -510,6 +519,12 @@ func (s *PlayScene) DebugDraw(screen *ebiten.Image) {
 			screen.Set(x0, y, color.RGBA{255, 255, 0, 255})
 			screen.Set(x1-1, y, color.RGBA{255, 255, 0, 255})
 		}
+
+		// Draw debug circles for unit circular hitboxes
+		center := spr.GetCenter()
+		x0, y0 = s.Ui.Camera.MapPosToScreenPos(center.X, center.Y)
+		zoomedRadius := 64 * s.Ui.Camera.ViewPortZoom
+		util.DrawCircle(screen, float64(x0), float64(y0), zoomedRadius, color.RGBA{255, 25, 255, 255})
 	}
 	ebitenutil.DebugPrintAt(screen, fmt.Sprintf("camera:%v,%v", s.Ui.Camera.ViewPortX, s.Ui.Camera.ViewPortY), 1, 1)
 	mx, my := ebiten.CursorPosition()

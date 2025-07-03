@@ -32,7 +32,7 @@ func (icb *InConstructionBuilding) Update(sim *T) {
 	case BuildingTypeInConstruction: // shouldnt happen
 	case BuildingTypeHive:
 	case BuildingTypeBridge:
-		bb := NewBridgeBuilding(icb.Position.X, icb.Position.Y)
+		bb := NewBridgeBuilding(int(icb.Position.X), int(icb.Position.Y))
 		sim.AddBuilding(bb)
 
 	}

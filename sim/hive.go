@@ -2,6 +2,7 @@ package sim
 
 import (
 	"gamejam/util"
+	"gamejam/vec2"
 	"image"
 	"math"
 	"sort"
@@ -53,7 +54,7 @@ func (h *Hive) Update(sim *T) {
 	}
 }
 
-func (h *Hive) DistanceTo(point image.Point) uint {
+func (h *Hive) DistanceTo(point vec2.T) uint {
 	xDist := math.Abs(float64(h.Position.X - point.X))
 	yDist := math.Abs(float64(h.Position.Y - point.Y))
 	return uint(math.Sqrt(math.Pow(xDist, 2) + math.Pow(yDist, 2)))
@@ -69,7 +70,7 @@ func (h *Hive) AddUnitToBuildQueue() {
 	}
 	h.buildQueue.Enqueue(unit)
 }
-func (h *Hive) GetNearbyPosition(sim *T, unitSize int) *image.Point {
+func (h *Hive) GetNearbyPosition(sim *T, unitSize int) *vec2.T {
 	const maxRadius = 3
 	const tileSize = 128
 	center := h.GetCenteredPosition()
@@ -84,8 +85,8 @@ func (h *Hive) GetNearbyPosition(sim *T, unitSize int) *image.Point {
 
 	for dx := -maxRadius; dx <= maxRadius; dx++ {
 		for dy := -maxRadius; dy <= maxRadius; dy++ {
-			x := center.X + dx*tileSize
-			y := center.Y + dy*tileSize
+			x := int(center.X) + dx*tileSize
+			y := int(center.Y) + dy*tileSize
 
 			rect := &image.Rectangle{
 				Min: image.Point{X: x - unitSize/2, Y: y - unitSize/2},
@@ -104,7 +105,7 @@ func (h *Hive) GetNearbyPosition(sim *T, unitSize int) *image.Point {
 				}
 				// Check proximity (not just overlap)
 				unitCenter := unit.GetCenteredPosition()
-				dist := math.Hypot(float64(unitCenter.X-x), float64(unitCenter.Y-y))
+				dist := math.Hypot(float64(int(unitCenter.X)-x), float64(int(unitCenter.Y)-y))
 				if dist < float64(tileSize*2) { // count units within 2-tile radius
 					density++
 				}
@@ -138,10 +139,16 @@ func (h *Hive) GetNearbyPosition(sim *T, unitSize int) *image.Point {
 		}
 
 		if !collision {
-			return &c.point
+			return &vec2.T{
+				X: float64(c.point.X),
+				Y: float64(c.point.Y),
+			}
 		}
 	}
 
 	// Fallback position
-	return &image.Point{X: center.X + tileSize, Y: center.Y}
+	return &vec2.T{
+		X: float64(center.X + tileSize),
+		Y: float64(center.Y),
+	}
 }

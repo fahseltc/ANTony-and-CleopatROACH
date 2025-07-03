@@ -36,10 +36,13 @@ func New(cfg *config.T, sound *audio.SoundManager) *Game {
 		sound.GlobalSFXVolume = 0.0
 	}
 
-	if cfg.SkipMenu {
+	if cfg.SkipMenu && !cfg.SkipToGameplay { // skip menu but go to first narration screen
 		scene := scene.NewNarratorScene(fonts, sound, levelData[cfg.StartingLevel])
 		manager = stagehand.NewSceneManager(scene, state)
-	} else {
+	} else if cfg.SkipToGameplay { // go right to gameplay immediately
+		scene := scene.NewPlayScene(fonts, sound, levelData[cfg.StartingLevel])
+		manager = stagehand.NewSceneManager(scene, state)
+	} else { // else normal menu flow
 		menu := scene.NewMenuScene(fonts, sound)
 		manager = stagehand.NewSceneManager(menu, state)
 	}

@@ -1,6 +1,7 @@
 package sim
 
 import (
+	"gamejam/vec2"
 	"image"
 	"math"
 	"math/rand/v2"
@@ -44,17 +45,17 @@ const (
 type Unit struct {
 	ID          uuid.UUID
 	Stats       *UnitStats
-	Position    *image.Point
+	Position    *vec2.T
 	Type        UnitType
 	Rect        *image.Rectangle
 	MovingAngle float64
 
-	Destination           *image.Point
+	Destination           *vec2.T
 	DestinationType       DestinationType
 	Action                Action
 	NearestEnemy          *Unit
 	NearestHome           BuildingInterface
-	LastResourcePos       *image.Point
+	LastResourcePos       *vec2.T
 	CurrentAnim           string
 	StuckFrames           int
 	StuckSidestepAttempts int
@@ -114,12 +115,12 @@ func NewDefaultAnt() *Unit {
 			ResourceCarried:     0,
 			ResourceTypeCarried: "",
 		},
-		Position: &image.Point{0, 0},
+		Position: &vec2.T{},
 		Rect: &image.Rectangle{
 			Min: image.Point{0, 0},
 			Max: image.Point{128, 128},
 		},
-		Destination: &image.Point{0, 0},
+		Destination: &vec2.T{0, 0},
 		Action:      IdleAction,
 		Faction:     uint(PlayerFaction),
 	}
@@ -132,14 +133,14 @@ func (unit *Unit) Update(sim *T) {
 	case MovingAction:
 		unit.MoveToDestination(sim, false)
 	case AttackMovingAction:
-		if unit.NearestEnemy != nil && unit.TargetInRange(*unit.Position) {
+		if unit.NearestEnemy != nil && unit.TargetInRange(unit.Position) {
 			unit.NearestEnemy.Stats.HPCur -= unit.Stats.Damage
 			// pew pew animation
 		} else {
 			unit.MoveToDestination(sim, false) // destination might be a unit?
 		}
 	case HoldingPositionAction:
-		if unit.NearestEnemy != nil && unit.TargetInRange(*unit.Position) {
+		if unit.NearestEnemy != nil && unit.TargetInRange(unit.Position) {
 			unit.NearestEnemy.Stats.HPCur -= unit.Stats.Damage
 			// pew pew animation
 		}
@@ -151,7 +152,7 @@ func (unit *Unit) Update(sim *T) {
 			minDist := uint(math.MaxUint32)
 			for _, hive := range sim.GetAllBuildings() {
 				if hive.GetFaction() == unit.Faction {
-					dist := unit.DistanceTo(*hive.GetCenteredPosition())
+					dist := unit.DistanceTo(hive.GetCenteredPosition())
 					if nearest == nil || dist < minDist {
 						nearest = hive
 						minDist = dist
@@ -160,18 +161,18 @@ func (unit *Unit) Update(sim *T) {
 			}
 			unit.NearestHome = nearest
 			unit.LastResourcePos = unit.Destination
-			unit.Destination = unit.NearestHome.GetClosestPosition(unit.Position.X, unit.Position.Y)
+			unit.Destination = unit.NearestHome.GetClosestPosition(unit.Position)
 			unit.Action = DeliveringAction
 		} else {
 			// move to and collect resource
 			unit.MoveToDestination(sim, false) // setting this to True causes jank behavior and its better as false?
-			dist := unit.DistanceTo(*unit.Destination)
+			dist := unit.DistanceTo(unit.Destination)
 			if dist < 230 { // lots of tweaks needed here or fixes TODO
 				// TODO: play animation and wait some time to harvest?
 				unit.Stats.ResourceCollectTime += 1
 				if unit.Stats.ResourceCollectTime >= uint(MaxResourceCollectFrames) {
 					unit.Stats.ResourceCollectTime = 0
-					tile := sim.world.TileMap.GetTileByPosition(unit.Destination.X, unit.Destination.Y)
+					tile := sim.world.TileMap.GetTileByPosition(int(unit.Destination.X), int(unit.Destination.Y))
 					if tile != nil && tile.Type != "none" {
 						unit.Stats.ResourceCarried = 5
 						unit.Stats.ResourceTypeCarried = tile.Type
@@ -183,7 +184,7 @@ func (unit *Unit) Update(sim *T) {
 		// return resource to home base
 		// set home if unset
 		unit.MoveToDestination(sim, false) // setting this to True causes jank behavior and its better as false?
-		dist := unit.EdgeDistanceTo(*unit.Destination)
+		dist := unit.EdgeDistanceTo(unit.Destination)
 		if dist < 100 { // lots of tweaks needed here or fixes TODO
 			if unit.Stats.ResourceTypeCarried == "wood" {
 				sim.AddWood(unit.Stats.ResourceCarried)
@@ -216,27 +217,27 @@ func (unit *Unit) MoveToDestination(sim *T, harvesting bool) {
 
 	// Attempt X movement
 	if moveX != 0 {
-		newX := unit.Position.X + int(moveX)
+		newX := unit.Position.X + moveX
 		newY := unit.Position.Y
 		candidate := &image.Rectangle{
-			Min: image.Point{X: newX, Y: newY},
-			Max: image.Point{X: newX + unit.Rect.Dx(), Y: newY + unit.Rect.Dy()},
+			Min: image.Point{X: int(newX), Y: int(newY)},
+			Max: image.Point{X: int(newX) + unit.Rect.Dx(), Y: int(newY) + unit.Rect.Dy()},
 		}
 		if !unit.isColliding(candidate, sim) {
-			unit.SetPosition(&image.Point{X: newX, Y: unit.Position.Y})
+			unit.SetPosition(&vec2.T{X: newX, Y: unit.Position.Y})
 		}
 	}
 
 	// Attempt Y movement
 	if moveY != 0 {
-		newY := unit.Position.Y + int(moveY)
+		newY := unit.Position.Y + moveY
 		newX := unit.Position.X
 		candidate := &image.Rectangle{
-			Min: image.Point{X: newX, Y: newY},
-			Max: image.Point{X: newX + unit.Rect.Dx(), Y: newY + unit.Rect.Dy()},
+			Min: image.Point{X: int(newX), Y: int(newY)},
+			Max: image.Point{X: int(newX) + unit.Rect.Dx(), Y: int(newY) + unit.Rect.Dy()},
 		}
 		if !unit.isColliding(candidate, sim) {
-			unit.SetPosition(&image.Point{X: unit.Position.X, Y: newY})
+			unit.SetPosition(&vec2.T{X: unit.Position.X, Y: newY})
 		}
 	}
 
@@ -260,7 +261,7 @@ func (unit *Unit) MoveToDestination(sim *T, harvesting bool) {
 			//unit.StuckSidestepAttempts++
 		}
 
-		if unit.StuckFrames > 200 { //|| unit.StuckSidestepAttempts > 3
+		if unit.StuckFrames > 2000 { //|| unit.StuckSidestepAttempts > 3
 			//Only sidestep if the destination itself isn't clearly blocked
 			if unit.isDestinationBlocked(sim) {
 				unit.Action = IdleAction
@@ -276,10 +277,13 @@ func (unit *Unit) MoveToDestination(sim *T, harvesting bool) {
 
 	// Final snapping
 	snapRect := &image.Rectangle{
-		Min: *unit.Destination,
+		Min: image.Point{
+			X: int(unit.Destination.X),
+			Y: int(unit.Destination.Y),
+		},
 		Max: image.Point{
-			X: unit.Destination.X + unit.Rect.Dx(),
-			Y: unit.Destination.Y + unit.Rect.Dy(),
+			X: int(unit.Destination.X) + unit.Rect.Dx(),
+			Y: int(unit.Destination.Y) + unit.Rect.Dy(),
 		},
 	}
 	if math.Abs(dx) <= float64(ArrivalThreshold) &&
@@ -348,11 +352,11 @@ func (unit *Unit) isColliding(rect *image.Rectangle, sim *T) bool {
 
 func (unit *Unit) TrySidestep(sim *T) {
 	dest := unit.Destination
-	bestOffset := image.Point{}
-	shortestDist := unit.DistanceTo(*dest)
+	bestOffset := vec2.T{}
+	shortestDist := unit.DistanceTo(dest)
 
 	// Try 8 directions (N, NE, E, SE, S, SW, W, NW)
-	offsets := []image.Point{
+	offsets := []vec2.T{
 		{X: -1, Y: 0}, {X: 1, Y: 0},
 		{X: 0, Y: -1}, {X: 0, Y: 1},
 		{X: -1, Y: -1}, {X: 1, Y: -1},
@@ -365,15 +369,15 @@ func (unit *Unit) TrySidestep(sim *T) {
 	})
 
 	for _, off := range offsets {
-		newX := unit.Position.X + off.X*int(unit.Stats.MoveSpeed)
-		newY := unit.Position.Y + off.Y*int(unit.Stats.MoveSpeed)
+		newX := unit.Position.X + off.X*float64(unit.Stats.MoveSpeed)
+		newY := unit.Position.Y + off.Y*float64(unit.Stats.MoveSpeed)
 		candidate := &image.Rectangle{
-			Min: image.Point{X: newX, Y: newY},
-			Max: image.Point{X: newX + unit.Rect.Dx(), Y: newY + unit.Rect.Dy()},
+			Min: image.Point{X: int(newX), Y: int(newY)},
+			Max: image.Point{X: int(newX) + unit.Rect.Dx(), Y: int(newY) + unit.Rect.Dy()},
 		}
 		if !unit.isColliding(candidate, sim) {
 			// Check if this move gets us closer to the destination
-			newDist := unit.edgeDist(image.Point{X: newX, Y: newY}, *dest)
+			newDist := unit.edgeDist(image.Point{X: int(newX), Y: int(newY)}, dest.ToPoint())
 			if newDist < float64(shortestDist) {
 				bestOffset = off
 				shortestDist = uint(newDist)
@@ -382,10 +386,10 @@ func (unit *Unit) TrySidestep(sim *T) {
 	}
 
 	// Apply best offset if found
-	if bestOffset != (image.Point{}) {
-		newX := unit.Position.X + bestOffset.X*int(unit.Stats.MoveSpeed)
-		newY := unit.Position.Y + bestOffset.Y*int(unit.Stats.MoveSpeed)
-		unit.SetPosition(&image.Point{X: newX, Y: newY})
+	if bestOffset != (vec2.T{}) {
+		newX := unit.Position.X + bestOffset.X*float64(unit.Stats.MoveSpeed)
+		newY := unit.Position.Y + bestOffset.Y*float64(unit.Stats.MoveSpeed)
+		unit.SetPosition(&vec2.T{X: newX, Y: newY})
 	}
 }
 
@@ -393,14 +397,14 @@ func (unit *Unit) SetNearestEnemy(target *Unit) {
 	unit.NearestEnemy = target
 }
 
-func (unit *Unit) DistanceTo(point image.Point) uint {
+func (unit *Unit) DistanceTo(point *vec2.T) uint {
 	selfCentered := unit.GetCenteredPosition()
 	xDist := math.Abs(float64(selfCentered.X - point.X))
 	yDist := math.Abs(float64(selfCentered.Y - point.Y))
 	return uint(math.Sqrt(math.Pow(xDist, 2) + math.Pow(yDist, 2)))
 }
 
-func (unit *Unit) EdgeDistanceTo(point image.Point) uint {
+func (unit *Unit) EdgeDistanceTo(point *vec2.T) uint {
 	// Calculate the shortest distance from any edge of unit.Rect to the given point.
 	rect := unit.Rect
 	px, py := point.X, point.Y
@@ -415,52 +419,41 @@ func (unit *Unit) EdgeDistanceTo(point image.Point) uint {
 	return uint(math.Sqrt(dx*dx + dy*dy))
 }
 
-func (unit *Unit) TargetInRange(point image.Point) bool {
+func (unit *Unit) TargetInRange(point *vec2.T) bool {
 	return unit.DistanceTo(point) <= unit.Stats.Range
 }
 
-func (unit *Unit) SetPosition(pos *image.Point) {
+func (unit *Unit) SetPosition(pos *vec2.T) {
 	sizeX := unit.Rect.Dx()
 	sizeY := unit.Rect.Dy()
 	unit.Position = pos
-	unit.Rect.Min = *pos
+	unit.Rect.Min = image.Point{
+		X: int(pos.X),
+		Y: int(pos.Y),
+	}
 	unit.Rect.Max = image.Point{
-		X: pos.X + sizeX,
-		Y: pos.Y + sizeY,
+		X: int(pos.X) + sizeX,
+		Y: int(pos.Y) + sizeY,
 	}
 }
 
 func (unit *Unit) SetTilePosition(x, y int) {
-	unit.SetPosition(&image.Point{X: x * 128, Y: y * 128})
+	unit.SetPosition(&vec2.T{X: float64(x * 128), Y: float64(y * 128)})
 }
 
-func (unit *Unit) GetCenteredPosition() *image.Point {
-	return &image.Point{
-		X: unit.Position.X + unit.Rect.Dx()/2,
-		Y: unit.Position.Y + unit.Rect.Dy()/2,
+func (unit *Unit) GetCenteredPosition() *vec2.T {
+	return &vec2.T{
+		X: unit.Position.X + float64(unit.Rect.Dx())/2,
+		Y: unit.Position.Y + float64(unit.Rect.Dy())/2,
 	}
 }
 
-// func (unit *Unit) isDestinationReachable(sim *T) bool {
-// 	destRect := &image.Rectangle{
-// 		Min: image.Point{
-// 			X: unit.Destination.X,
-// 			Y: unit.Destination.Y,
-// 		},
-// 		Max: image.Point{
-// 			X: unit.Destination.X + unit.Rect.Dx(),
-// 			Y: unit.Destination.Y + unit.Rect.Dy(),
-// 		},
-// 	}
-// 	return !unit.isColliding(destRect, sim)
-// }
-
 func (unit *Unit) isDestinationBlocked(sim *T) bool {
 	destRect := &image.Rectangle{
-		Min: *unit.Destination,
+		Min: unit.Destination.ToPoint(),
 		Max: image.Point{
-			X: unit.Destination.X + unit.Rect.Dx(),
-			Y: unit.Destination.Y + unit.Rect.Dy(),
+			X: int(unit.Destination.X) + unit.Rect.Dx(),
+			Y: int(unit.Destination.Y) + unit.Rect.Dy(),
 		},
 	}
 
@@ -471,20 +464,20 @@ func (unit *Unit) isDestinationBlocked(sim *T) bool {
 
 	// Check 8 adjacent tiles for walls — if all are blocked, it's surrounded
 	blockedSides := 0
-	offsets := []image.Point{
+	offsets := []vec2.T{
 		{X: -1, Y: 0}, {X: 1, Y: 0},
 		{X: 0, Y: -1}, {X: 0, Y: 1},
 		{X: -1, Y: -1}, {X: 1, Y: -1},
 		{X: -1, Y: 1}, {X: 1, Y: 1},
 	}
 	for _, off := range offsets {
-		pos := image.Point{
-			X: unit.Destination.X + off.X*unit.Rect.Dx(),
-			Y: unit.Destination.Y + off.Y*unit.Rect.Dy(),
+		pos := vec2.T{
+			X: unit.Destination.X + off.X*float64(unit.Rect.Dx()),
+			Y: unit.Destination.Y + off.Y*float64(unit.Rect.Dy()),
 		}
 		rect := &image.Rectangle{
-			Min: pos,
-			Max: image.Point{X: pos.X + unit.Rect.Dx(), Y: pos.Y + unit.Rect.Dy()},
+			Min: pos.ToPoint(),
+			Max: image.Point{X: int(pos.X) + unit.Rect.Dx(), Y: int(pos.Y) + unit.Rect.Dy()},
 		}
 		if unit.isColliding(rect, sim) {
 			blockedSides++

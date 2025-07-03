@@ -50,3 +50,17 @@ func DrawCenteredText(screen *ebiten.Image, f text.Face, s string, cx, cy int, c
 	opt.GeoM.Translate(float64(x), float64(y))
 	text.Draw(screen, s, f, &opt)
 }
+
+func DrawCircle(screen *ebiten.Image, x, y float64, radius float64, clr color.Color) {
+	img := ebiten.NewImage(int(radius*2), int(radius*2))
+	for dy := -radius; dy <= radius; dy++ {
+		for dx := -radius; dx <= radius; dx++ {
+			if dx*dx+dy*dy <= radius*radius {
+				img.Set(int(dx+radius), int(dy+radius), clr)
+			}
+		}
+	}
+	op := &ebiten.DrawImageOptions{}
+	op.GeoM.Translate(x-radius, y-radius)
+	screen.DrawImage(img, op)
+}

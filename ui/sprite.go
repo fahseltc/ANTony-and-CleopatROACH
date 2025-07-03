@@ -3,6 +3,7 @@ package ui
 import (
 	"gamejam/eventing"
 	"gamejam/util"
+	"gamejam/vec2"
 	"image"
 	"image/color"
 	"time"
@@ -129,18 +130,18 @@ func NewSprite(uuid uuid.UUID, Rect image.Rectangle, imgPath string, spriteType 
 		ProgressBar: NewProgressBar(Rect.Min.X, Rect.Min.Y, Rect.Dx(), 6),
 	}
 }
-func (spr *Sprite) SetPosition(pos *image.Point) {
+func (spr *Sprite) SetPosition(pos *vec2.T) {
 	if spr.Rect != nil {
 		spr.lastPos = spr.Rect.Min
 	}
 	spr.Rect = &image.Rectangle{
-		Min: *pos,
+		Min: pos.ToPoint(),
 		Max: image.Point{
-			X: pos.X + spr.Rect.Dx(),
-			Y: pos.Y + spr.Rect.Dy(),
+			X: int(pos.X) + spr.Rect.Dx(),
+			Y: int(pos.Y) + spr.Rect.Dy(),
 		},
 	}
-	spr.SetProgressBarPosition(pos.X, pos.Y)
+	spr.SetProgressBarPosition(int(pos.X), int(pos.Y))
 }
 
 func (spr *Sprite) SetTilePosition(x, y int) {
@@ -245,3 +246,12 @@ func (spr *Sprite) UpdateAnimation(dt time.Duration) {
 // 		})
 // 	}
 // }
+
+func (spr *Sprite) GetCenter() *image.Point {
+	if spr.Rect == nil {
+		return nil
+	}
+	centerX := spr.Rect.Min.X + spr.Rect.Dx()/2
+	centerY := spr.Rect.Min.Y + spr.Rect.Dy()/2
+	return &image.Point{X: centerX, Y: centerY}
+}

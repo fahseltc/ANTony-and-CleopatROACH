@@ -3,6 +3,7 @@ package scene
 import (
 	"gamejam/sim"
 	"gamejam/ui"
+	"gamejam/vec2"
 	"image"
 	"math"
 )
@@ -167,9 +168,9 @@ func NewDrawTemporarySpriteAction(sprite *ui.Sprite, targetTile *image.Point, du
 
 func (a *DrawTemporarySpriteAction) Update(s *PlayScene, dt float64) bool {
 	if a.CurrentDuration == 0 {
-		a.spr.SetPosition(&image.Point{
-			X: a.TargetPosition.X,
-			Y: a.TargetPosition.Y,
+		a.spr.SetPosition(&vec2.T{
+			X: float64(a.TargetPosition.X),
+			Y: float64(a.TargetPosition.Y),
 		})
 		s.Sprites[a.spr.Id.String()] = a.spr
 	}
@@ -208,9 +209,9 @@ func (a *DrawTemporarySpriteBetweenUnitsAction) Update(s *PlayScene, dt float64)
 		midX := (pos1.X + pos2.X) / 2
 		midY := (pos1.Y + pos2.Y) / 2
 
-		a.spr.SetPosition(&image.Point{
-			X: midX + a.spr.Rect.Dx()/2,
-			Y: midY + a.spr.Rect.Dy()/2,
+		a.spr.SetPosition(&vec2.T{
+			X: midX + float64(a.spr.Rect.Dx())/2,
+			Y: midY + float64(a.spr.Rect.Dy())/2,
 		})
 		s.Sprites[a.spr.Id.String()] = a.spr
 	}

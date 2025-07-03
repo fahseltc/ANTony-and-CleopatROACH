@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"gamejam/eventing"
 	"gamejam/tilemap"
+	"gamejam/vec2"
 	"image"
 	"slices"
 	"sync"
@@ -149,7 +150,8 @@ func (s *T) IssueAction(id string, point *image.Point) error {
 	if err != nil {
 		return err
 	}
-	unit.Destination = point
+	newVec := vec2.T{X: float64(point.X), Y: float64(point.Y)}
+	unit.Destination = &newVec
 	unit.DestinationType = s.DetermineDestinationType(point)
 	// TODO: take passed in ACTION into account as it might matter for some UI buttons
 	switch unit.DestinationType {
@@ -186,7 +188,7 @@ func (s *T) GetAllUnits() []*Unit {
 func (s *T) GetAllNearbyCollidersHarvesting(x, y int) []*image.Rectangle {
 	var nearbyColliders []*image.Rectangle
 	for _, unit := range s.enemyUnits {
-		distance := unit.DistanceTo(image.Pt(x, y))
+		distance := unit.DistanceTo(&vec2.T{X: float64(x), Y: float64(y)})
 		if distance == 0 {
 			continue
 		}
@@ -195,7 +197,7 @@ func (s *T) GetAllNearbyCollidersHarvesting(x, y int) []*image.Rectangle {
 		}
 	}
 	for _, building := range s.playerBuildings {
-		distance := building.DistanceTo(image.Pt(x, y))
+		distance := building.DistanceTo(vec2.T{X: float64(x), Y: float64(y)})
 		if distance == 0 {
 			continue
 		}
@@ -211,7 +213,7 @@ func (s *T) GetAllNearbyColliders(x, y int) []*Collider {
 		if unit == nil {
 			continue
 		}
-		distance := unit.DistanceTo(image.Pt(x, y))
+		distance := unit.DistanceTo(&vec2.T{X: float64(x), Y: float64(y)})
 		if distance <= NearbyDistance {
 			nearbyColliders = append(nearbyColliders, &Collider{
 				Rect:    unit.Rect,
@@ -220,7 +222,7 @@ func (s *T) GetAllNearbyColliders(x, y int) []*Collider {
 		}
 	}
 	for _, building := range s.playerBuildings {
-		distance := building.DistanceTo(image.Pt(x, y))
+		distance := building.DistanceTo(vec2.T{X: float64(x), Y: float64(y)})
 		if distance <= NearbyDistance {
 			nearbyColliders = append(nearbyColliders, &Collider{
 				Rect:    building.GetRect(),
@@ -230,6 +232,23 @@ func (s *T) GetAllNearbyColliders(x, y int) []*Collider {
 	}
 	return nearbyColliders
 }
+
+// func (s *T) GetAllRoundUnitColliders() {
+// 	var colliders []*Collider
+// 	for _, unit := range append(s.enemyUnits, s.playerUnits...) {
+// 		if unit == nil {
+// 			continue
+// 		}
+
+// 		if unit.Rect.Overlaps(*rect) {
+// 			colliders = append(colliders, &Collider{
+// 				Rect:    unit.Rect,
+// 				OwnerID: unit.ID.String(),
+// 			})
+// 		}
+// 	}
+
+// }
 
 func (s *T) GetAllCollidersOverlapping(rect *image.Rectangle) []*Collider {
 	var colliders []*Collider
@@ -310,12 +329,9 @@ func (s *T) ConstructBuilding(target *image.Rectangle, builderID string) bool {
 		return false // todo print builder doesnt exist
 	}
 
-	targetCenter := image.Pt(
-		target.Min.X+(target.Dx()/2),
-		target.Min.Y+(target.Dy()/2),
-	)
+	targetCenter := vec2.T{X: float64(target.Min.X + (target.Dx() / 2)), Y: float64(target.Min.Y + (target.Dy() / 2))}
 
-	if unit.DistanceTo(targetCenter) > BuilderMaxDistance { // todo min should be center!
+	if unit.DistanceTo(&targetCenter) > BuilderMaxDistance { // todo min should be center!
 		return false
 	} else {
 		// actually build the thing
