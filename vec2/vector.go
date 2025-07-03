@@ -13,6 +13,7 @@ func (a T) Add(b T) T            { return T{a.X + b.X, a.Y + b.Y} }
 func (a T) Sub(b T) T            { return T{a.X - b.X, a.Y - b.Y} }
 func (a T) Scale(s float64) T    { return T{a.X * s, a.Y * s} }
 func (a T) Distance(b T) float64 { return math.Hypot(a.X-b.X, a.Y-b.Y) }
+func (a T) Length() float64      { return math.Hypot(a.X, a.Y) }
 func (a T) Normalize() T {
 	len := math.Hypot(a.X, a.Y)
 	if len == 0 {
