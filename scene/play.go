@@ -3,7 +3,7 @@ package scene
 import (
 	"fmt"
 	"gamejam/audio"
-	"gamejam/config"
+	"gamejam/data"
 	"gamejam/eventing"
 	"gamejam/fonts"
 	"gamejam/sim"
@@ -24,7 +24,7 @@ import (
 var PlayerFaction = 0
 
 type PlayScene struct {
-	Config *config.T // embedded from
+	Config *data.Config
 	BaseScene
 	LevelData   *LevelData
 	sound       *audio.SoundManager
@@ -69,7 +69,7 @@ type PlayScene struct {
 }
 
 func NewPlayScene(fonts *fonts.All, sound *audio.SoundManager, levelData LevelData) *PlayScene {
-	config, _ := config.New()
+	config, _ := data.NewConfig()
 
 	tileMap := tilemap.NewTilemap(levelData.TileMapPath)
 	simulation := sim.New(60, tileMap)
@@ -199,51 +199,10 @@ func (s *PlayScene) Update() error {
 		s.SceneCompleted = true
 		s.LevelData.SetupCompletionCutscene(s, s.QueenID, s.KingID)
 	}
-	// make sure all the sim units are in the list of spritess
-	for _, unit := range s.sim.GetAllUnits() {
-		if s.Sprites[unit.ID.String()] == nil {
-			switch unit.Type {
-			case sim.UnitTypeDefaultAnt:
-				s.Sprites[unit.ID.String()] = ui.NewDefaultAntSprite(unit.ID)
-			case sim.UnitTypeDefaultRoach:
-				s.Sprites[unit.ID.String()] = ui.NewDefaultRoachSprite(unit.ID)
-			case sim.UnitTypeRoyalAnt:
-				s.Sprites[unit.ID.String()] = ui.NewRoyalAntSprite(unit.ID)
-			case sim.UnitTypeRoyalRoach:
-				s.Sprites[unit.ID.String()] = ui.NewRoyalRoachSprite(unit.ID)
-			}
-
-		} else {
-			// else update sprites to match their sim positions
-			s.Sprites[unit.ID.String()].EventBus = s.eventBus
-			s.Sprites[unit.ID.String()].SetPosition(unit.Position)
-			s.Sprites[unit.ID.String()].SetAngle(unit.MovingAngle)
-			s.Sprites[unit.ID.String()].CarryingSucrose = (unit.Stats.ResourceTypeCarried == sim.ResourceTypeSucrose && unit.Stats.ResourceCarried > 0)
-			s.Sprites[unit.ID.String()].CarryingWood = (unit.Stats.ResourceTypeCarried == sim.ResourceTypeWood && unit.Stats.ResourceCarried > 0)
-		}
-	}
+	// Every Unit in the SIM should have a sprite, if not make one.
+	s.createOrUpdateUnitSprites()
 	// same for buildings
-	for _, building := range s.sim.GetAllBuildings() {
-		if s.Sprites[building.GetID().String()] == nil {
-			var spr *ui.Sprite
-			switch building.GetType() {
-			case sim.BuildingTypeBridge:
-				spr = ui.NewBridgeSprite(building.GetID())
-			case sim.BuildingTypeHive:
-				spr = ui.NewHiveSprite(building.GetID())
-			case sim.BuildingTypeRoachHive:
-				spr = ui.NewRoachHiveSprite(building.GetID())
-			case sim.BuildingTypeInConstruction:
-				spr = ui.NewInConstructionSprite(building.GetID())
-			}
-			s.Sprites[building.GetID().String()] = spr
-			s.Sprites[building.GetID().String()].SetPosition(building.GetPosition())
-			s.Sprites[building.GetID().String()].ProgressBar.SetProgress(building.GetProgress())
-		} else {
-			s.Sprites[building.GetID().String()].SetPosition(building.GetPosition())
-			s.Sprites[building.GetID().String()].ProgressBar.SetProgress(building.GetProgress())
-		}
-	}
+	s.createOrUpdateBuildingSprites()
 	// remove building & unit sprites that are no longer in the SIM
 	s.UpdateRemoveInactiveSprites()
 
@@ -325,30 +284,20 @@ func (s *PlayScene) Update() error {
 	}
 
 	if len(s.selectedUnitIDs) > 0 {
-		// Handle 1 unit or building selected
-		if len(s.selectedUnitIDs) == 1 {
+		if len(s.selectedUnitIDs) == 1 { // Handle 1 unit or building selected
 			unitOrHiveString := s.sim.DetermineUnitOrHiveById(s.selectedUnitIDs[0])
 			switch unitOrHiveString {
 			case "hive":
-				// handle hive
-				// show hive UI elements
-
-				if s.Ui.HUD.RightSideState != ui.HiveSelectedState {
+				if s.Ui.HUD.RightSideState != ui.HiveSelectedState { // hide ui selected UI
 					s.eventBus.Publish(eventing.Event{
 						Type: "PlaySelectHiveSFX",
 					})
 					s.Ui.HUD.RightSideState = ui.HiveSelectedState
 					s.constructionMouse.Enabled = false
 				}
-				// s.eventBus.Publish(eventing.Event{
-				// 	Type: "ToggleRightSideHUDEvent",
-				// 	Data: eventing.ToggleRightSideHUDEvent{
-				// 		Show: true,
-				// 	},
-				// })
 			case "unit":
 				// hide HIVE build ui element
-				if s.Ui.HUD.RightSideState != ui.UnitSelectedState {
+				if s.Ui.HUD.RightSideState != ui.UnitSelectedState { // hide hive build UI
 					s.Ui.HUD.RightSideState = ui.UnitSelectedState
 					s.constructionMouse.Enabled = false
 				}
@@ -366,12 +315,11 @@ func (s *PlayScene) Update() error {
 				}
 			}
 		} else {
+			// Handle multiple unit or building selected
 			if s.Ui.HUD.RightSideState != ui.HiddenState {
 				s.Ui.HUD.RightSideState = ui.HiddenState
 				s.constructionMouse.Enabled = false
 			}
-
-			// handle multiple units/buildings selected
 			if inpututil.IsMouseButtonJustReleased(ebiten.MouseButtonRight) { // activate on buttonRelease to debounce
 				mx, my := ebiten.CursorPosition()
 				for _, unitId := range s.selectedUnitIDs {
@@ -400,6 +348,56 @@ func (s *PlayScene) Update() error {
 	return nil
 }
 
+func (s *PlayScene) createOrUpdateUnitSprites() {
+	for _, unit := range s.sim.GetAllUnits() {
+		unitSprite := s.Sprites[unit.ID.String()]
+		if unitSprite == nil {
+			switch unit.Type {
+			case sim.UnitTypeDefaultAnt:
+				unitSprite = ui.NewDefaultAntSprite(unit.ID)
+			case sim.UnitTypeDefaultRoach:
+				unitSprite = ui.NewDefaultRoachSprite(unit.ID)
+			case sim.UnitTypeRoyalAnt:
+				unitSprite = ui.NewRoyalAntSprite(unit.ID)
+			case sim.UnitTypeRoyalRoach:
+				unitSprite = ui.NewRoyalRoachSprite(unit.ID)
+			}
+			unitSprite.EventBus = s.eventBus
+			unitSprite.SetPosition(unit.Position)
+			unitSprite.SetAngle(unit.MovingAngle)
+
+		} else { // The sprite has already been created, update it
+			unitSprite.SetPosition(unit.Position)
+			unitSprite.SetAngle(unit.MovingAngle)
+			unitSprite.CarryingSucrose = (unit.Stats.ResourceTypeCarried == sim.ResourceTypeSucrose && unit.Stats.ResourceCarried > 0)
+			unitSprite.CarryingWood = (unit.Stats.ResourceTypeCarried == sim.ResourceTypeWood && unit.Stats.ResourceCarried > 0)
+		}
+		s.Sprites[unit.ID.String()] = unitSprite
+	}
+}
+
+func (s *PlayScene) createOrUpdateBuildingSprites() {
+	for _, building := range s.sim.GetAllBuildings() {
+		spriteBuilding := s.Sprites[building.GetID().String()]
+		if spriteBuilding == nil {
+			switch building.GetType() {
+			case sim.BuildingTypeBridge:
+				spriteBuilding = ui.NewBridgeSprite(building.GetID())
+			case sim.BuildingTypeHive:
+				spriteBuilding = ui.NewHiveSprite(building.GetID())
+			case sim.BuildingTypeRoachHive:
+				spriteBuilding = ui.NewRoachHiveSprite(building.GetID())
+			case sim.BuildingTypeInConstruction:
+				spriteBuilding = ui.NewInConstructionSprite(building.GetID())
+			}
+			spriteBuilding.SetPosition(building.GetPosition())
+		} else {
+			spriteBuilding.ProgressBar.SetProgress(building.GetProgress())
+		}
+		s.Sprites[building.GetID().String()] = spriteBuilding
+	}
+}
+
 func (s *PlayScene) UpdateRemoveInactiveSprites() {
 	activeIDs := make(map[string]struct{})
 	for _, building := range s.sim.GetAllBuildings() {
@@ -410,7 +408,7 @@ func (s *PlayScene) UpdateRemoveInactiveSprites() {
 	}
 	for id, spr := range s.Sprites {
 		if spr.Type == ui.SpriteTypeStatic {
-			continue // static sprites are not removed
+			continue // static sprites are never removed automatically - they dont exist in the SIM, just in UI
 		}
 		if _, exists := activeIDs[id]; !exists {
 			delete(s.Sprites, id)
@@ -419,7 +417,7 @@ func (s *PlayScene) UpdateRemoveInactiveSprites() {
 }
 
 func (s *PlayScene) Draw(screen *ebiten.Image) {
-	// Draw tiles first as the BG
+	// Draw tilemap static BG FIRST
 	opts := &ebiten.DrawImageOptions{}
 	opts.GeoM.Scale(s.Ui.Camera.ViewPortZoom, s.Ui.Camera.ViewPortZoom)
 	opts.GeoM.Translate(float64(s.Ui.Camera.ViewPortX), float64(s.Ui.Camera.ViewPortY))
@@ -436,19 +434,16 @@ func (s *PlayScene) Draw(screen *ebiten.Image) {
 		}
 	}
 
-	// Then non-static
+	// Then Dynamic Sprites
 	for _, sprite := range s.Sprites {
 		if sprite.Type != ui.SpriteTypeStatic {
 			sprite.Draw(screen, s.Ui.Camera)
 		}
 	}
-	// draw expanding circle to indicate action issued at location
+
 	s.drawExpandingActionIssuedCircle(screen)
-
 	s.Ui.Draw(screen)
-
 	s.drag.Draw(screen)
-
 	s.constructionMouse.Draw(screen, s.Ui.Camera)
 
 	if s.currentDialog != nil {
@@ -466,7 +461,7 @@ func (s *PlayScene) Draw(screen *ebiten.Image) {
 
 	s.Ui.Camera.DrawFade(screen) // this should always be drawn second to last
 
-	if !s.Pause.Hidden { // pause should always come last
+	if !s.Pause.Hidden { // this should always be drawn last
 		s.Pause.Draw(screen)
 		return
 	}

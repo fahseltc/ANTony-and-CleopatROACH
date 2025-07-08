@@ -4,28 +4,28 @@ import "errors"
 
 // Queue is a generic FIFO queue.
 type Queue[T any] struct {
-	items []T
+	Items []T
 }
 
 // New returns a new, empty queue.
 func NewQueue[T any]() *Queue[T] {
-	return &Queue[T]{items: []T{}}
+	return &Queue[T]{Items: []T{}}
 }
 
 // Enqueue adds an item to the end of the queue.
 func (q *Queue[T]) Enqueue(item T) {
-	q.items = append(q.items, item)
+	q.Items = append(q.Items, item)
 }
 
 // Dequeue removes and returns the item at the front of the queue.
 // Returns an error if the queue is empty.
 func (q *Queue[T]) Dequeue() (T, error) {
 	var zero T
-	if len(q.items) == 0 {
+	if len(q.Items) == 0 {
 		return zero, errors.New("queue is empty")
 	}
-	item := q.items[0]
-	q.items = q.items[1:]
+	item := q.Items[0]
+	q.Items = q.Items[1:]
 	return item, nil
 }
 
@@ -33,18 +33,22 @@ func (q *Queue[T]) Dequeue() (T, error) {
 // Returns an error if the queue is empty.
 func (q *Queue[T]) Peek() (T, error) {
 	var zero T
-	if len(q.items) == 0 {
+	if len(q.Items) == 0 {
 		return zero, errors.New("queue is empty")
 	}
-	return q.items[0], nil
+	return q.Items[0], nil
 }
 
-// Len returns the number of items in the queue.
+// Len returns the number of Items in the queue.
 func (q *Queue[T]) Len() int {
-	return len(q.items)
+	return len(q.Items)
 }
 
-// IsEmpty returns true if the queue has no items.
+// IsEmpty returns true if the queue has no Items.
 func (q *Queue[T]) IsEmpty() bool {
-	return len(q.items) == 0
+	return len(q.Items) == 0
+}
+
+func (q *Queue[T]) Clear() {
+	q.Items = q.Items[:0]
 }

@@ -1,9 +1,9 @@
 {
     "windowTitle": "ANTony & CleopatROACH",
     "targetFPS": 60,
-    "muteAudio": true,
+    "muteAudio": false,
     "debugDraw": true,
-    "skipMenu": true,
+    "skipMenu": false,
     "skipToGameplay": true,
     "startingLevel": 0,
     "resolution": {

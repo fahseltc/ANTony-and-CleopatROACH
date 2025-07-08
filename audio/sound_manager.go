@@ -2,7 +2,6 @@ package audio
 
 import (
 	"bytes"
-	"embed"
 	"fmt"
 	"gamejam/assets"
 	"gamejam/eventing"
@@ -10,13 +9,12 @@ import (
 	"math/rand"
 
 	"github.com/hajimehoshi/ebiten/v2/audio"
-	"github.com/hajimehoshi/ebiten/v2/audio/wav"
+	"github.com/hajimehoshi/ebiten/v2/audio/vorbis"
 )
 
-var soundFiles embed.FS
-
 var (
-	audioContext = audio.NewContext(44100)
+	SampleRate   = 44100
+	AudioContext = audio.NewContext(SampleRate)
 )
 
 type SoundManager struct {
@@ -32,13 +30,13 @@ type SoundManager struct {
 
 func NewSoundManager() *SoundManager {
 	return &SoundManager{
-		GlobalSFXVolume: 0.3,
-		GlobalMSXVolume: 0.4,
-		sounds:          make(map[string][]byte),
-		activePlayers:   make(map[string][]*audio.Player),
-		lastPlayedFrame: make(map[string]int),
+		GlobalSFXVolume:  0.3,
+		GlobalMSXVolume:  0.4,
+		sounds:           make(map[string][]byte),
+		activePlayers:    make(map[string][]*audio.Player),
+		lastPlayedFrame:  make(map[string]int),
 		minFrameInterval: map[string]int{
-			"walk": 30, // walk sound must wait X frames between plays
+			//			"walk": 30, // walk sound must wait X frames between plays
 		},
 		maxOverlaps: map[string]int{ // songs need to be in this list if we want to be able to stop them entirely.
 			"sfx_command_0":    1,
@@ -92,7 +90,9 @@ func (sm *SoundManager) Play(name string) {
 		return
 	}
 
-	stream, err := wav.DecodeWithSampleRate(44100, bytes.NewReader(data))
+	//wav.DecodeWithSampleRate(SampleRate, bytes.NewReader(data))
+
+	stream, err := vorbis.DecodeWithSampleRate(SampleRate, bytes.NewReader(data))
 	if err != nil {
 		log.Printf("failed to decode sound %s: %v", name, err)
 		return
@@ -100,9 +100,9 @@ func (sm *SoundManager) Play(name string) {
 	var player *audio.Player
 	if len(name) >= 4 && name[:4] == "msx_" {
 		loop := audio.NewInfiniteLoop(stream, stream.Length())
-		player, err = audioContext.NewPlayer(loop)
+		player, err = AudioContext.NewPlayer(loop)
 	} else {
-		player, err = audioContext.NewPlayer(stream)
+		player, err = AudioContext.NewPlayer(stream)
 	}
 
 	if err != nil {

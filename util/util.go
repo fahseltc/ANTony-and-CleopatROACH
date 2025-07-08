@@ -5,6 +5,7 @@ import (
 	"gamejam/vec2"
 	"image"
 	"image/color"
+	"math"
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
@@ -14,9 +15,6 @@ import (
 func LoadImage(filePath string) *ebiten.Image {
 	img, _, err := ebitenutil.NewImageFromFileSystem(assets.Files, filePath)
 	if err != nil {
-		return nil
-	}
-	if img == nil {
 		img, _, _ = ebitenutil.NewImageFromFileSystem(assets.Files, "TEXTURE_MISSING.png")
 	}
 	return img
@@ -24,7 +22,6 @@ func LoadImage(filePath string) *ebiten.Image {
 
 func ScaleImage(input *ebiten.Image, newWidth float32, newHeight float32) *ebiten.Image {
 	imgW, imgH := input.Bounds().Dx(), input.Bounds().Dy()
-	//example: input image is 300,200 and we want to draw it at 200,100 size
 	wScale := newWidth / float32(imgW)
 	hScale := newHeight / float32(imgH)
 
@@ -70,7 +67,7 @@ func DrawCircle(screen *ebiten.Image, x, y float64, radius float64, clr color.Co
 func DrawLine(screen *ebiten.Image, x1, y1, x2, y2 float64, clr color.Color) {
 	dx := x2 - x1
 	dy := y2 - y1
-	steps := int(max(abs(dx), abs(dy)))
+	steps := int(max(math.Abs(dx), math.Abs(dy)))
 	if steps == 0 {
 		screen.Set(int(x1), int(y1), clr)
 		return
@@ -81,20 +78,6 @@ func DrawLine(screen *ebiten.Image, x1, y1, x2, y2 float64, clr color.Color) {
 		py := y1 + dy*t
 		screen.Set(int(px), int(py), clr)
 	}
-}
-
-func abs(a float64) float64 {
-	if a < 0 {
-		return -a
-	}
-	return a
-}
-
-func max(a, b float64) float64 {
-	if a > b {
-		return a
-	}
-	return b
 }
 
 func PointToVec2(point *image.Point) *vec2.T {

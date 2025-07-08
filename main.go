@@ -2,7 +2,7 @@ package main
 
 import (
 	"gamejam/audio"
-	"gamejam/config"
+	"gamejam/data"
 	"gamejam/game"
 	"log"
 
@@ -14,24 +14,24 @@ var Sound *audio.SoundManager
 func init() {
 	Sound = audio.NewSoundManager()
 
-	Sound.LoadSound("sfx_command_0", "sfx/issue_command/bug_01.wav")
-	Sound.LoadSound("sfx_command_1", "sfx/issue_command/bug_02.wav")
-	Sound.LoadSound("sfx_command_2", "sfx/issue_command/bug_03.wav")
-	Sound.LoadSound("sfx_command_3", "sfx/issue_command/bug_04.wav")
-	Sound.LoadSound("sfx_command_4", "sfx/issue_command/bug_05.wav")
+	Sound.LoadSound("sfx_command_0", "sfx/issue_command/bug_01.ogg")
+	Sound.LoadSound("sfx_command_1", "sfx/issue_command/bug_02.ogg")
+	Sound.LoadSound("sfx_command_2", "sfx/issue_command/bug_03.ogg")
+	Sound.LoadSound("sfx_command_3", "sfx/issue_command/bug_04.ogg")
+	Sound.LoadSound("sfx_command_4", "sfx/issue_command/bug_05.ogg")
 
-	Sound.LoadSound("sfx_hive_0", "sfx/select_hive/hive_0.wav")
-	Sound.LoadSound("sfx_hive_1", "sfx/select_hive/hive_1.wav")
-	Sound.LoadSound("sfx_hive_2", "sfx/select_hive/hive_2.wav")
-	Sound.LoadSound("sfx_hive_3", "sfx/select_hive/hive_3.wav")
+	Sound.LoadSound("sfx_hive_0", "sfx/select_hive/hive_0.ogg")
+	Sound.LoadSound("sfx_hive_1", "sfx/select_hive/hive_1.ogg")
+	Sound.LoadSound("sfx_hive_2", "sfx/select_hive/hive_2.ogg")
+	Sound.LoadSound("sfx_hive_3", "sfx/select_hive/hive_3.ogg")
 
-	Sound.LoadSound("msx_gamesong1", "music/Sketchbook 2024-11-07.wav")
-	Sound.LoadSound("msx_menusong", "music/Sketchbook 2024-01-24_02.wav")
-	Sound.LoadSound("msx_narratorsong", "music/JDSherbert Desert Sirocco.wav")
+	Sound.LoadSound("msx_gamesong1", "music/Sketchbook 2024-11-07.ogg")
+	Sound.LoadSound("msx_menusong", "music/Sketchbook 2024-01-24_02.ogg")
+	Sound.LoadSound("msx_narratorsong", "music/JDSherbert Desert Sirocco.ogg")
 
 }
 func main() {
-	cfg, err := config.New()
+	cfg, err := data.NewConfig()
 	if err != nil {
 		log.Fatal(err)
 	}

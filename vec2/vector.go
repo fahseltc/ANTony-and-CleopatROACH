@@ -5,6 +5,11 @@ import (
 	"math"
 )
 
+var (
+	TileSize     = 128.0
+	HalfTileSize = 64.0
+)
+
 type T struct {
 	X, Y float64
 }
@@ -28,5 +33,12 @@ func (a T) RoundToGrid() *T {
 	return &T{
 		X: math.Floor(a.X/128) * 128,
 		Y: math.Floor(a.Y/128) * 128,
+	}
+}
+
+func (a T) ToCenteredPixelCoordinates() *T {
+	return &T{
+		X: a.X*TileSize + HalfTileSize,
+		Y: a.Y*TileSize + HalfTileSize,
 	}
 }
