@@ -2,6 +2,8 @@ package util
 
 import (
 	"gamejam/assets"
+	"gamejam/vec2"
+	"image"
 	"image/color"
 
 	"github.com/hajimehoshi/ebiten/v2"
@@ -63,4 +65,41 @@ func DrawCircle(screen *ebiten.Image, x, y float64, radius float64, clr color.Co
 	op := &ebiten.DrawImageOptions{}
 	op.GeoM.Translate(x-radius, y-radius)
 	screen.DrawImage(img, op)
+}
+
+func DrawLine(screen *ebiten.Image, x1, y1, x2, y2 float64, clr color.Color) {
+	dx := x2 - x1
+	dy := y2 - y1
+	steps := int(max(abs(dx), abs(dy)))
+	if steps == 0 {
+		screen.Set(int(x1), int(y1), clr)
+		return
+	}
+	for i := 0; i <= steps; i++ {
+		t := float64(i) / float64(steps)
+		px := x1 + dx*t
+		py := y1 + dy*t
+		screen.Set(int(px), int(py), clr)
+	}
+}
+
+func abs(a float64) float64 {
+	if a < 0 {
+		return -a
+	}
+	return a
+}
+
+func max(a, b float64) float64 {
+	if a > b {
+		return a
+	}
+	return b
+}
+
+func PointToVec2(point *image.Point) *vec2.T {
+	return &vec2.T{
+		X: float64(point.X),
+		Y: float64(point.Y),
+	}
 }

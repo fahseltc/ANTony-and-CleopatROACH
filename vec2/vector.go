@@ -24,3 +24,9 @@ func (a T) Normalize() T {
 func (a T) ToPoint() image.Point {
 	return image.Point{X: int(a.X), Y: int(a.Y)}
 }
+func (a T) RoundToGrid() *T {
+	return &T{
+		X: math.Floor(a.X/128) * 128,
+		Y: math.Floor(a.Y/128) * 128,
+	}
+}

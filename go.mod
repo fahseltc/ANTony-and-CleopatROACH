@@ -21,6 +21,7 @@ require (
 	github.com/go-text/typesetting v0.2.0 // indirect
 	github.com/hajimehoshi/go-mp3 v0.3.4 // indirect
 	github.com/jezek/xgb v1.1.1 // indirect
+	github.com/quasilyte/pathing v0.0.0-20231012081721-0370212e864a // indirect
 	golang.org/x/image v0.28.0 // indirect
 	golang.org/x/sync v0.15.0 // indirect
 	golang.org/x/sys v0.25.0 // indirect

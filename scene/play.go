@@ -18,6 +18,7 @@ import (
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
 	"github.com/hajimehoshi/ebiten/v2/inpututil"
+	"github.com/quasilyte/pathing"
 )
 
 var PlayerFaction = 0
@@ -217,8 +218,8 @@ func (s *PlayScene) Update() error {
 			s.Sprites[unit.ID.String()].EventBus = s.eventBus
 			s.Sprites[unit.ID.String()].SetPosition(unit.Position)
 			s.Sprites[unit.ID.String()].SetAngle(unit.MovingAngle)
-			s.Sprites[unit.ID.String()].CarryingSucrose = (unit.Stats.ResourceTypeCarried == "sucrose" && unit.Stats.ResourceCarried > 0)
-			s.Sprites[unit.ID.String()].CarryingWood = (unit.Stats.ResourceTypeCarried == "wood" && unit.Stats.ResourceCarried > 0)
+			s.Sprites[unit.ID.String()].CarryingSucrose = (unit.Stats.ResourceTypeCarried == sim.ResourceTypeSucrose && unit.Stats.ResourceCarried > 0)
+			s.Sprites[unit.ID.String()].CarryingWood = (unit.Stats.ResourceTypeCarried == sim.ResourceTypeWood && unit.Stats.ResourceCarried > 0)
 		}
 	}
 	// same for buildings
@@ -521,10 +522,42 @@ func (s *PlayScene) DebugDraw(screen *ebiten.Image) {
 		}
 
 		// Draw debug circles for unit circular hitboxes
-		center := spr.GetCenter()
-		x0, y0 = s.Ui.Camera.MapPosToScreenPos(center.X, center.Y)
-		zoomedRadius := 64 * s.Ui.Camera.ViewPortZoom
-		util.DrawCircle(screen, float64(x0), float64(y0), zoomedRadius, color.RGBA{255, 25, 255, 255})
+		// center := spr.GetCenter()
+		// x0, y0 = s.Ui.Camera.MapPosToScreenPos(center.X, center.Y)
+		// zoomedRadius := 64 * s.Ui.Camera.ViewPortZoom
+		// util.DrawCircle(screen, float64(x0), float64(y0), zoomedRadius, color.RGBA{255, 25, 255, 255})
+	}
+	for y := 0; y < s.tileMap.Height; y++ {
+		for x := 0; x < s.tileMap.Width; x++ {
+			tileType := s.tileMap.PathGrid.GetCellTile(pathing.GridCoord{X: x, Y: y})
+			rect := image.Rect(x*s.tileMap.TileSize, y*s.tileMap.TileSize, (x+1)*s.tileMap.TileSize, (y+1)*s.tileMap.TileSize)
+			x0, y0 := s.Ui.Camera.MapPosToScreenPos(rect.Min.X, rect.Min.Y)
+			//x1, y1 := s.Ui.Camera.MapPosToScreenPos(rect.Max.X, rect.Max.Y)
+			// Draw rectangle outline in green
+			// for tx := x0; tx < x1; tx++ {
+			// 	screen.Set(tx, y0, color.RGBA{0, 255, 0, 255})
+			// 	screen.Set(tx, y1-1, color.RGBA{0, 255, 0, 255})
+			// }
+			// for ty := y0; ty < y1; ty++ {
+			// 	screen.Set(x0, ty, color.RGBA{0, 255, 0, 255})
+			// 	screen.Set(x1-1, ty, color.RGBA{0, 255, 0, 255})
+			// }
+			// Draw tileType uint in top-left corner
+			ebitenutil.DebugPrintAt(screen, fmt.Sprintf("%d", tileType), x0+2, y0+2)
+		}
+	}
+
+	// Draw destination paths
+	for _, unit := range s.sim.GetAllUnits() {
+		if !unit.Destinations.IsEmpty() {
+			lastPos := unit.GetCenteredPosition()
+			for _, dest := range unit.Destinations.Items {
+				x0, y0 := s.Ui.Camera.MapPosToScreenPos(int(lastPos.X), int(lastPos.Y))
+				x1, y1 := s.Ui.Camera.MapPosToScreenPos(int(dest.X), int(dest.Y))
+				util.DrawLine(screen, float64(x0), float64(y0), float64(x1), float64(y1), color.RGBA{0, 0, 255, 255})
+				lastPos = dest
+			}
+		}
 	}
 	ebitenutil.DebugPrintAt(screen, fmt.Sprintf("camera:%v,%v", s.Ui.Camera.ViewPortX, s.Ui.Camera.ViewPortY), 1, 1)
 	mx, my := ebiten.CursorPosition()

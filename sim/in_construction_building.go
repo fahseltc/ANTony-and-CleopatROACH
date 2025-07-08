@@ -34,7 +34,7 @@ func (icb *InConstructionBuilding) Update(sim *T) {
 	case BuildingTypeBridge:
 		bb := NewBridgeBuilding(int(icb.Position.X), int(icb.Position.Y))
 		sim.AddBuilding(bb)
-
+		//sim.world.TileMap.AddCollisionRect()
 	}
 
 }

@@ -9,8 +9,9 @@ var (
 )
 
 type Tile struct {
-	Type        string
-	Coordinates *image.Point
-	Rect        *image.Rectangle
-	TileID      int
+	Type         string
+	Coordinates  *image.Point
+	Rect         *image.Rectangle
+	TileID       int
+	HasCollision bool
 }

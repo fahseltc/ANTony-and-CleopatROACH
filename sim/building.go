@@ -33,6 +33,8 @@ const (
 type BuildingInterface interface {
 	//SetPosition(x, y, width, height int)
 	SetTilePosition(x, y int)
+	GetTilePosition() *vec2.T
+	GetAdjacentCoordinates() []*vec2.T
 	GetID() uuid.UUID
 	GetType() BuildingType
 	GetPosition() *vec2.T
@@ -68,6 +70,46 @@ func (b *Building) SetTilePosition(x, y int) {
 	b.Position = &vec2.T{X: float64(x * TileDimensions), Y: float64(y * TileDimensions)}
 	b.Rect.Min = image.Point{X: x * TileDimensions, Y: y * TileDimensions}
 	b.Rect.Max = image.Point{X: int(b.Position.X) + TileDimensions*2, Y: int(b.Position.Y) + TileDimensions*2}
+}
+
+func (b *Building) GetTilePosition() *vec2.T {
+	tileX := float64(b.Position.X) / float64(TileDimensions)
+	tileY := float64(b.Position.Y) / float64(TileDimensions)
+	return &vec2.T{
+		X: tileX,
+		Y: tileY,
+	}
+}
+func (b *Building) GetAdjacentCoordinates() []*vec2.T {
+	if b.Rect == nil {
+		return nil
+	}
+	// Get tile bounds
+	minTileX := b.Rect.Min.X / TileDimensions
+	minTileY := b.Rect.Min.Y / TileDimensions
+	maxTileX := (b.Rect.Max.X - 1) / TileDimensions
+	maxTileY := (b.Rect.Max.Y - 1) / TileDimensions
+
+	adjacent := []*vec2.T{}
+
+	// Top edge
+	for x := minTileX; x <= maxTileX; x++ {
+		adjacent = append(adjacent, &vec2.T{X: float64(x), Y: float64(minTileY - 1)})
+	}
+	// Bottom edge
+	for x := minTileX; x <= maxTileX; x++ {
+		adjacent = append(adjacent, &vec2.T{X: float64(x), Y: float64(maxTileY + 1)})
+	}
+	// Left edge
+	for y := minTileY; y <= maxTileY; y++ {
+		adjacent = append(adjacent, &vec2.T{X: float64(minTileX - 1), Y: float64(y)})
+	}
+	// Right edge
+	for y := minTileY; y <= maxTileY; y++ {
+		adjacent = append(adjacent, &vec2.T{X: float64(maxTileX + 1), Y: float64(y)})
+	}
+
+	return adjacent
 }
 
 func (b *Building) GetID() uuid.UUID      { return b.ID }

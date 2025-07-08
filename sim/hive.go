@@ -70,6 +70,7 @@ func (h *Hive) AddUnitToBuildQueue() {
 	}
 	h.buildQueue.Enqueue(unit)
 }
+
 func (h *Hive) GetNearbyPosition(sim *T, unitSize int) *vec2.T {
 	const maxRadius = 3
 	const tileSize = 128
@@ -80,6 +81,7 @@ func (h *Hive) GetNearbyPosition(sim *T, unitSize int) *vec2.T {
 		rect    *image.Rectangle
 		density int
 	}
+	// TODO this sucks make it better
 
 	var candidates []spawnCandidate
 

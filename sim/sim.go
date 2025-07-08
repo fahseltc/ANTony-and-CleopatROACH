@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"gamejam/eventing"
 	"gamejam/tilemap"
+	"gamejam/util"
 	"gamejam/vec2"
 	"image"
 	"slices"
@@ -35,6 +36,8 @@ type T struct {
 
 type Collider struct {
 	Rect    *image.Rectangle
+	Center  image.Point
+	Radius  uint
 	OwnerID string
 }
 
@@ -42,6 +45,14 @@ type PlayerState struct {
 	Sucrose uint16
 	Wood    uint16
 }
+
+type ResourceType uint
+
+const (
+	ResourceTypeNone ResourceType = iota
+	ResourceTypeSucrose
+	ResourceTypeWood
+)
 
 func (s *T) GetPlayerState() PlayerState {
 	s.stateMu.RLock()
@@ -63,7 +74,9 @@ func New(tps int, tileMap *tilemap.Tilemap) *T {
 		},
 
 		// TODO Spawn Points
-		playerState: PlayerState{},
+		playerState: PlayerState{
+			Sucrose: 9999,
+		},
 		//playerWorkers: make([]Worker, 1),
 		playerUnits: make([]*Unit, 0, 10),
 		enemyUnits:  make([]*Unit, 0, 10),
@@ -116,11 +129,13 @@ func (s *T) AddUnit(u *Unit) {
 }
 func (s *T) AddBuilding(b BuildingInterface) {
 	s.playerBuildings = append(s.playerBuildings, b)
+	s.world.TileMap.AddCollisionRect(b.GetRect())
 }
 func (s *T) RemoveBuilding(b BuildingInterface) {
 	s.playerBuildings = slices.DeleteFunc(s.playerBuildings, func(other BuildingInterface) bool {
 		return other.GetID() == b.GetID()
 	})
+	s.world.TileMap.RemoveCollisionRect(b.GetRect())
 }
 
 func (s *T) GetUnitByID(id string) (*Unit, error) {
@@ -150,8 +165,8 @@ func (s *T) IssueAction(id string, point *image.Point) error {
 	if err != nil {
 		return err
 	}
-	newVec := vec2.T{X: float64(point.X), Y: float64(point.Y)}
-	unit.Destination = &newVec
+	clickedTile := s.world.TileMap.GetTileByPosition(point.X, point.Y)
+
 	unit.DestinationType = s.DetermineDestinationType(point)
 	// TODO: take passed in ACTION into account as it might matter for some UI buttons
 	switch unit.DestinationType {
@@ -159,11 +174,78 @@ func (s *T) IssueAction(id string, point *image.Point) error {
 		unit.Action = AttackMovingAction
 	case ResourceDestination:
 		unit.Action = CollectingAction
+		unit.LastResourcePos = &vec2.T{X: float64(clickedTile.Coordinates.X*128 + 64), Y: float64(clickedTile.Coordinates.Y)*128 + 64}
 	case LocationDestination:
 		unit.Action = AttackMovingAction
 	}
 
+	start := unit.GetTileCoordinates()
+	end := util.PointToVec2(clickedTile.Coordinates)
+
+	// parse A* path into a series of destinations.
+	unit.Destinations.Clear()
+	steps := s.FindClickedPath(start, end)
+
+	for _, step := range steps {
+		unit.Destinations.Enqueue(&vec2.T{X: step.X*128 + 64, Y: step.Y*128 + 64}) // add 64 for half tile?
+	}
+
 	return nil
+}
+
+// accepts integar map coordinates (not pixels)
+func (s *T) FindClickedPath(start *vec2.T, end *vec2.T) []*vec2.T {
+	path := s.world.TileMap.FindPath(start, end)
+	if len(path) != 0 {
+		return path
+	}
+	for len(path) == 0 {
+		end = s.FindNearestSurroundingWalkableTiles(start, end)
+		path = s.world.TileMap.FindPath(start, end)
+	}
+	return path
+}
+
+// Accepts unwalkableTile with integer Tile coordinates (not pixel coordinates)
+func (s *T) FindNearestSurroundingWalkableTiles(currentPos *vec2.T, unwalkableCoords *vec2.T) *vec2.T {
+	var walkableTiles []*vec2.T
+	for _, bldg := range s.GetAllBuildings() {
+		rect := bldg.GetRect()
+		ux, uy := int(unwalkableCoords.X*128), int(unwalkableCoords.Y*128)
+		if ux >= rect.Min.X && ux < rect.Max.X && uy >= rect.Min.Y && uy < rect.Max.Y {
+			walkableTiles = bldg.GetAdjacentCoordinates()
+			// TODO: check if these are all walkable?
+		}
+	}
+	if walkableTiles == nil {
+		directions := []struct{ dx, dy int }{
+			{-1, 0}, {1, 0}, {0, -1}, {0, 1}, // cardinal directions
+			//{-1, -1}, {-1, 1}, {1, -1}, {1, 1}, // diagonals
+		}
+
+		x, y := int(unwalkableCoords.X), int(unwalkableCoords.Y)
+		for _, dir := range directions {
+			nx, ny := x+dir.dx, y+dir.dy
+			tile := s.world.TileMap.GetTileByCoordinates(nx, ny)
+			if tile != nil && !tile.HasCollision {
+				walkableTiles = append(walkableTiles, &vec2.T{X: float64(nx), Y: float64(ny)})
+			}
+		}
+	}
+
+	if len(walkableTiles) == 0 {
+		return nil
+	}
+	closest := walkableTiles[0]
+	minDist := currentPos.Distance(*closest)
+	for _, tile := range walkableTiles[1:] {
+		dist := currentPos.Distance(*tile)
+		if dist < minDist {
+			minDist = dist
+			closest = tile
+		}
+	}
+	return closest
 }
 
 func (s *T) DetermineDestinationType(point *image.Point) DestinationType {
@@ -259,6 +341,8 @@ func (s *T) GetAllCollidersOverlapping(rect *image.Rectangle) []*Collider {
 		if unit.Rect.Overlaps(*rect) {
 			colliders = append(colliders, &Collider{
 				Rect:    unit.Rect,
+				Center:  unit.GetCenteredPosition().ToPoint(),
+				Radius:  uint(unit.Rect.Dx() / 2),
 				OwnerID: unit.ID.String(),
 			})
 		}
@@ -270,10 +354,23 @@ func (s *T) GetAllCollidersOverlapping(rect *image.Rectangle) []*Collider {
 		if building.GetRect().Overlaps(*rect) {
 			colliders = append(colliders, &Collider{
 				Rect:    building.GetRect(),
+				Center:  building.GetCenteredPosition().ToPoint(),
+				Radius:  uint(building.GetRect().Dx() / 2),
 				OwnerID: building.GetID().String(),
 			})
 		}
 	}
+	for _, mapObj := range s.world.MapObjects {
+		if mapObj.Rect.Overlaps(*rect) {
+			colliders = append(colliders, &Collider{
+				Rect:    mapObj.Rect,
+				Center:  image.Point{},
+				Radius:  0,
+				OwnerID: "map",
+			})
+		}
+	}
+
 	return colliders
 }
 
@@ -293,19 +390,21 @@ func (s *T) DetermineUnitOrHiveById(id string) string { // TODO use building.Get
 	return "neither"
 }
 
-func (s *T) AddWood(amount uint) {
-	s.playerState.Wood += uint16(amount)
+func (s *T) AddResource(amount uint, resType ResourceType) {
+	switch resType {
+	case ResourceTypeSucrose:
+		s.playerState.Sucrose += uint16(amount)
+	case ResourceTypeWood:
+		s.playerState.Wood += uint16(amount)
+	}
 }
+
 func (s *T) GetWoodAmount() uint16 {
 	return s.playerState.Wood
-}
-func (s *T) AddSucrose(amount uint) {
-	s.playerState.Sucrose += uint16(amount)
 }
 func (s *T) GetSucroseAmount() uint16 {
 	return s.playerState.Sucrose
 }
-
 func (s *T) ConstructUnit(hiveId string) bool {
 	hive, err := s.GetBuildingByID(hiveId)
 	if err != nil {
