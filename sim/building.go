@@ -8,7 +8,10 @@ import (
 	"github.com/google/uuid"
 )
 
-var TileDimensions = 128
+var (
+	TileDimensions      = 128
+	BuildingVisionRange = 9
+)
 
 type Building struct {
 	ID       uuid.UUID
@@ -19,6 +22,8 @@ type Building struct {
 
 	ProgressMax     uint
 	ProgressCurrent uint
+
+	VisionRange uint
 }
 
 type BuildingType int
@@ -42,6 +47,7 @@ type BuildingInterface interface {
 	GetClosestPosition(*vec2.T) *vec2.T
 	GetRect() *image.Rectangle
 	GetFaction() uint
+	GetVisionRange() uint
 
 	Update(sim *T) // if buildings have an Update behavior
 	DistanceTo(point vec2.T) uint
@@ -63,6 +69,7 @@ func NewBuilding(x, y, width, height int, faction uint, bt BuildingType, progres
 		Rect:        rect,
 		Faction:     faction,
 		ProgressMax: progressMax,
+		VisionRange: uint(BuildingVisionRange),
 	}
 }
 
@@ -158,3 +165,7 @@ func (b *Building) GetProgress() float64 {
 }
 func (b *Building) Update(_ *T)          {} // Default no-op
 func (b *Building) AddUnitToBuildQueue() {}
+
+func (b *Building) GetVisionRange() uint {
+	return b.VisionRange
+}

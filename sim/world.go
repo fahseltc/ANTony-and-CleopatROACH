@@ -8,8 +8,5 @@ type World struct {
 	TileMap    *tilemap.Tilemap
 	TileData   [][]*tilemap.Tile
 	MapObjects []*tilemap.MapObject
+	FogOfWar   *FogOfWar
 }
-
-// func (w *World) ScreenToTile(vec *vec2.T) {
-
-// }

@@ -10,7 +10,7 @@ import (
 	"github.com/google/uuid"
 )
 
-var ArrivalThreshold = 25
+var ArrivalThreshold = 30
 var MaxResourceCollectFrames = 30
 var PlayerFaction = 0
 
@@ -56,7 +56,6 @@ type Unit struct {
 	Rect        *image.Rectangle
 	MovingAngle float64
 
-	//Destination           *vec2.T
 	Destinations          *util.Queue[*vec2.T]
 	DestinationType       DestinationType
 	Action                Action
@@ -74,19 +73,24 @@ type UnitStats struct {
 	HPMax     uint
 	HPCur     uint
 	MoveSpeed uint
-	Damage    uint
-	Range     uint
+
+	Damage          uint
+	AttackRange     uint
+	AttackFrames    uint
+	AttackFramesCur uint
 
 	MaxCarryCapactiy    uint
 	ResourceCarried     uint
 	ResourceTypeCarried ResourceType
 	ResourceCollectTime uint
+
+	VisionRange uint
 }
 
 func NewRoyalRoach() *Unit {
 	u := NewDefaultAnt()
 	u.Type = UnitTypeRoyalRoach
-	size := 192 // match sprite
+	size := 128 // match sprite
 	u.Rect.Min = image.Point{0, 0}
 	u.Rect.Max = image.Point{size, size}
 	return u
@@ -95,7 +99,7 @@ func NewRoyalRoach() *Unit {
 func NewRoyalAnt() *Unit {
 	u := NewDefaultAnt()
 	u.Type = UnitTypeRoyalAnt
-	size := 192 // match sprite
+	size := 128 // match sprite
 	u.Rect.Min = image.Point{0, 0}
 	u.Rect.Max = image.Point{size, size}
 	return u
@@ -115,12 +119,15 @@ func NewDefaultAnt() *Unit {
 			HPMax:     100,
 			HPCur:     100,
 			MoveSpeed: 10,
-			Damage:    10,
-			Range:     15,
-			// acceleration / current speed?
+
+			Damage:       10,
+			AttackRange:  100,
+			AttackFrames: 30,
+
 			MaxCarryCapactiy:    5,
 			ResourceCarried:     0,
 			ResourceTypeCarried: ResourceTypeNone,
+			VisionRange:         4,
 		},
 		Position: &vec2.T{},
 		Rect: &image.Rectangle{
@@ -134,6 +141,16 @@ func NewDefaultAnt() *Unit {
 }
 
 func (unit *Unit) Update(sim *T) {
+	// Check for self death
+	if unit == nil {
+		return
+	}
+
+	if unit.Stats.HPCur <= 0 {
+		sim.RemoveUnit(unit)
+		// animation?
+		return
+	}
 	switch unit.Action {
 	case IdleAction:
 		unit.Stats.ResourceCollectTime = 0
@@ -143,11 +160,24 @@ func (unit *Unit) Update(sim *T) {
 		unit.MoveToDestination(sim)
 	case AttackMovingAction:
 		unit.Stats.ResourceCollectTime = 0
-		if unit.NearestEnemy != nil && unit.TargetInRange(unit.Position) {
-			unit.NearestEnemy.Stats.HPCur -= unit.Stats.Damage
-			// pew pew animation
+		if unit.NearestEnemy != nil && unit.NearestEnemy.IsAlive() && unit.TargetInRange(unit.NearestEnemy.GetCenteredPosition()) {
+			unit.Stats.AttackFramesCur++
+			if unit.Stats.AttackFramesCur >= unit.Stats.AttackFrames {
+				unit.NearestEnemy.Stats.HPCur -= unit.Stats.Damage
+				unit.Stats.AttackFramesCur = 0
+				// Play SFX?
+			}
+
 		} else {
 			unit.MoveToDestination(sim) // destination might be a unit?
+			// check if there is an enemy unit in range and set it as NearestEnemy
+			for _, enemy := range sim.GetAllEnemyUnits() {
+				if enemy.GetCenteredPosition().Distance(*unit.GetCenteredPosition()) <= 300 {
+					// TODO: make a list of all the nearby enemies and pick the closest?
+					unit.NearestEnemy = enemy
+					break
+				}
+			}
 		}
 	case HoldingPositionAction:
 		if unit.NearestEnemy != nil && unit.TargetInRange(unit.Position) {
@@ -308,7 +338,12 @@ func (unit *Unit) MoveToDestination(sim *T) {
 	if arrived && len(unit.Destinations.Items) >= 1 {
 		unit.Destinations.Dequeue()
 	}
-
+	if arrived && len(unit.Destinations.Items) == 0 {
+		nearbyUnits := sim.GetAllNearbyFriendlyUnits(unit)
+		for _, nearbyUnit := range nearbyUnits {
+			nearbyUnit.SendMessage(sim, UnitMessageArrivedIdle)
+		}
+	}
 }
 
 func (unit *Unit) isColliding(rect *image.Rectangle, sim *T) bool {
@@ -407,7 +442,7 @@ func (unit *Unit) EdgeDistanceTo(point *vec2.T) uint {
 }
 
 func (unit *Unit) TargetInRange(point *vec2.T) bool {
-	return unit.DistanceTo(point) <= unit.Stats.Range
+	return unit.DistanceTo(point) <= unit.Stats.AttackRange
 }
 
 func (unit *Unit) SetPosition(pos *vec2.T) {
@@ -512,4 +547,8 @@ func (unit *Unit) isDestinationBlocked(sim *T) bool {
 	}
 
 	return blockedSides >= len(offsets) // surrounded
+}
+
+func (unit *Unit) IsAlive() bool {
+	return unit.Stats.HPCur > 0
 }

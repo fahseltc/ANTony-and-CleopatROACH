@@ -246,6 +246,9 @@ func (tm *Tilemap) AddCollisionRect(rectToAdd *image.Rectangle) bool {
 }
 
 func (tm *Tilemap) FindPath(start *vec2.T, end *vec2.T) []*vec2.T {
+	if start == nil || end == nil {
+		return nil
+	}
 	bpr := tm.Pathing.BuildPath(tm.PathGrid, pathing.GridCoord{X: int(start.X), Y: int(start.Y)}, pathing.GridCoord{X: int(end.X), Y: int(end.Y)}, tm.pathLayer)
 	if !bpr.Partial {
 		var currentPos *vec2.T

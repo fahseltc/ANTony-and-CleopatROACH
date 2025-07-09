@@ -66,6 +66,12 @@ func NewLevelCollection() *LevelCollection {
 			h.SetTilePosition(8, 8)
 			scene.sim.AddBuilding(h)
 
+			// bad guys temp
+			e1 := sim.NewDefaultAnt()
+			e1.Faction = 1
+			e1.SetTilePosition(14, 11)
+			scene.sim.AddEnemyUnit(e1)
+
 			scene.CompletionCondition = NewSceneCompletion(queen, king, scene.tileMap.MapCompletionObjects[0].Rect)
 			return queen.ID.String(), king.ID.String()
 		},
@@ -296,7 +302,6 @@ func NewLevelCollection() *LevelCollection {
 			}
 		},
 	}
-
 	coll.Levels[1] = LevelData{
 		LevelNumber: 1,
 		TileMapPath: "tilemap/map2.tmx",
@@ -535,5 +540,55 @@ func NewLevelCollection() *LevelCollection {
 		SetupInitialCutscene:    func(s *PlayScene, cleopatroach string, antony string) {},
 		SetupCompletionCutscene: func(s *PlayScene, cleopatroach string, antony string) {},
 	}
+
+	coll.Levels[3] = LevelData{
+		LevelNumber:    3,
+		TileMapPath:    "tilemap/test-map.tmx",
+		LevelIntroText: "",
+		SetupFunc: func(s *PlayScene) (string, string) {
+
+			for i := 0; i < 5; i++ {
+				u := sim.NewDefaultAnt()
+				u.SetTilePosition(9, i)
+				s.sim.AddUnit(u)
+			}
+
+			for i := 0; i < 5; i++ {
+				u := sim.NewDefaultAnt()
+				u.SetTilePosition(5, i)
+				s.sim.AddUnit(u)
+			}
+
+			// king := sim.NewRoyalAnt()
+			// king.SetTilePosition(12, 11)
+			// s.sim.AddUnit(king)
+
+			// queen := sim.NewRoyalRoach()
+			// queen.SetTilePosition(28, 10)
+			// queen.Faction = 1
+			// s.sim.AddUnit(queen)
+
+			s.Ui.Camera.SetZoom(ui.MinZoom)
+			s.Ui.Camera.SetPosition(0, 0)
+			s.Ui.Camera.FadeAlpha = 255
+
+			h := sim.NewHive()
+			h.SetTilePosition(6, 7)
+			s.sim.AddBuilding(h)
+
+			//bad guys
+			for i := 0; i < 5; i++ {
+				u := sim.NewDefaultAnt()
+				u.Faction = 1
+				u.SetTilePosition(21, 14+i)
+				s.sim.AddEnemyUnit(u)
+			}
+
+			return "", ""
+		},
+		SetupInitialCutscene:    func(s *PlayScene, cleopatroach string, antony string) {},
+		SetupCompletionCutscene: func(s *PlayScene, cleopatroach string, antony string) {},
+	}
+
 	return coll
 }

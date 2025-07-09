@@ -31,8 +31,8 @@ func (a T) ToPoint() image.Point {
 }
 func (a T) RoundToGrid() *T {
 	return &T{
-		X: math.Floor(a.X/128) * 128,
-		Y: math.Floor(a.Y/128) * 128,
+		X: math.Floor(a.X/TileSize) * TileSize,
+		Y: math.Floor(a.Y/TileSize) * TileSize,
 	}
 }
 

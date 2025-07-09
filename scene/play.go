@@ -18,6 +18,7 @@ import (
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
 	"github.com/hajimehoshi/ebiten/v2/inpututil"
+	"github.com/hajimehoshi/ebiten/v2/vector"
 	"github.com/quasilyte/pathing"
 )
 
@@ -185,6 +186,7 @@ func (s *PlayScene) Update() error {
 		s.sound.Play("msx_gamesong1")
 	}
 	s.sound.Update()
+	s.sim.GetWorld().FogOfWar.Update(s.sim)
 
 	// Determine Pause State
 	if inpututil.IsKeyJustPressed(ebiten.KeyEscape) {
@@ -301,12 +303,12 @@ func (s *PlayScene) Update() error {
 					s.Ui.HUD.RightSideState = ui.UnitSelectedState
 					s.constructionMouse.Enabled = false
 				}
-				// handle unit and clicks
+				// handle single unit and clicks
 				if inpututil.IsMouseButtonJustReleased(ebiten.MouseButtonRight) { // activate on buttonRelease to debounce
 					mx, my := ebiten.CursorPosition()
+					mapX, mapY := s.Ui.Camera.ScreenPosToMapPos(mx, my)
+					s.ActionIssuedLocation = &image.Point{X: mapX, Y: mapY}
 					for _, unitId := range s.selectedUnitIDs {
-						mapX, mapY := s.Ui.Camera.ScreenPosToMapPos(mx, my)
-						s.ActionIssuedLocation = &image.Point{X: mapX, Y: mapY}
 						s.sim.IssueAction(unitId, s.ActionIssuedLocation)
 						s.eventBus.Publish(eventing.Event{
 							Type: "PlayIssueActionSFX",
@@ -322,13 +324,12 @@ func (s *PlayScene) Update() error {
 			}
 			if inpututil.IsMouseButtonJustReleased(ebiten.MouseButtonRight) { // activate on buttonRelease to debounce
 				mx, my := ebiten.CursorPosition()
-				for _, unitId := range s.selectedUnitIDs {
-					mapX, mapY := s.Ui.Camera.ScreenPosToMapPos(mx, my)
-					s.sim.IssueAction(unitId, &image.Point{X: mapX, Y: mapY})
-					s.eventBus.Publish(eventing.Event{
-						Type: "PlayIssueActionSFX",
-					})
-				}
+				mapX, mapY := s.Ui.Camera.ScreenPosToMapPos(mx, my)
+				s.ActionIssuedLocation = &image.Point{X: mapX, Y: mapY}
+				s.sim.IssueGroupAction(s.selectedUnitIDs, s.ActionIssuedLocation)
+				s.eventBus.Publish(eventing.Event{
+					Type: "PlayIssueActionSFX",
+				})
 			}
 		}
 	} else {
@@ -343,7 +344,7 @@ func (s *PlayScene) Update() error {
 	if !s.constructionMouse.Enabled {
 		s.drag.Enabled = true
 	}
-	s.Ui.Update()
+	s.Ui.Update(s.sim)
 
 	return nil
 }
@@ -365,10 +366,12 @@ func (s *PlayScene) createOrUpdateUnitSprites() {
 			unitSprite.EventBus = s.eventBus
 			unitSprite.SetPosition(unit.Position)
 			unitSprite.SetAngle(unit.MovingAngle)
+			unitSprite.ProgressBar.Progress = float64(unit.Stats.HPCur) / float64(unit.Stats.HPMax)
 
 		} else { // The sprite has already been created, update it
 			unitSprite.SetPosition(unit.Position)
 			unitSprite.SetAngle(unit.MovingAngle)
+			unitSprite.ProgressBar.Progress = float64(unit.Stats.HPCur) / float64(unit.Stats.HPMax)
 			unitSprite.CarryingSucrose = (unit.Stats.ResourceTypeCarried == sim.ResourceTypeSucrose && unit.Stats.ResourceCarried > 0)
 			unitSprite.CarryingWood = (unit.Stats.ResourceTypeCarried == sim.ResourceTypeWood && unit.Stats.ResourceCarried > 0)
 		}
@@ -423,10 +426,6 @@ func (s *PlayScene) Draw(screen *ebiten.Image) {
 	opts.GeoM.Translate(float64(s.Ui.Camera.ViewPortX), float64(s.Ui.Camera.ViewPortY))
 	screen.DrawImage(s.Ui.TileMap.StaticBg, opts)
 
-	if s.Config.DebugDraw {
-		s.DebugDraw(screen)
-	}
-
 	// Then Static Sprites
 	for _, sprite := range s.Sprites {
 		if sprite.Type == ui.SpriteTypeStatic {
@@ -440,9 +439,14 @@ func (s *PlayScene) Draw(screen *ebiten.Image) {
 			sprite.Draw(screen, s.Ui.Camera)
 		}
 	}
+	// Then fog of war
+	s.drawFogOfWar(screen)
 
+	if s.Config.DebugDraw {
+		s.DebugDraw(screen)
+	}
 	s.drawExpandingActionIssuedCircle(screen)
-	s.Ui.Draw(screen)
+	s.Ui.Draw(s.sim.GetAllUnits(), screen)
 	s.drag.Draw(screen)
 	s.constructionMouse.Draw(screen, s.Ui.Camera)
 
@@ -464,6 +468,31 @@ func (s *PlayScene) Draw(screen *ebiten.Image) {
 	if !s.Pause.Hidden { // this should always be drawn last
 		s.Pause.Draw(screen)
 		return
+	}
+}
+
+func (s *PlayScene) drawFogOfWar(screen *ebiten.Image) {
+	fow := s.sim.GetWorld().FogOfWar
+	if fow.Enabled {
+		tileSize := 128.0
+		for y := 0; y < fow.Height; y++ {
+			for x := 0; x < fow.Width; x++ {
+				worldX := float64(x) * tileSize
+				worldY := float64(y) * tileSize
+
+				// Apply camera transformation using viewPortX, viewPortY, and viewPortZoom
+				screenX, screenY := s.Ui.Camera.MapPosToScreenPos(int(worldX), int(worldY))
+
+				size := tileSize * s.Ui.Camera.ViewPortZoom
+
+				switch fow.Tiles[y][x] {
+				case sim.FogUnexplored:
+					vector.DrawFilledRect(screen, float32(screenX), float32(screenY), float32(size), float32(size), color.Black, false)
+				case sim.FogMemory:
+					vector.DrawFilledRect(screen, float32(screenX), float32(screenY), float32(size), float32(size), color.RGBA{0, 0, 0, 128}, false)
+				}
+			}
+		}
 	}
 }
 
@@ -527,16 +556,6 @@ func (s *PlayScene) DebugDraw(screen *ebiten.Image) {
 			tileType := s.tileMap.PathGrid.GetCellTile(pathing.GridCoord{X: x, Y: y})
 			rect := image.Rect(x*s.tileMap.TileSize, y*s.tileMap.TileSize, (x+1)*s.tileMap.TileSize, (y+1)*s.tileMap.TileSize)
 			x0, y0 := s.Ui.Camera.MapPosToScreenPos(rect.Min.X, rect.Min.Y)
-			//x1, y1 := s.Ui.Camera.MapPosToScreenPos(rect.Max.X, rect.Max.Y)
-			// Draw rectangle outline in green
-			// for tx := x0; tx < x1; tx++ {
-			// 	screen.Set(tx, y0, color.RGBA{0, 255, 0, 255})
-			// 	screen.Set(tx, y1-1, color.RGBA{0, 255, 0, 255})
-			// }
-			// for ty := y0; ty < y1; ty++ {
-			// 	screen.Set(x0, ty, color.RGBA{0, 255, 0, 255})
-			// 	screen.Set(x1-1, ty, color.RGBA{0, 255, 0, 255})
-			// }
 			// Draw tileType uint in top-left corner
 			ebitenutil.DebugPrintAt(screen, fmt.Sprintf("%d", tileType), x0+2, y0+2)
 		}

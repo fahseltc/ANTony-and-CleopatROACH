@@ -7,6 +7,7 @@ import (
 	"gamejam/util"
 	"gamejam/vec2"
 	"image"
+	"log/slog"
 	"slices"
 	"sync"
 )
@@ -71,6 +72,7 @@ func New(tps int, tileMap *tilemap.Tilemap) *T {
 			TileMap:    tileMap,
 			TileData:   tileMap.Tiles,
 			MapObjects: tileMap.MapObjects,
+			FogOfWar:   NewFogOfWar(tileMap.Width, tileMap.Height),
 		},
 
 		// TODO Spawn Points
@@ -119,13 +121,26 @@ func (s *T) Update() {
 }
 
 func (s *T) RemoveUnit(u *Unit) {
+	removed := false
 	s.playerUnits = slices.DeleteFunc(s.playerUnits, func(other *Unit) bool {
-		return other.ID == u.ID
+		if other.ID == u.ID {
+			removed = true
+			return true
+		}
+		return false
 	})
+	if !removed {
+		s.enemyUnits = slices.DeleteFunc(s.enemyUnits, func(other *Unit) bool {
+			return other.ID == u.ID
+		})
+	}
 }
 
 func (s *T) AddUnit(u *Unit) {
 	s.playerUnits = append(s.playerUnits, u)
+}
+func (s *T) AddEnemyUnit(u *Unit) {
+	s.enemyUnits = append(s.enemyUnits, u)
 }
 func (s *T) AddBuilding(b BuildingInterface) {
 	s.playerBuildings = append(s.playerBuildings, b)
@@ -166,6 +181,10 @@ func (s *T) IssueAction(id string, point *image.Point) error {
 		return err
 	}
 	clickedTile := s.world.TileMap.GetTileByPosition(point.X, point.Y)
+	if clickedTile == nil {
+		slog.Warn("tile clicked was not found")
+		return fmt.Errorf("tile clicked was not found")
+	}
 
 	unit.DestinationType = s.DetermineDestinationType(point)
 	// TODO: take passed in ACTION into account as it might matter for some UI buttons
@@ -174,7 +193,10 @@ func (s *T) IssueAction(id string, point *image.Point) error {
 		unit.Action = AttackMovingAction
 	case ResourceDestination:
 		unit.Action = CollectingAction
-		unit.LastResourcePos = &vec2.T{X: float64(clickedTile.Coordinates.X*128 + 64), Y: float64(clickedTile.Coordinates.Y)*128 + 64}
+		unit.LastResourcePos = &vec2.T{
+			X: float64(clickedTile.Coordinates.X*int(TileSize) + int(HalfTileSize)),
+			Y: float64(clickedTile.Coordinates.Y*int(TileSize) + int(HalfTileSize)),
+		}
 	case LocationDestination:
 		unit.Action = AttackMovingAction
 	}
@@ -185,9 +207,75 @@ func (s *T) IssueAction(id string, point *image.Point) error {
 	// parse A* path into a series of destinations.
 	unit.Destinations.Clear()
 	steps := s.FindClickedPath(start, end)
-
 	for _, step := range steps {
-		unit.Destinations.Enqueue(&vec2.T{X: step.X*128 + 64, Y: step.Y*128 + 64}) // add 64 for half tile?
+		unit.Destinations.Enqueue(&vec2.T{X: step.X*TileSize + HalfTileSize, Y: step.Y*TileSize + HalfTileSize}) // add 64 for half tile?
+	}
+
+	return nil
+}
+func (s *T) IssueGroupAction(ids []string, point *image.Point) error {
+	if len(ids) == 0 {
+		return nil
+	}
+
+	// Gather units by ID
+	var units []*Unit
+	for _, id := range ids {
+		unit, err := s.GetUnitByID(id)
+		if err == nil && unit != nil {
+			units = append(units, unit)
+		}
+	}
+	if len(units) == 0 {
+		return nil
+	}
+
+	// Calculate the centroid of the selected units
+	var sumX, sumY float64
+	for _, unit := range units {
+		pos := unit.GetCenteredPosition()
+		sumX += pos.X
+		sumY += pos.Y
+	}
+	centroid := vec2.T{X: sumX / float64(len(units)), Y: sumY / float64(len(units))}
+
+	// If units are very far apart, migrate them closer to the centroid first
+	const maxSpread = 120.0 // adjust as needed
+	var maxDist float64
+	for _, unit := range units {
+		dist := unit.GetCenteredPosition().Distance(centroid)
+		if dist > maxDist {
+			maxDist = dist
+		}
+	}
+	if maxDist > maxSpread {
+		// Scale each unit's offset from the centroid so that the group contracts toward the centroid,
+		// but maintains relative formation, and then move them to the scaled positions.
+		scale := maxSpread / maxDist
+		destPoint := vec2.T{X: float64(point.X), Y: float64(point.Y)}
+		for _, unit := range units {
+			unitPos := unit.GetCenteredPosition()
+			offset := vec2.T{X: unitPos.X - centroid.X, Y: unitPos.Y - centroid.Y}
+			scaledOffset := vec2.T{X: offset.X * scale, Y: offset.Y * scale}
+			target := image.Point{
+				X: int(destPoint.X + scaledOffset.X),
+				Y: int(destPoint.Y + scaledOffset.Y),
+			}
+			_ = s.IssueAction(unit.ID.String(), &target)
+		}
+		return nil
+	}
+
+	// Calculate offset for each unit from the centroid and issue final move
+	destPoint := vec2.T{X: float64(point.X), Y: float64(point.Y)}
+	for _, unit := range units {
+		unitPos := unit.GetCenteredPosition()
+		offset := vec2.T{X: unitPos.X - centroid.X, Y: unitPos.Y - centroid.Y}
+		target := image.Point{
+			X: int(destPoint.X + offset.X),
+			Y: int(destPoint.Y + offset.Y),
+		}
+		_ = s.IssueAction(unit.ID.String(), &target)
 	}
 
 	return nil
@@ -199,9 +287,17 @@ func (s *T) FindClickedPath(start *vec2.T, end *vec2.T) []*vec2.T {
 	if len(path) != 0 {
 		return path
 	}
+	firstEndingPos := end
+
 	for len(path) == 0 {
 		end = s.FindNearestSurroundingWalkableTiles(start, end)
+		if end == nil || (firstEndingPos.X == end.X && firstEndingPos.Y == end.Y) { // water or somewhere completely unwalkable was clicked
+			return nil
+		}
 		path = s.world.TileMap.FindPath(start, end)
+		if path == nil {
+			return nil
+		}
 	}
 	return path
 }
@@ -211,7 +307,7 @@ func (s *T) FindNearestSurroundingWalkableTiles(currentPos *vec2.T, unwalkableCo
 	var walkableTiles []*vec2.T
 	for _, bldg := range s.GetAllBuildings() {
 		rect := bldg.GetRect()
-		ux, uy := int(unwalkableCoords.X*128), int(unwalkableCoords.Y*128)
+		ux, uy := int(unwalkableCoords.X*TileSize), int(unwalkableCoords.Y*TileSize)
 		if ux >= rect.Min.X && ux < rect.Max.X && uy >= rect.Min.Y && uy < rect.Max.Y {
 			walkableTiles = bldg.GetAdjacentCoordinates()
 			// TODO: check if these are all walkable?
@@ -265,6 +361,14 @@ func (s *T) DetermineDestinationType(point *image.Point) DestinationType {
 
 func (s *T) GetAllUnits() []*Unit {
 	return append(s.enemyUnits, s.playerUnits...)
+}
+
+func (s *T) GetAllPlayerUnits() []*Unit {
+	return s.playerUnits
+}
+
+func (s *T) GetAllEnemyUnits() []*Unit {
+	return s.enemyUnits
 }
 
 func (s *T) GetAllNearbyCollidersHarvesting(x, y int) []*image.Rectangle {
@@ -331,6 +435,20 @@ func (s *T) GetAllNearbyColliders(x, y int) []*Collider {
 // 	}
 
 // }
+
+func (s *T) GetAllNearbyFriendlyUnits(sourceUnit *Unit) []*Unit {
+	var nearbyUnits []*Unit
+	for _, unit := range s.playerUnits {
+		if sourceUnit.ID.String() == unit.ID.String() {
+			continue
+		}
+		unitDist := unit.GetCenteredPosition().Distance(*sourceUnit.GetCenteredPosition())
+		if unitDist <= 150 {
+			nearbyUnits = append(nearbyUnits, unit)
+		}
+	}
+	return nearbyUnits
+}
 
 func (s *T) GetAllCollidersOverlapping(rect *image.Rectangle) []*Collider {
 	var colliders []*Collider
@@ -439,4 +557,8 @@ func (s *T) ConstructBuilding(target *image.Rectangle, builderID string) bool {
 		s.playerBuildings = append(s.playerBuildings, inConstructionBuilding)
 		return true
 	}
+}
+
+func (s *T) GetWorld() *World {
+	return s.world
 }
