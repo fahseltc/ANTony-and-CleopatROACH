@@ -34,8 +34,8 @@ func (rd *ResourceDisplay) Draw(screen *ebiten.Image, sim *sim.T) {
 	screen.DrawImage(rd.bg, opts)
 
 	sucrose := sim.GetSucroseAmount()
-	util.DrawCenteredText(screen, rd.font, fmt.Sprintf("%v", sucrose), rd.rect.Min.X+82, rd.rect.Min.Y+20, nil)
+	util.DrawCenteredText(screen, rd.font, fmt.Sprintf("%v", sucrose), rd.rect.Min.X+88, rd.rect.Min.Y+20, nil)
 
 	wood := sim.GetWoodAmount()
-	util.DrawCenteredText(screen, rd.font, fmt.Sprintf("%v", wood), rd.rect.Min.X+82, rd.rect.Min.Y+55, nil)
+	util.DrawCenteredText(screen, rd.font, fmt.Sprintf("%v", wood), rd.rect.Min.X+88, rd.rect.Min.Y+55, nil)
 }

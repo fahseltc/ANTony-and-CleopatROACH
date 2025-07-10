@@ -273,7 +273,6 @@ func (tm *Tilemap) FindPath(start *vec2.T, end *vec2.T) []*vec2.T {
 				nav = append(nav, vec)
 				currentPos = vec
 			default:
-				break
 			}
 		}
 		return nav

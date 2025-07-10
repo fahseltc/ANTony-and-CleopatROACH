@@ -119,6 +119,10 @@ func NewHeartSprite(uuid uuid.UUID) *Sprite {
 	return NewSprite(uuid, image.Rect(0, 0, TileDimensions/2, TileDimensions/2), "ui/heart.png", SpriteTypeStatic)
 }
 
+func NewBloodSprite(uuid uuid.UUID) *Sprite {
+	return NewSprite(uuid, image.Rect(0, 0, TileDimensions/2, TileDimensions/2), "units/blood.png", SpriteTypeStatic)
+}
+
 func NewSprite(uuid uuid.UUID, Rect image.Rectangle, imgPath string, spriteType SpriteType) *Sprite {
 	scaled := util.ScaleImage(util.LoadImage(imgPath), float32(Rect.Dx()), float32(Rect.Dy()))
 	return &Sprite{
@@ -143,7 +147,29 @@ func (spr *Sprite) SetPosition(pos *vec2.T) {
 	}
 	spr.SetProgressBarPosition(int(pos.X), int(pos.Y))
 }
+func (spr *Sprite) SetCenteredPosition(pos *vec2.T) {
+	if spr.Rect == nil {
+		return
+	}
+	centeredX := pos.X - float64(spr.Rect.Dx())/2
+	centeredY := pos.Y - float64(spr.Rect.Dy())/2
+	spr.SetPosition(&vec2.T{X: centeredX, Y: centeredY})
+}
 
+func (spr *Sprite) GetPosition() *vec2.T {
+	return &vec2.T{
+		X: float64(spr.Rect.Min.X),
+		Y: float64(spr.Rect.Min.Y),
+	}
+}
+func (spr *Sprite) GetCenteredPosition() *vec2.T {
+	if spr.Rect == nil {
+		return nil
+	}
+	centerX := float64(spr.Rect.Min.X + spr.Rect.Dx()/2)
+	centerY := float64(spr.Rect.Min.Y + spr.Rect.Dy()/2)
+	return &vec2.T{X: centerX, Y: centerY}
+}
 func (spr *Sprite) SetTilePosition(x, y int) {
 	if spr.Rect != nil {
 		spr.lastPos = spr.Rect.Min

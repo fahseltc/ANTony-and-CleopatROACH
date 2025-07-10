@@ -57,19 +57,7 @@ func (ui *Ui) Update(sim *sim.T) {
 
 func (ui *Ui) Draw(units []*sim.Unit, screen *ebiten.Image) {
 	if ui.DrawEnabled {
-		// if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) {
-		// 	mx, my := ebiten.CursorPosition()
-		// 	x, y := ui.Camera.ScreenPosToMapPos(mx, my)
-
-		// 	clickedTile := ui.TileMap.GetTileByPosition(x, y)
-		// 	if clickedTile != nil {
-		// 		fmt.Printf("tile clicked type:%v", clickedTile.Type)
-		// 	}
-		// }
-
 		ui.HUD.Draw(screen)
-
 		ui.MiniMap.Draw(screen)
-		//ui.MiniMap.DrawViewport(screen, ui.Camera, ui.TileMap)
 	}
 }

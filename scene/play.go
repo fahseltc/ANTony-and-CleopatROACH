@@ -15,6 +15,7 @@ import (
 	"math"
 	"slices"
 
+	"github.com/google/uuid"
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
 	"github.com/hajimehoshi/ebiten/v2/inpututil"
@@ -126,8 +127,6 @@ func (s *PlayScene) NotEnoughResourcesEvent(event eventing.Event) {
 }
 
 func (s *PlayScene) setupSFX() {
-	//s.sound.GlobalVolume = 0.5
-	//s.eventBus.Subscribe("PlayWalkSFX", s.sound.PlayWalkSFX)
 	s.eventBus.Subscribe("PlayIssueActionSFX", s.sound.PlayIssueActionSFX)
 	s.eventBus.Subscribe("PlaySelectHiveSFX", s.sound.PlaySelectHiveSFX)
 }
@@ -153,12 +152,6 @@ func (s *PlayScene) HandleMakeBridgeButtonClickedEvent(event eventing.Event) {
 		if unitOrHiveString == "unit" {
 			s.constructionMouse.Enabled = true
 			s.drag.Enabled = false
-			// s.eventBus.Publish(eventing.Event{
-			// 	Type: "ConstructUnitEvent",
-			// 	Data: eventing.ConstructUnitEvent{
-			// 		HiveID: hiveID,
-			// 	},
-			// })
 		}
 	}
 }
@@ -206,7 +199,7 @@ func (s *PlayScene) Update() error {
 	// same for buildings
 	s.createOrUpdateBuildingSprites()
 	// remove building & unit sprites that are no longer in the SIM
-	s.UpdateRemoveInactiveSprites()
+	s.updateRemoveInactiveSprites()
 
 	// Update sim before cutscenes so things happen in the world as they play.
 	s.sim.Update()
@@ -401,7 +394,7 @@ func (s *PlayScene) createOrUpdateBuildingSprites() {
 	}
 }
 
-func (s *PlayScene) UpdateRemoveInactiveSprites() {
+func (s *PlayScene) updateRemoveInactiveSprites() {
 	activeIDs := make(map[string]struct{})
 	for _, building := range s.sim.GetAllBuildings() {
 		activeIDs[building.GetID().String()] = struct{}{}
@@ -414,7 +407,12 @@ func (s *PlayScene) UpdateRemoveInactiveSprites() {
 			continue // static sprites are never removed automatically - they dont exist in the SIM, just in UI
 		}
 		if _, exists := activeIDs[id]; !exists {
-			delete(s.Sprites, id)
+			if spr.Type == ui.SpriteTypeUnit { // if it was a unit, replace it with a blood splat
+				bloodSprite := ui.NewBloodSprite(uuid.New())
+				bloodSprite.SetCenteredPosition(spr.GetCenteredPosition())
+				s.Sprites[bloodSprite.Id.String()] = bloodSprite
+			}
+			delete(s.Sprites, id) // then delete the old sprite
 		}
 	}
 }

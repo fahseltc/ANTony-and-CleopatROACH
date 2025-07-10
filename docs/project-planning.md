@@ -5,15 +5,16 @@ Game is Currently in 1.0
 - [x] Asset optimization (wav -> ogg, remove unused resource from exe embed) - from 60MB down to 30MB 7/8
 - [x] Improved pathfinding (ish) 7/8
 - [x] Basic Fog of war 7/8
-- [x] Minimap
-- [x] Minimap fog of war + camera square
+- [x] Minimap 7/8
+- [x] Minimap fog of war + camera square 7/8
+- [x] Mob/Pack based movement 7/8
+- [x] Pathfinding optimizations to make units walk diagonally 7/8
+- [x] Combat + Life bars 7/8
+- [x] Dead bug sprites / blood splatters on the ground 7/8
 - Minimap clicking
-- Pathfinding optimizations to make units walk diagonally
 - Local unit avoidance
-- Mob/Pack based movement
 - Attack Animation
-- Combat + Life bars
-- Dead bug sprites / blood splatters on the ground
+
 - Different unit types/sizes - workers, fighters, ranged, royalty, etc
 - Attack Move action
 - Overal code refactor to prevent all magic numbers

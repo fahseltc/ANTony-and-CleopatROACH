@@ -8,6 +8,7 @@ import (
 	"gamejam/vec2"
 	"image"
 	"log/slog"
+	"math"
 	"slices"
 	"sync"
 )
@@ -187,7 +188,6 @@ func (s *T) IssueAction(id string, point *image.Point) error {
 	}
 
 	unit.DestinationType = s.DetermineDestinationType(point)
-	// TODO: take passed in ACTION into account as it might matter for some UI buttons
 	switch unit.DestinationType {
 	case EnemyDestination:
 		unit.Action = AttackMovingAction
@@ -285,7 +285,7 @@ func (s *T) IssueGroupAction(ids []string, point *image.Point) error {
 func (s *T) FindClickedPath(start *vec2.T, end *vec2.T) []*vec2.T {
 	path := s.world.TileMap.FindPath(start, end)
 	if len(path) != 0 {
-		return path
+		return s.optimizePath(path)
 	}
 	firstEndingPos := end
 
@@ -299,7 +299,7 @@ func (s *T) FindClickedPath(start *vec2.T, end *vec2.T) []*vec2.T {
 			return nil
 		}
 	}
-	return path
+	return s.optimizePath(path)
 }
 
 // Accepts unwalkableTile with integer Tile coordinates (not pixel coordinates)
@@ -418,23 +418,6 @@ func (s *T) GetAllNearbyColliders(x, y int) []*Collider {
 	}
 	return nearbyColliders
 }
-
-// func (s *T) GetAllRoundUnitColliders() {
-// 	var colliders []*Collider
-// 	for _, unit := range append(s.enemyUnits, s.playerUnits...) {
-// 		if unit == nil {
-// 			continue
-// 		}
-
-// 		if unit.Rect.Overlaps(*rect) {
-// 			colliders = append(colliders, &Collider{
-// 				Rect:    unit.Rect,
-// 				OwnerID: unit.ID.String(),
-// 			})
-// 		}
-// 	}
-
-// }
 
 func (s *T) GetAllNearbyFriendlyUnits(sourceUnit *Unit) []*Unit {
 	var nearbyUnits []*Unit
@@ -561,4 +544,64 @@ func (s *T) ConstructBuilding(target *image.Rectangle, builderID string) bool {
 
 func (s *T) GetWorld() *World {
 	return s.world
+}
+func (s *T) optimizePath(nav []*vec2.T) []*vec2.T {
+	if len(nav) <= 2 {
+		return nav // nothing to optimize
+	}
+
+	first := nav[0]
+	last := nav[len(nav)-1]
+
+	// Check if straight path is walkable
+	if s.isLineWalkable(first, last) {
+		return []*vec2.T{first, last} // optimized path: straight line
+	}
+
+	// fallback to original path
+	return nav
+}
+
+func (s *T) isLineWalkable(start, end *vec2.T) bool {
+	x0 := int(start.X)
+	y0 := int(start.Y)
+	x1 := int(end.X)
+	y1 := int(end.Y)
+
+	dx := math.Abs(float64(x1 - x0))
+	dy := math.Abs(float64(y1 - y0))
+	sx := -1
+	sy := -1
+
+	if x0 < x1 {
+		sx = 1
+	}
+	if y0 < y1 {
+		sy = 1
+	}
+
+	err := dx - dy
+
+	for {
+		// Check tile at current position
+		tile := s.world.TileMap.GetTileByCoordinates(x0, y0)
+		if tile == nil || tile.HasCollision {
+			return false
+		}
+
+		if x0 == x1 && y0 == y1 {
+			break
+		}
+
+		e2 := 2 * err
+		if e2 > -dy {
+			err -= dy
+			x0 += sx
+		}
+		if e2 < dx {
+			err += dx
+			y0 += sy
+		}
+	}
+	return true
 }

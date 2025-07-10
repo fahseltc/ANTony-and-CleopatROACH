@@ -86,7 +86,6 @@ func (m *MiniMap) RenderFromTilemap(tileMap *tilemap.Tilemap, fog *sim.FogOfWar)
 		}
 	}
 }
-
 func (m *MiniMap) Draw(screen *ebiten.Image) {
 	op := &ebiten.DrawImageOptions{}
 	op.GeoM.Translate(float64(m.position.X), float64(m.position.Y))
