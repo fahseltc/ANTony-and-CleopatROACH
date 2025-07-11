@@ -35,7 +35,6 @@ func (d *Drag) Update(sprites map[string]*Sprite, camera *Camera, HUD *HUD) {
 	mx, my := ebiten.CursorPosition()
 	pt := image.Point{X: mx, Y: my}
 
-	// pt.In(HUD.leftSideRect) || REMOVED not inUSE
 	if HUD.RightSideState != HiddenState && pt.In(HUD.rightSideRect) { // abort updating selected units if the click is inside the UI elements
 		d.dragRect = image.Rectangle{Min: image.Pt(0, 0), Max: image.Pt(0, 0)}
 		return
@@ -45,7 +44,7 @@ func (d *Drag) Update(sprites map[string]*Sprite, camera *Camera, HUD *HUD) {
 		d.firstClickPoint = image.Point{X: mx, Y: my}
 	}
 	// Detect if the mouse is being held down
-	if ebiten.IsMouseButtonPressed(ebiten.MouseButtonLeft) {
+	if ebiten.IsMouseButtonPressed(ebiten.MouseButtonLeft) { // Todo: Check screen area - if we're in UI area dont do this
 		if d.firstClickPoint.Eq(image.Pt(0, 0)) {
 			return
 		}

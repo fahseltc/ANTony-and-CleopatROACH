@@ -18,7 +18,6 @@ var (
 
 type MiniMap struct {
 	position image.Point
-	rect     image.Rectangle
 	image    *ebiten.Image
 }
 
@@ -30,7 +29,6 @@ func NewMiniMap(tileMap *tilemap.Tilemap) *MiniMap {
 
 	return &MiniMap{
 		position: pos,
-		rect:     image.Rect(pos.X, pos.Y, MiniMapWidth, MiniMapHeight),
 		image:    ebiten.NewImage(MiniMapWidth, MiniMapHeight),
 	}
 }

@@ -151,6 +151,7 @@ func (unit *Unit) Update(sim *T) {
 		// animation?
 		return
 	}
+
 	switch unit.Action {
 	case IdleAction:
 		unit.Stats.ResourceCollectTime = 0

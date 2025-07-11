@@ -22,19 +22,19 @@ type Pause struct {
 	Hidden bool
 }
 
-func NewPause(sound *audio.SoundManager, font fonts.All) *Pause {
+func NewPause(sound *audio.SoundManager, fonts fonts.All) *Pause {
 	rect := &image.Rectangle{Min: image.Point{X: 200, Y: 175}, Max: image.Point{X: 600, Y: 575}}
 	scaled := util.ScaleImage(util.LoadImage("ui/metalPanel.png"), float32(rect.Dx()), float32(rect.Dy()))
 	p := &Pause{
 		sound:     sound,
-		font:      font,
+		font:      fonts,
 		rect:      rect,
 		bg:        scaled,
-		SFXSlider: NewSlider("SFX", rect.Min.X+50, rect.Min.Y+75, font, sound.GlobalSFXVolume),
-		MSXSlider: NewSlider("Music", rect.Min.X+50, rect.Min.Y+174, font, sound.GlobalMSXVolume),
+		SFXSlider: NewSlider("SFX", rect.Min.X+50, rect.Min.Y+75, fonts, sound.GlobalSFXVolume),
+		MSXSlider: NewSlider("Music", rect.Min.X+50, rect.Min.Y+174, fonts, sound.GlobalMSXVolume),
 		Hidden:    true,
 	}
-	p.closeBtn = NewButton(font.Med, WithText("Close"), WithRect(
+	p.closeBtn = NewButton(&fonts, WithText("Close"), WithRect(
 		image.Rectangle{
 			Min: image.Point{
 				X: rect.Min.X + 100, // 400 wide

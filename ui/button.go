@@ -4,11 +4,11 @@ import (
 	"image"
 	"image/color"
 
+	"gamejam/fonts"
 	"gamejam/util"
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/inpututil"
-	"github.com/hajimehoshi/ebiten/v2/text/v2"
 )
 
 type BtnOptFunc func(*Button)
@@ -16,8 +16,8 @@ type BtnOptFunc func(*Button)
 type Button struct {
 	rect image.Rectangle
 
-	text string
-	font text.Face
+	text  string
+	fonts *fonts.All
 
 	currentImg *ebiten.Image
 	defaultImg *ebiten.Image
@@ -25,21 +25,23 @@ type Button struct {
 
 	OnClick func()
 	key     ebiten.Key
+
+	tooltip TooltipInterface
 }
 
 //
 // NewButton creates a new Button with the given environment and options.
 //
 
-func NewButton(font text.Face, opts ...BtnOptFunc) *Button {
-	btn := defaultBtnOpts(font)
+func NewButton(fonts *fonts.All, opts ...BtnOptFunc) *Button {
+	btn := defaultBtnOpts(fonts)
 	for _, opt := range opts {
 		opt(&btn)
 	}
 	return &btn
 }
 
-func defaultBtnOpts(font text.Face) Button {
+func defaultBtnOpts(fonts *fonts.All) Button {
 	defaultWidth := float32(250.0)
 	defaultHeight := float32(100.0)
 	defaultImg := util.LoadImage("ui/btn/menu-btn.png")
@@ -57,7 +59,7 @@ func defaultBtnOpts(font text.Face) Button {
 				Y: 100,
 			},
 		},
-		font:       font,
+		fonts:      fonts,
 		currentImg: defaultImg,
 		defaultImg: defaultImg,
 		pressedImg: pressed,
@@ -100,13 +102,13 @@ func WithKeyActivation(key ebiten.Key) BtnOptFunc {
 		btn.key = key
 	}
 }
+func WithToolTip(tt TooltipInterface) BtnOptFunc {
+	return func(btn *Button) {
+		btn.tooltip = tt
+		btn.tooltip.GetAlignment().Align(btn.rect, tt.GetRect())
+	}
+}
 
-//	func WithToolTip(tt TooltipInterface) BtnOptFunc {
-//		return func(btn *Button) {
-//			btn.ToolTip = tt
-//			btn.ToolTip.GetAlignment().Align(btn.rect, tt.GetRect())
-//		}
-//	}
 // func WithCenteredPos() BtnOptFunc {
 // 	return func(btn *Button) {
 // 		centeredX := float64(btn.rect.Min.X) - 0.5*float64(btn.rect.Dx())
@@ -129,13 +131,20 @@ func (btn *Button) Draw(screen *ebiten.Image) {
 		// draw text centered
 		centerX, centerY := btn.GetCenter()
 		if btn.currentImg == btn.pressedImg {
-			util.DrawCenteredText(screen, btn.font, btn.text, centerX, centerY+4, color.RGBA{R: 0, G: 0, B: 0, A: 255})
+			util.DrawCenteredText(screen, btn.fonts.Med, btn.text, centerX, centerY+4, color.RGBA{R: 0, G: 0, B: 0, A: 255})
 		} else {
-			util.DrawCenteredText(screen, btn.font, btn.text, centerX, centerY, color.RGBA{R: 0, G: 0, B: 0, A: 255})
+			util.DrawCenteredText(screen, btn.fonts.Med, btn.text, centerX, centerY, color.RGBA{R: 0, G: 0, B: 0, A: 255})
 		}
 
 	}
-	// ebitenutil.DrawRect(screen, float64(btn.rect.Min.X), float64(btn.rect.Min.Y), float64(btn.rect.Dx()), float64(btn.rect.Dy()), color.RGBA{0, 255, 0, 255})
+
+	if btn.tooltip != nil && btn.MouseCollides() {
+		btn.tooltip.OnHover(screen)
+	}
+
+	if btn.key != 999 {
+		util.DrawCenteredText(screen, btn.fonts.XSmall, btn.key.String(), btn.rect.Min.X+6, btn.rect.Min.Y-4, color.RGBA{R: 255, G: 255, B: 255, A: 255})
+	}
 }
 
 func (btn *Button) Update() {

@@ -30,7 +30,7 @@ type TextArea struct {
 func NewTextArea(fonts *fonts.All, text string) *TextArea {
 	bgRect := &image.Rectangle{Min: image.Pt(0, 400), Max: image.Pt(800, 600)}
 	ta := &TextArea{
-		bg:            util.LoadImage("ui/textbox-bg.png"),
+		bg:            util.LoadImage("ui/bg/textbox-bg.png"),
 		fonts:         fonts,
 		bgRect:        bgRect,
 		textRect:      bgRect,

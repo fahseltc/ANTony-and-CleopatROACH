@@ -147,7 +147,7 @@ type IssueUnitCommandAction struct {
 func (a *IssueUnitCommandAction) Update(s *PlayScene, dt float64) bool {
 	a.targetTile.X = a.targetTile.X * 128
 	a.targetTile.Y = a.targetTile.Y * 128
-	s.sim.IssueAction(a.unitID, a.targetTile)
+	s.sim.IssueAction([]string{a.unitID}, a.targetTile)
 	return true
 }
 

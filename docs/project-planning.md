@@ -11,6 +11,17 @@ Game is Currently in 1.0
 - [x] Pathfinding optimizations to make units walk diagonally 7/8
 - [x] Combat + Life bars 7/8
 - [x] Dead bug sprites / blood splatters on the ground 7/8
+- Unit limits/food stat + building to increase it (slowly generating larvae?)
+  food ideas from nerds
+  tunnels to other hives
+  other hives create other units
+  swarmament / the fight hive
+  The Antagonist
+  The Antnex / Myrmicastle
+  worker unit: Toilerbee / grubscribe /
+  fighter: Antagonist / Mandibrawler
+- Rally Points for buildings
+
 - Minimap clicking
 - Local unit avoidance
 - Attack Animation
@@ -18,7 +29,7 @@ Game is Currently in 1.0
 - Different unit types/sizes - workers, fighters, ranged, royalty, etc
 - Attack Move action
 - Overal code refactor to prevent all magic numbers
-- Unit limits/food stat + building to increase it (slowly generating larvae?)
+
 - Selected Unit UI
 - Unit Grouping hotkeys
 - Camera location hotkeys

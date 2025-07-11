@@ -17,7 +17,7 @@ type ResourceDisplay struct {
 }
 
 func NewResourceDisplay(font text.Face) *ResourceDisplay {
-	img := util.LoadImage("ui/resource-hud.png")
+	img := util.LoadImage("ui/bg/resources-bg.png")
 	rect := image.Rectangle{Min: image.Point{X: 650, Y: 0}, Max: image.Point{X: 800, Y: 80}}
 	scaled := util.ScaleImage(img, float32(rect.Dx()), float32(rect.Dy()))
 	return &ResourceDisplay{

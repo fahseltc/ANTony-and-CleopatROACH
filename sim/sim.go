@@ -33,7 +33,8 @@ type T struct {
 	enemyUnits                 []*Unit
 	enemySpawnX, enemySpawnY   float64
 
-	selectedUnits []*Unit
+	selectedUnits    []*Unit
+	ActionKeyPressed ActionKeyPressed
 }
 
 type Collider struct {
@@ -54,6 +55,16 @@ const (
 	ResourceTypeNone ResourceType = iota
 	ResourceTypeSucrose
 	ResourceTypeWood
+)
+
+type ActionKeyPressed uint
+
+const (
+	NoneKeyPressed ActionKeyPressed = iota
+	AttackKeyPressed
+	MoveKeyPressed
+	StopKeyPressed
+	HoldPositionKeyPressed
 )
 
 func (s *T) GetPlayerState() PlayerState {
@@ -102,10 +113,7 @@ func (s *T) HandleConstructUnitEvent(event eventing.Event) {
 }
 
 func (s *T) Update() {
-
 	for _, unit := range s.playerUnits {
-		//nearestEnemy := findNearestEnemy()
-		//unit.SetNearestEnemy()
 		unit.Update(s)
 	}
 	for _, building := range s.playerBuildings {
@@ -114,11 +122,6 @@ func (s *T) Update() {
 	for _, unit := range s.enemyUnits {
 		unit.Update(s)
 	}
-	// update resource counts
-	// Update unit movement
-	// calculate damage done
-	// process unit removals
-	// process unit additions
 }
 
 func (s *T) RemoveUnit(u *Unit) {
@@ -176,11 +179,25 @@ func (s *T) GetBuildingByID(id string) (BuildingInterface, error) {
 	return nil, fmt.Errorf("unable to find unit with ID:%v", id)
 }
 
-func (s *T) IssueAction(id string, point *image.Point) error {
+func (s *T) IssueAction(ids []string, point *image.Point) error {
+	fmt.Printf("currentActionKey: %v\n", s.ActionKeyPressed)
+	if len(ids) == 0 {
+		return fmt.Errorf("no unit IDs passed")
+	} else if len(ids) == 1 {
+		s.issueSingleAction(ids[0], point)
+	} else {
+		s.issueGroupAction(ids, point)
+	}
+	s.ActionKeyPressed = NoneKeyPressed
+	return nil
+}
+
+func (s *T) issueSingleAction(id string, point *image.Point) error {
 	unit, err := s.GetUnitByID(id)
 	if err != nil {
 		return err
 	}
+
 	clickedTile := s.world.TileMap.GetTileByPosition(point.X, point.Y)
 	if clickedTile == nil {
 		slog.Warn("tile clicked was not found")
@@ -188,6 +205,13 @@ func (s *T) IssueAction(id string, point *image.Point) error {
 	}
 
 	unit.DestinationType = s.DetermineDestinationType(point)
+	switch s.ActionKeyPressed {
+	case NoneKeyPressed:
+	case AttackKeyPressed:
+	case MoveKeyPressed:
+	case StopKeyPressed:
+	case HoldPositionKeyPressed:
+	}
 	switch unit.DestinationType {
 	case EnemyDestination:
 		unit.Action = AttackMovingAction
@@ -213,7 +237,7 @@ func (s *T) IssueAction(id string, point *image.Point) error {
 
 	return nil
 }
-func (s *T) IssueGroupAction(ids []string, point *image.Point) error {
+func (s *T) issueGroupAction(ids []string, point *image.Point) error {
 	if len(ids) == 0 {
 		return nil
 	}
@@ -261,7 +285,7 @@ func (s *T) IssueGroupAction(ids []string, point *image.Point) error {
 				X: int(destPoint.X + scaledOffset.X),
 				Y: int(destPoint.Y + scaledOffset.Y),
 			}
-			_ = s.IssueAction(unit.ID.String(), &target)
+			_ = s.IssueAction([]string{unit.ID.String()}, &target)
 		}
 		return nil
 	}
@@ -275,7 +299,7 @@ func (s *T) IssueGroupAction(ids []string, point *image.Point) error {
 			X: int(destPoint.X + offset.X),
 			Y: int(destPoint.Y + offset.Y),
 		}
-		_ = s.IssueAction(unit.ID.String(), &target)
+		_ = s.IssueAction([]string{unit.ID.String()}, &target)
 	}
 
 	return nil
@@ -604,4 +628,8 @@ func (s *T) isLineWalkable(start, end *vec2.T) bool {
 		}
 	}
 	return true
+}
+
+func (s *T) SetActionKeyPressed(key ActionKeyPressed) {
+	s.ActionKeyPressed = key
 }

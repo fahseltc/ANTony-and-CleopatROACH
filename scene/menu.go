@@ -25,13 +25,13 @@ type MenuScene struct {
 
 func NewMenuScene(fonts *fonts.All, sound *audio.SoundManager) *MenuScene {
 	scene := &MenuScene{
-		bg:    util.LoadImage("ui/menu-bg.png"),
+		bg:    util.LoadImage("ui/bg/menu-bg.png"),
 		txt:   "ANTony & CleopatROACH",
 		fonts: fonts,
 		sound: sound,
 		pause: ui.NewPause(sound, *fonts),
 	}
-	scene.startBtn = ui.NewButton(fonts.Med, ui.WithText("START"), ui.WithRect(image.Rectangle{
+	scene.startBtn = ui.NewButton(fonts, ui.WithText("START"), ui.WithRect(image.Rectangle{
 		Min: image.Point{X: 200, Y: 520},
 		Max: image.Point{X: 390, Y: 570},
 	}), ui.WithClickFunc(func() {
@@ -40,7 +40,7 @@ func NewMenuScene(fonts *fonts.All, sound *audio.SoundManager) *MenuScene {
 		scene.sm.SwitchTo(NewNarratorScene(scene.fonts, scene.sound, levelData))
 	}))
 
-	scene.optsBtn = ui.NewButton(fonts.Med, ui.WithText("OPTIONS"), ui.WithRect(image.Rectangle{
+	scene.optsBtn = ui.NewButton(fonts, ui.WithText("OPTIONS"), ui.WithRect(image.Rectangle{
 		Min: image.Point{X: 410, Y: 520},
 		Max: image.Point{X: 600, Y: 570},
 	}), ui.WithClickFunc(func() {

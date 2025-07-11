@@ -11,15 +11,21 @@ import (
 	"github.com/hajimehoshi/ebiten/v2"
 )
 
+var (
+	GameResolutionW = 800
+	GameResolutionH = 600
+)
+
 type Ui struct {
-	log      *slog.Logger
-	fonts    *fonts.All
-	HUD      *HUD
+	log   *slog.Logger
+	fonts *fonts.All
+
+	HUD     *HUD
+	MiniMap *MiniMap
+
 	Camera   *Camera
 	TileMap  *tilemap.Tilemap
 	eventBus *eventing.EventBus
-
-	MiniMap *MiniMap
 
 	DrawEnabled  bool
 	frameCounter int
@@ -32,7 +38,7 @@ func NewUi(fonts *fonts.All, tileMap *tilemap.Tilemap, sim *sim.T) *Ui {
 	return &Ui{
 		log:         log.NewLogger().With("for", "ui"),
 		fonts:       fonts,
-		HUD:         NewHUD(fonts.Med, sim),
+		HUD:         NewHUD(fonts, sim),
 		Camera:      camera,
 		TileMap:     tileMap,
 		eventBus:    sim.EventBus,

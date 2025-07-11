@@ -194,11 +194,12 @@ func (s *PlayScene) Update() error {
 		s.SceneCompleted = true
 		s.LevelData.SetupCompletionCutscene(s, s.QueenID, s.KingID)
 	}
+
 	// Every Unit in the SIM should have a sprite, if not make one.
 	s.createOrUpdateUnitSprites()
-	// same for buildings
+	// Same for buildings
 	s.createOrUpdateBuildingSprites()
-	// remove building & unit sprites that are no longer in the SIM
+	// Remove building & unit sprites that are no longer in the SIM
 	s.updateRemoveInactiveSprites()
 
 	// Update sim before cutscenes so things happen in the world as they play.
@@ -206,8 +207,8 @@ func (s *PlayScene) Update() error {
 	if s.CurrentNotification != nil {
 		s.CurrentNotification.Update()
 	}
-	// HANDLE CUTSCENES - we might want sim.update though
 
+	// Handle cutscenes
 	if s.inCutscene {
 		dt := 1.0 / 60.0 // or use actual delta time
 		if len(s.cutsceneActions) == 0 {
@@ -232,6 +233,7 @@ func (s *PlayScene) Update() error {
 		}
 	}
 
+	// Handle tutorials
 	if len(s.tutorialDialogs) > 0 && !s.inCutscene {
 		// Check if any tutorial dialog is active
 		s.inTutorial = true
@@ -302,7 +304,7 @@ func (s *PlayScene) Update() error {
 					mapX, mapY := s.Ui.Camera.ScreenPosToMapPos(mx, my)
 					s.ActionIssuedLocation = &image.Point{X: mapX, Y: mapY}
 					for _, unitId := range s.selectedUnitIDs {
-						s.sim.IssueAction(unitId, s.ActionIssuedLocation)
+						s.sim.IssueAction([]string{unitId}, s.ActionIssuedLocation)
 						s.eventBus.Publish(eventing.Event{
 							Type: "PlayIssueActionSFX",
 						})
@@ -311,15 +313,15 @@ func (s *PlayScene) Update() error {
 			}
 		} else {
 			// Handle multiple unit or building selected
-			if s.Ui.HUD.RightSideState != ui.HiddenState {
-				s.Ui.HUD.RightSideState = ui.HiddenState
+			if s.Ui.HUD.RightSideState != ui.UnitSelectedState {
+				s.Ui.HUD.RightSideState = ui.UnitSelectedState
 				s.constructionMouse.Enabled = false
 			}
 			if inpututil.IsMouseButtonJustReleased(ebiten.MouseButtonRight) { // activate on buttonRelease to debounce
 				mx, my := ebiten.CursorPosition()
 				mapX, mapY := s.Ui.Camera.ScreenPosToMapPos(mx, my)
 				s.ActionIssuedLocation = &image.Point{X: mapX, Y: mapY}
-				s.sim.IssueGroupAction(s.selectedUnitIDs, s.ActionIssuedLocation)
+				s.sim.IssueAction(s.selectedUnitIDs, s.ActionIssuedLocation)
 				s.eventBus.Publish(eventing.Event{
 					Type: "PlayIssueActionSFX",
 				})
@@ -331,6 +333,21 @@ func (s *PlayScene) Update() error {
 			s.Ui.HUD.RightSideState = ui.HiddenState
 			s.constructionMouse.Enabled = false
 		}
+	}
+	// Tell selected units to stop if its required
+	if s.sim.ActionKeyPressed == sim.StopKeyPressed || s.sim.ActionKeyPressed == sim.HoldPositionKeyPressed {
+		for _, spr := range s.Sprites {
+			unit, err := s.sim.GetUnitByID(spr.Id.String())
+			if err == nil && spr.Selected {
+				unit.Destinations.Clear()
+				if s.sim.ActionKeyPressed == sim.StopKeyPressed {
+					unit.Action = sim.IdleAction
+				} else {
+					unit.Action = sim.HoldingPositionAction
+				}
+			}
+		}
+		s.sim.ActionKeyPressed = sim.NoneKeyPressed
 	}
 	s.drag.Update(s.Sprites, s.Ui.Camera, s.Ui.HUD)
 	s.constructionMouse.Update(s.tileMap, s.sim)
@@ -485,9 +502,9 @@ func (s *PlayScene) drawFogOfWar(screen *ebiten.Image) {
 
 				switch fow.Tiles[y][x] {
 				case sim.FogUnexplored:
-					vector.DrawFilledRect(screen, float32(screenX), float32(screenY), float32(size), float32(size), color.Black, false)
+					vector.DrawFilledRect(screen, float32(screenX-1), float32(screenY-1), float32(size+2), float32(size+2), color.Black, false)
 				case sim.FogMemory:
-					vector.DrawFilledRect(screen, float32(screenX), float32(screenY), float32(size), float32(size), color.RGBA{0, 0, 0, 128}, false)
+					vector.DrawFilledRect(screen, float32(screenX-1), float32(screenY-1), float32(size+2), float32(size+2), color.RGBA{0, 0, 0, 128}, false)
 				}
 			}
 		}
@@ -531,6 +548,9 @@ func (s *PlayScene) DebugDraw(screen *ebiten.Image) {
 		}
 	}
 	for _, spr := range s.Sprites {
+		if spr.Type == ui.SpriteTypeStatic {
+			continue
+		}
 		rect := spr.Rect
 		x0, y0 := s.Ui.Camera.MapPosToScreenPos(rect.Min.X, rect.Min.Y)
 		x1, y1 := s.Ui.Camera.MapPosToScreenPos(rect.Max.X, rect.Max.Y)

@@ -32,7 +32,7 @@ func NewPortraitTextArea(fonts *fonts.All, text string, portraitType PortraitTyp
 		Max: image.Point{X: 800, Y: 600},
 	}
 	pta.Ta.splitTextOntoLines()
-	pta.Ta.bg = util.LoadImage("ui/textbox-bg-portrait.png")
+	pta.Ta.bg = util.LoadImage("ui/bg/textbox-bg-portrait.png")
 	return pta
 }
 
