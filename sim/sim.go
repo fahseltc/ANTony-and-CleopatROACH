@@ -33,7 +33,6 @@ type T struct {
 	enemyUnits                 []*Unit
 	enemySpawnX, enemySpawnY   float64
 
-	selectedUnits    []*Unit
 	ActionKeyPressed ActionKeyPressed
 }
 

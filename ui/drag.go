@@ -17,6 +17,8 @@ type Drag struct {
 	firstClickPoint  image.Point
 	secondClickPoint image.Point
 	log              *slog.Logger
+
+	btnHeld bool
 }
 
 func NewDrag() *Drag {
@@ -30,24 +32,26 @@ func NewDrag() *Drag {
 
 func (d *Drag) Update(sprites map[string]*Sprite, camera *Camera, HUD *HUD) {
 	if !d.Enabled {
+		d.btnHeld = false
 		return
+	}
+	if ebiten.IsMouseButtonPressed(ebiten.MouseButtonLeft) {
+		d.btnHeld = true
+	} else {
+		d.btnHeld = false
 	}
 	mx, my := ebiten.CursorPosition()
-	pt := image.Point{X: mx, Y: my}
-
-	if HUD.RightSideState != HiddenState && pt.In(HUD.rightSideRect) { // abort updating selected units if the click is inside the UI elements
-		d.dragRect = image.Rectangle{Min: image.Pt(0, 0), Max: image.Pt(0, 0)}
-		return
-	}
+	// if HUD.IsPointInside(pt) { // abort updating selected units if the click is inside the UI elements
+	// 	d.dragRect = image.Rectangle{Min: image.Pt(0, 0), Max: image.Pt(0, 0)}
+	// 	d.firstClickPoint = image.Point{X: 0, Y: 0}
+	// 	return
+	// }
 
 	if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) {
 		d.firstClickPoint = image.Point{X: mx, Y: my}
 	}
 	// Detect if the mouse is being held down
-	if ebiten.IsMouseButtonPressed(ebiten.MouseButtonLeft) { // Todo: Check screen area - if we're in UI area dont do this
-		if d.firstClickPoint.Eq(image.Pt(0, 0)) {
-			return
-		}
+	if ebiten.IsMouseButtonPressed(ebiten.MouseButtonLeft) {
 		d.secondClickPoint = image.Point{X: mx, Y: my}
 		minX := d.firstClickPoint.X
 		maxX := mx
@@ -64,6 +68,7 @@ func (d *Drag) Update(sprites map[string]*Sprite, camera *Camera, HUD *HUD) {
 
 		d.dragRect = image.Rectangle{Min: image.Pt(minX, minY), Max: image.Pt(maxX, maxY)}
 	}
+
 	if inpututil.IsMouseButtonJustReleased(ebiten.MouseButtonLeft) {
 		var selectedIDs []string
 		mapRect := image.Rectangle{
@@ -85,6 +90,13 @@ func (d *Drag) Update(sprites map[string]*Sprite, camera *Camera, HUD *HUD) {
 
 		d.log.Info("Units Selected", "array", selectedIDs)
 	}
+
+	// if HUD.IsPointInside(pt) && !d.btnHeld { // abort updating selected units if the click is inside the UI elements
+	// 	// d.dragRect = image.Rectangle{Min: image.Pt(0, 0), Max: image.Pt(0, 0)}
+	// 	// d.firstClickPoint = image.Point{X: 0, Y: 0}
+	// 	return
+	// }
+
 }
 
 func (d *Drag) Draw(screen *ebiten.Image) {

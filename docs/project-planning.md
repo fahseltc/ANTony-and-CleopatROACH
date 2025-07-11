@@ -10,7 +10,11 @@ Game is Currently in 1.0
 - [x] Mob/Pack based movement 7/8
 - [x] Pathfinding optimizations to make units walk diagonally 7/8
 - [x] Combat + Life bars 7/8
-- [x] Dead bug sprites / blood splatters on the ground 7/8
+- [x] Dead bug sprites / blood splatters on the ground 7/10
+- [x] UI buttons overhaul 7/11
+- [x] BUG when pathing long distances stopping partway. 7/11
+- [x] Improved Fog of war with fog fading in/out 7/11
+- Minimap clicking
 - Unit limits/food stat + building to increase it (slowly generating larvae?)
   food ideas from nerds
   tunnels to other hives
@@ -22,7 +26,6 @@ Game is Currently in 1.0
   fighter: Antagonist / Mandibrawler
 - Rally Points for buildings
 
-- Minimap clicking
 - Local unit avoidance
 - Attack Animation
 
@@ -38,7 +41,6 @@ Game is Currently in 1.0
 
   1.2
 
-- Improved Fog of war with fog fading in/out
 - Dialogue UI updates (hold mouse to scroll faster, blinking indicator when done, possibly sound when printing text)
 - New larger maps
 - Full 5 Act gameplay

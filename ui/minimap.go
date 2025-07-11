@@ -207,3 +207,22 @@ func (m *MiniMap) DrawViewport(camera *Camera, tileMap *tilemap.Tilemap) {
 		}
 	}
 }
+func (m *MiniMap) ToWorldPixels(screenX, screenY int, tileMap *tilemap.Tilemap) (int, int) {
+	// Convert screen position to local minimap position
+	minimapX := screenX - m.position.X
+	minimapY := screenY - m.position.Y
+
+	// Bounds check
+	// if minimapX < 0 || minimapY < 0 || minimapX >= MiniMapWidth || minimapY >= MiniMapHeight {
+	// 	return 0, 0, false // Not inside minimap
+	// }
+
+	// Compute scale from minimap to world pixels
+	scaleX := float64(tileMap.Width*tileMap.TileSize) / float64(MiniMapWidth)
+	scaleY := float64(tileMap.Height*tileMap.TileSize) / float64(MiniMapHeight)
+
+	worldX := int(float64(minimapX) * scaleX)
+	worldY := int(float64(minimapY) * scaleY)
+
+	return worldX, worldY
+}

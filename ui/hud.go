@@ -7,6 +7,7 @@ import (
 	"gamejam/util"
 	"image"
 	"log/slog"
+	"slices"
 
 	"github.com/hajimehoshi/ebiten/v2"
 )
@@ -14,15 +15,7 @@ import (
 var (
 	LowerUiBgPositionX = 0.0
 	LowerUiBgPositionY = 400.0
-
-	RightSideButtonX       = 440.0
-	RightSideButtonY       = 515.0
-	RightSideButtonPadding = 20.0
 )
-
-// image.Rectangle{Min: image.Pt(600, 500), Max: image.Pt(800, 600)}
-//Min: image.Pt(c.rightSideRect.Min.X+20, c.rightSideRect.Min.Y+15),
-//Max: image.Pt(c.rightSideRect.Min.X+70, c.rightSideRect.Min.Y+65)}),
 
 type RightSideHUDState int
 
@@ -36,11 +29,15 @@ type HUD struct {
 	rightSideRect  image.Rectangle
 	RightSideState RightSideHUDState
 
+	hitboxes    []image.Rectangle
+	miniMapRect image.Rectangle
+
 	//	rightUnitButtonPanel       *ButtonPanel // Buttons for unit/s selected (move/attack/hold/etc)
 	rightWorkerUnitButtonPanel *ButtonPanel // Buttons for worker selected (spawn more units)
 	rightHiveButtonPanel       *ButtonPanel // Buttons for building selected (spawn more units)
 
-	resourceDisplay *ResourceDisplay
+	resourceDisplay  *ResourceDisplay
+	selectedUnitArea *SelectedUnitArea
 
 	lowerBG *ebiten.Image
 
@@ -51,34 +48,45 @@ type HUD struct {
 func NewHUD(fonts *fonts.All, sim *sim.T) *HUD {
 	//leftSideRect := image.Rectangle{Min: image.Pt(0, 500), Max: image.Pt(200, 600)}
 	rightSideRect := image.Rectangle{Min: image.Pt(600, 500), Max: image.Pt(800, 600)}
-	c := &HUD{
+	hud := &HUD{
 		rightSideRect:  rightSideRect,
 		RightSideState: HiddenState,
 
-		//rightUnitButtonPanel: NewUnitButtonPanel(fonts, sim),
 		rightWorkerUnitButtonPanel: NewWorkerUnitButtonPanel(fonts, sim),
 		rightHiveButtonPanel:       NewHiveButtonPanel(fonts, sim),
 
-		resourceDisplay: NewResourceDisplay(fonts.Med),
+		resourceDisplay:  NewResourceDisplay(fonts.Med),
+		selectedUnitArea: NewSelectedUnitArea(),
 
 		lowerBG: util.LoadImage("ui/bg/lower-UI-bg.png"),
 		log:     log.NewLogger().With("for", "HUD"),
 		sim:     sim,
 	}
 
-	return c
+	// Setup UI hitbox areas
+	leftSideHitbox := image.Rectangle{Min: image.Pt(0, 420), Max: image.Pt(180, 600)}
+	hud.hitboxes = append(hud.hitboxes, leftSideHitbox)
+	rightSideHitbox := image.Rectangle{Min: image.Pt(620, 420), Max: image.Pt(800, 600)}
+	hud.hitboxes = append(hud.hitboxes, rightSideHitbox)
+	middleHitbox := image.Rectangle{Min: image.Pt(180, 472), Max: image.Pt(620, 600)}
+	hud.hitboxes = append(hud.hitboxes, middleHitbox)
+
+	hud.miniMapRect = image.Rectangle{Min: image.Pt(MiniMapLeftPad, 600-MiniMapHeight-MiniMapBottomPad), Max: image.Pt(MiniMapLeftPad+MiniMapWidth, 600-MiniMapBottomPad)}
+	hud.hitboxes = append(hud.hitboxes, hud.miniMapRect)
+
+	return hud
 }
 
-func (c *HUD) Update() {
-	switch c.RightSideState {
+func (h *HUD) Update(selectedUnitIDs []string) {
+	switch h.RightSideState {
 	case HiddenState:
 		// do nothing
 	case HiveSelectedState:
-		c.rightHiveButtonPanel.Update()
+		h.rightHiveButtonPanel.Update()
 	case UnitSelectedState:
-		c.rightWorkerUnitButtonPanel.Update()
+		h.rightWorkerUnitButtonPanel.Update()
 	}
-
+	h.selectedUnitArea.Update(selectedUnitIDs)
 }
 
 func (c *HUD) Draw(screen *ebiten.Image) {
@@ -97,4 +105,18 @@ func (c *HUD) Draw(screen *ebiten.Image) {
 	}
 
 	c.resourceDisplay.Draw(screen, c.sim)
+	c.selectedUnitArea.Draw(screen)
+
+	// DebugDraw UI hitboxes
+	// for _, hb := range c.hitboxes {
+	// 	ebitenutil.DrawRect(screen, float64(hb.Min.X), float64(hb.Min.Y), float64(hb.Dx()), float64(hb.Dy()), color.RGBA{255, 255, 255, 255})
+	// }
+}
+
+func (h *HUD) IsPointInside(pt image.Point) bool {
+	return slices.ContainsFunc(h.hitboxes, pt.In)
+}
+
+func (h *HUD) IsPointInsideMinimap(pt image.Point) bool {
+	return pt.In(h.miniMapRect)
 }

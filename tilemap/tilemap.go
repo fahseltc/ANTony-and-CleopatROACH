@@ -250,32 +250,50 @@ func (tm *Tilemap) FindPath(start *vec2.T, end *vec2.T) []*vec2.T {
 		return nil
 	}
 	bpr := tm.Pathing.BuildPath(tm.PathGrid, pathing.GridCoord{X: int(start.X), Y: int(start.Y)}, pathing.GridCoord{X: int(end.X), Y: int(end.Y)}, tm.pathLayer)
-	if !bpr.Partial {
-		var currentPos *vec2.T
-		currentPos = start
-		var nav []*vec2.T
-		for bpr.Steps.HasNext() {
-			switch bpr.Steps.Next() {
-			case pathing.DirRight:
-				vec := &vec2.T{X: currentPos.X + 1, Y: currentPos.Y}
-				nav = append(nav, vec)
-				currentPos = vec
-			case pathing.DirDown:
-				vec := &vec2.T{X: currentPos.X, Y: currentPos.Y + 1}
-				nav = append(nav, vec)
-				currentPos = vec
-			case pathing.DirLeft:
-				vec := &vec2.T{X: currentPos.X - 1, Y: currentPos.Y}
-				nav = append(nav, vec)
-				currentPos = vec
-			case pathing.DirUp:
-				vec := &vec2.T{X: currentPos.X, Y: currentPos.Y - 1}
-				nav = append(nav, vec)
-				currentPos = vec
-			default:
+	var nav []*vec2.T
+	var currentPos *vec2.T
+	currentPos = start
+
+	if bpr.Partial {
+		for bpr.Partial {
+			bpr = tm.Pathing.BuildPath(tm.PathGrid, pathing.GridCoord{X: int(currentPos.X), Y: int(currentPos.Y)}, pathing.GridCoord{X: int(end.X), Y: int(end.Y)}, tm.pathLayer)
+			nav = append(nav, tm.bprToVecSlice(currentPos, bpr)...)
+			if bpr.Cost == 0 {
+				break
 			}
+			currentPos = nav[len(nav)-1]
 		}
-		return nav
+	} else {
+		nav = tm.bprToVecSlice(start, bpr)
 	}
-	return nil
+	return nav
+}
+
+func (tm *Tilemap) bprToVecSlice(start *vec2.T, bpr pathing.BuildPathResult) []*vec2.T {
+	var currentPos *vec2.T
+	currentPos = start
+	var nav []*vec2.T
+	for bpr.Steps.HasNext() {
+		switch bpr.Steps.Next() {
+		case pathing.DirRight:
+			vec := &vec2.T{X: currentPos.X + 1, Y: currentPos.Y}
+			nav = append(nav, vec)
+			currentPos = vec
+		case pathing.DirDown:
+			vec := &vec2.T{X: currentPos.X, Y: currentPos.Y + 1}
+			nav = append(nav, vec)
+			currentPos = vec
+		case pathing.DirLeft:
+			vec := &vec2.T{X: currentPos.X - 1, Y: currentPos.Y}
+			nav = append(nav, vec)
+			currentPos = vec
+		case pathing.DirUp:
+			vec := &vec2.T{X: currentPos.X, Y: currentPos.Y - 1}
+			nav = append(nav, vec)
+			currentPos = vec
+		default:
+		}
+	}
+	return nav
+
 }

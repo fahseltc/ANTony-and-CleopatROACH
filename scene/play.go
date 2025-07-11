@@ -68,6 +68,8 @@ type PlayScene struct {
 	actionIssuedFrameTimer uint
 
 	Pause *ui.Pause
+
+	UnitGroupManager *ui.UnitGroupManager
 }
 
 func NewPlayScene(fonts *fonts.All, sound *audio.SoundManager, levelData LevelData) *PlayScene {
@@ -89,6 +91,7 @@ func NewPlayScene(fonts *fonts.All, sound *audio.SoundManager, levelData LevelDa
 		Sprites:           make(map[string]*ui.Sprite),
 		eventBus:          simulation.EventBus,
 		Pause:             ui.NewPause(sound, *fonts),
+		UnitGroupManager:  &ui.UnitGroupManager{},
 	}
 	scene.constructionMouse.SetSprite("tilemap/bridge.png")
 	scene.eventBus.Subscribe("MakeAntButtonClickedEvent", scene.HandleMakeAntButtonClickedEvent)
@@ -301,10 +304,19 @@ func (s *PlayScene) Update() error {
 				// handle single unit and clicks
 				if inpututil.IsMouseButtonJustReleased(ebiten.MouseButtonRight) { // activate on buttonRelease to debounce
 					mx, my := ebiten.CursorPosition()
-					mapX, mapY := s.Ui.Camera.ScreenPosToMapPos(mx, my)
-					s.ActionIssuedLocation = &image.Point{X: mapX, Y: mapY}
-					for _, unitId := range s.selectedUnitIDs {
-						s.sim.IssueAction([]string{unitId}, s.ActionIssuedLocation)
+					if !s.Ui.HUD.IsPointInside(image.Pt(mx, my)) {
+						mapX, mapY := s.Ui.Camera.ScreenPosToMapPos(mx, my)
+						s.ActionIssuedLocation = &image.Point{X: mapX, Y: mapY}
+						for _, unitId := range s.selectedUnitIDs {
+							s.sim.IssueAction([]string{unitId}, s.ActionIssuedLocation)
+							s.eventBus.Publish(eventing.Event{
+								Type: "PlayIssueActionSFX",
+							})
+						}
+					} else if s.Ui.HUD.IsPointInsideMinimap(image.Pt(mx, my)) {
+						worldX, worldY := s.Ui.MiniMap.ToWorldPixels(mx, my, s.tileMap)
+						s.ActionIssuedLocation = &image.Point{X: worldX, Y: worldY}
+						s.sim.IssueAction(s.selectedUnitIDs, s.ActionIssuedLocation)
 						s.eventBus.Publish(eventing.Event{
 							Type: "PlayIssueActionSFX",
 						})
@@ -319,12 +331,21 @@ func (s *PlayScene) Update() error {
 			}
 			if inpututil.IsMouseButtonJustReleased(ebiten.MouseButtonRight) { // activate on buttonRelease to debounce
 				mx, my := ebiten.CursorPosition()
-				mapX, mapY := s.Ui.Camera.ScreenPosToMapPos(mx, my)
-				s.ActionIssuedLocation = &image.Point{X: mapX, Y: mapY}
-				s.sim.IssueAction(s.selectedUnitIDs, s.ActionIssuedLocation)
-				s.eventBus.Publish(eventing.Event{
-					Type: "PlayIssueActionSFX",
-				})
+				if !s.Ui.HUD.IsPointInside(image.Pt(mx, my)) {
+					mapX, mapY := s.Ui.Camera.ScreenPosToMapPos(mx, my)
+					s.ActionIssuedLocation = &image.Point{X: mapX, Y: mapY}
+					s.sim.IssueAction(s.selectedUnitIDs, s.ActionIssuedLocation)
+					s.eventBus.Publish(eventing.Event{
+						Type: "PlayIssueActionSFX",
+					})
+				} else if s.Ui.HUD.IsPointInsideMinimap(image.Pt(mx, my)) {
+					worldX, worldY := s.Ui.MiniMap.ToWorldPixels(mx, my, s.tileMap)
+					s.ActionIssuedLocation = &image.Point{X: worldX, Y: worldY}
+					s.sim.IssueAction(s.selectedUnitIDs, s.ActionIssuedLocation)
+					s.eventBus.Publish(eventing.Event{
+						Type: "PlayIssueActionSFX",
+					})
+				}
 			}
 		}
 	} else {
@@ -354,7 +375,7 @@ func (s *PlayScene) Update() error {
 	if !s.constructionMouse.Enabled {
 		s.drag.Enabled = true
 	}
-	s.Ui.Update(s.sim)
+	s.Ui.Update(s.sim, s.selectedUnitIDs)
 
 	return nil
 }
@@ -603,6 +624,18 @@ func (s *PlayScene) DebugDraw(screen *ebiten.Image) {
 		tile := s.tileMap.GetTileByPosition(x, y)
 		if tile != nil {
 			ebitenutil.DebugPrintAt(screen, fmt.Sprintf("HoveredTileCoords: %v,%v", tile.Coordinates.X, tile.Coordinates.Y), 1, 80)
+		}
+	}
+}
+
+func (s *PlayScene) SetSelectedSprites(IDs []string) {
+	for _, spr := range s.Sprites {
+		spr.Selected = false
+		for _, id := range IDs {
+			if id == spr.Id.String() {
+				spr.Selected = true
+				continue
+			}
 		}
 	}
 }
