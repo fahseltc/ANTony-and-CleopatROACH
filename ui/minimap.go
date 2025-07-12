@@ -208,21 +208,24 @@ func (m *MiniMap) DrawViewport(camera *Camera, tileMap *tilemap.Tilemap) {
 	}
 }
 func (m *MiniMap) ToWorldPixels(screenX, screenY int, tileMap *tilemap.Tilemap) (int, int) {
-	// Convert screen position to local minimap position
 	minimapX := screenX - m.position.X
 	minimapY := screenY - m.position.Y
 
-	// Bounds check
-	// if minimapX < 0 || minimapY < 0 || minimapX >= MiniMapWidth || minimapY >= MiniMapHeight {
-	// 	return 0, 0, false // Not inside minimap
-	// }
+	// Clamp / validate
+	if minimapX < 0 || minimapX >= MiniMapWidth || minimapY < 0 || minimapY >= MiniMapHeight {
+		return 0, 0 // or some (x,y,bool) version
+	}
 
-	// Compute scale from minimap to world pixels
-	scaleX := float64(tileMap.Width*tileMap.TileSize) / float64(MiniMapWidth)
-	scaleY := float64(tileMap.Height*tileMap.TileSize) / float64(MiniMapHeight)
+	// Normalize to [0..1] within the minimap
+	normX := float64(minimapX) / float64(MiniMapWidth)
+	normY := float64(minimapY) / float64(MiniMapHeight)
 
-	worldX := int(float64(minimapX) * scaleX)
-	worldY := int(float64(minimapY) * scaleY)
+	// Convert to world pixel space (entire map dimensions)
+	worldWidth := tileMap.Width * tileMap.TileSize
+	worldHeight := tileMap.Height * tileMap.TileSize
+
+	worldX := int(normX * float64(worldWidth))
+	worldY := int(normY * float64(worldHeight))
 
 	return worldX, worldY
 }

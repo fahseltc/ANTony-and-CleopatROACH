@@ -14,8 +14,11 @@ Game is Currently in 1.0
 - [x] UI buttons overhaul 7/11
 - [x] BUG when pathing long distances stopping partway. 7/11
 - [x] Improved Fog of war with fog fading in/out 7/11
-- Minimap clicking
+- [x] Minimap clicking to move units 7/11
+- [x] Minimap clicking to move camera 7/11
+- Selected Unit UI - started 7/11
 - Unit limits/food stat + building to increase it (slowly generating larvae?)
+- Hold shift + click more units adds them to the selected group of units
   food ideas from nerds
   tunnels to other hives
   other hives create other units
@@ -33,7 +36,6 @@ Game is Currently in 1.0
 - Attack Move action
 - Overal code refactor to prevent all magic numbers
 
-- Selected Unit UI
 - Unit Grouping hotkeys
 - Camera location hotkeys
 - Fix issue with construction not being local to a unit

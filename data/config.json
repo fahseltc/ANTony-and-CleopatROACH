@@ -2,7 +2,7 @@
     "windowTitle": "ANTony & CleopatROACH",
     "targetFPS": 60,
     "muteAudio": true,
-    "debugDraw": false,
+    "debugDraw": true,
     "skipMenu": true,
     "skipToGameplay": true,
     "startingLevel": 3,

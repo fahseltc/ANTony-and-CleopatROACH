@@ -355,6 +355,16 @@ func (s *PlayScene) Update() error {
 			s.constructionMouse.Enabled = false
 		}
 	}
+
+	// Set camera to minimap position pointed at
+	if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) {
+		mx, my := ebiten.CursorPosition()
+		if s.Ui.HUD.IsPointInsideMinimap(image.Pt(mx, my)) {
+			worldX, worldY := s.Ui.MiniMap.ToWorldPixels(mx, my, s.tileMap)
+			s.Ui.Camera.SetPosition(worldX, worldY)
+		}
+	}
+
 	// Tell selected units to stop if its required
 	if s.sim.ActionKeyPressed == sim.StopKeyPressed || s.sim.ActionKeyPressed == sim.HoldPositionKeyPressed {
 		for _, spr := range s.Sprites {

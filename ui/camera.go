@@ -196,9 +196,36 @@ func (c *Camera) MapPosToScreenPos(x, y int) (int, int) {
 }
 
 func (c *Camera) SetPosition(x, y int) {
-	c.ViewPortX = -x
-	c.ViewPortY = -y
+	// x,y are world coordinates to center on
+
+	// Calculate half viewport size in world coordinates
+	halfViewportWidth := int(float64(800) / (2.0 * c.ViewPortZoom))
+	halfViewportHeight := int(float64(600) / (2.0 * c.ViewPortZoom))
+
+	// Calculate viewport top-left (screen offset)
+	// We invert because ViewPortX/Y are offsets for drawing world onto screen
+	c.ViewPortX = -int(float64(x-halfViewportWidth) * c.ViewPortZoom)
+	c.ViewPortY = -int(float64(y-halfViewportHeight) * c.ViewPortZoom)
+
+	// Clamp ViewPortX
+	if c.ViewPortX > 0 {
+		c.ViewPortX = 0
+	}
+	minX := 800 - int(float64(c.mapWidth)*c.ViewPortZoom)
+	if c.ViewPortX < minX {
+		c.ViewPortX = minX
+	}
+
+	// Clamp ViewPortY
+	if c.ViewPortY > 0 {
+		c.ViewPortY = 0
+	}
+	minY := 600 - int(float64(c.mapHeight)*c.ViewPortZoom)
+	if c.ViewPortY < minY {
+		c.ViewPortY = minY
+	}
 }
+
 func (c *Camera) SetZoom(amount float64) {
 	c.ViewPortZoom = amount
 }
