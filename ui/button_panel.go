@@ -90,7 +90,7 @@ func NewUnitButtonPanel(fonts *fonts.All, s *sim.T) *ButtonPanel {
 
 	holdBtn := NewButton(fonts,
 		WithRect(image.Rectangle{Min: image.Pt(btnX, btnY), Max: image.Pt(btnX+BtnDimension, btnY+BtnDimension)}),
-		WithImage(util.LoadImage("ui/btn/hold-btn.png"), util.LoadImage("ui/btn/hold-btn.png")),
+		WithImage(util.LoadImage("ui/btn/hold-btn.png"), util.LoadImage("ui/btn/hold-btn-pressed.png")),
 		WithClickFunc(func() {
 			btnPanel.log.Info("holdbtnclicked")
 			s.SetActionKeyPressed(sim.HoldPositionKeyPressed)

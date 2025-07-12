@@ -61,9 +61,9 @@ func (ui *Ui) Update(sim *sim.T, selectedUnitIDs []string) {
 	ui.frameCounter++
 }
 
-func (ui *Ui) Draw(units []*sim.Unit, screen *ebiten.Image) {
+func (ui *Ui) Draw(screen *ebiten.Image, sprites map[string]*Sprite) {
 	if ui.DrawEnabled {
-		ui.HUD.Draw(screen)
+		ui.HUD.Draw(screen, sprites)
 		ui.MiniMap.Draw(screen)
 	}
 }

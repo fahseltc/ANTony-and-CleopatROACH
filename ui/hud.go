@@ -89,7 +89,7 @@ func (h *HUD) Update(selectedUnitIDs []string) {
 	h.selectedUnitArea.Update(selectedUnitIDs)
 }
 
-func (c *HUD) Draw(screen *ebiten.Image) {
+func (c *HUD) Draw(screen *ebiten.Image, sprites map[string]*Sprite) {
 	// Draw UI lower BG
 	op := &ebiten.DrawImageOptions{}
 	op.GeoM.Translate(LowerUiBgPositionX, LowerUiBgPositionY)
@@ -105,7 +105,7 @@ func (c *HUD) Draw(screen *ebiten.Image) {
 	}
 
 	c.resourceDisplay.Draw(screen, c.sim)
-	c.selectedUnitArea.Draw(screen)
+	c.selectedUnitArea.Draw(screen, sprites)
 
 	// DebugDraw UI hitboxes
 	// for _, hb := range c.hitboxes {

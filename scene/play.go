@@ -492,7 +492,7 @@ func (s *PlayScene) Draw(screen *ebiten.Image) {
 		s.DebugDraw(screen)
 	}
 	s.drawExpandingActionIssuedCircle(screen)
-	s.Ui.Draw(s.sim.GetAllUnits(), screen)
+	s.Ui.Draw(screen, s.Sprites)
 	s.drag.Draw(screen)
 	s.constructionMouse.Draw(screen, s.Ui.Camera)
 
