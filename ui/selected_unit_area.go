@@ -20,12 +20,14 @@ type SelectedUnitArea struct {
 	selectedIDs []string
 
 	workerIcon *ebiten.Image
+	hiveIcon   *ebiten.Image
 }
 
 func NewSelectedUnitArea() *SelectedUnitArea {
 	sua := &SelectedUnitArea{
 		rect:       image.Rectangle{Min: image.Pt(190, 510), Max: image.Pt(620, 600)},
-		workerIcon: util.ScaleImage(util.LoadImage("ui/icon/base-icon.png"), float32(IconDimension), float32(IconDimension)),
+		workerIcon: util.ScaleImage(util.LoadImage("ui/icon/ant.png"), float32(IconDimension), float32(IconDimension)),
+		hiveIcon:   util.ScaleImage(util.LoadImage("ui/icon/hive.png"), float32(IconDimension), float32(IconDimension)),
 	}
 
 	return sua
@@ -56,7 +58,7 @@ func (s *SelectedUnitArea) Draw(screen *ebiten.Image, sprites map[string]*Sprite
 			case SpriteTypeUnit:
 				screen.DrawImage(s.workerIcon, opts)
 			case SpriteTypeHive:
-				screen.DrawImage(s.workerIcon, opts)
+				screen.DrawImage(s.hiveIcon, opts)
 			}
 
 			unitCount++
