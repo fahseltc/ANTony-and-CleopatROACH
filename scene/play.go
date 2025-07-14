@@ -90,8 +90,8 @@ func NewPlayScene(fonts *fonts.All, sound *audio.SoundManager, levelData LevelDa
 		constructionMouse: constructionMouse,
 		Sprites:           make(map[string]*ui.Sprite),
 		eventBus:          simulation.EventBus,
-		Pause:             ui.NewPause(sound, *fonts),
-		UnitGroupManager:  &ui.UnitGroupManager{},
+		Pause:             ui.NewPause(sound, fonts),
+		UnitGroupManager:  ui.NewUnitGroupManager(fonts),
 	}
 	scene.constructionMouse.SetSprite("tilemap/bridge.png")
 	scene.eventBus.Subscribe("MakeAntButtonClickedEvent", scene.HandleMakeAntButtonClickedEvent)
@@ -205,6 +205,21 @@ func (s *PlayScene) Update() error {
 	// Remove building & unit sprites that are no longer in the SIM
 	s.updateRemoveInactiveSprites()
 
+	// Handle hotkey-selected units
+	hotkeyUnits := s.UnitGroupManager.Update(s.selectedUnitIDs, s.Ui.Camera, s.sim)
+	if len(hotkeyUnits) != 0 {
+		for _, spr := range s.Sprites {
+			for _, selected := range hotkeyUnits {
+				if spr.Id.String() == selected {
+					spr.Selected = true
+					break
+				} else {
+					spr.Selected = false
+				}
+			}
+		}
+		//s.selectedUnitIDs = hotkeyUnits
+	}
 	// Update sim before cutscenes so things happen in the world as they play.
 	s.sim.Update()
 	if s.CurrentNotification != nil {
@@ -461,6 +476,7 @@ func (s *PlayScene) updateRemoveInactiveSprites() {
 				s.Sprites[bloodSprite.Id.String()] = bloodSprite
 			}
 			delete(s.Sprites, id) // then delete the old sprite
+			s.selectedUnitIDs = slices.DeleteFunc(s.selectedUnitIDs, func(id string) bool { return id == spr.Id.String() })
 		}
 	}
 }
@@ -493,6 +509,7 @@ func (s *PlayScene) Draw(screen *ebiten.Image) {
 	}
 	s.drawExpandingActionIssuedCircle(screen)
 	s.Ui.Draw(screen, s.Sprites)
+	s.UnitGroupManager.Draw(screen)
 	s.drag.Draw(screen)
 	s.constructionMouse.Draw(screen, s.Ui.Camera)
 

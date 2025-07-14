@@ -16,6 +16,9 @@ In mathematics, when you combine two or more sets
 And many more related meanings 😉 you can even make an acronym from U.N.I.O.N.
 ```
 
+This game won 3rd place overall in the competition!
+![jam results](/dev-screenshots/jam-results.png)
+
 ## About The Game
 
 ![Game Screenshot](/dev-screenshots/itch.io/cover.png)

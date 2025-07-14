@@ -17,6 +17,11 @@ func (q *Queue[T]) Enqueue(item T) {
 	q.Items = append(q.Items, item)
 }
 
+// EnqueueFront adds an item to the front of the queue.
+func (q *Queue[T]) EnqueueFront(item T) {
+	q.Items = append([]T{item}, q.Items...)
+}
+
 // Dequeue removes and returns the item at the front of the queue.
 // Returns an error if the queue is empty.
 func (q *Queue[T]) Dequeue() (T, error) {

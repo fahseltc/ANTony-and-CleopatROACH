@@ -101,7 +101,7 @@ func (h *Hive) GetNearbyPosition(sim *T, unitSize int) *vec2.T {
 
 			// Score this tile by number of units overlapping or nearby
 			density := 0
-			for _, unit := range append(sim.playerUnits, sim.enemyUnits...) {
+			for _, unit := range sim.GetAllUnits() {
 				if unit == nil || unit.ID.String() == h.ID.String() {
 					continue
 				}

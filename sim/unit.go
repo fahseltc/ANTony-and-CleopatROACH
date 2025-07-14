@@ -10,7 +10,7 @@ import (
 	"github.com/google/uuid"
 )
 
-var ArrivalThreshold = 30
+var ArrivalThreshold = 65
 var MaxResourceCollectFrames = 30
 var PlayerFaction = 0
 
@@ -121,7 +121,7 @@ func NewDefaultAnt() *Unit {
 			MoveSpeed: 10,
 
 			Damage:       10,
-			AttackRange:  100,
+			AttackRange:  40,
 			AttackFrames: 30,
 
 			MaxCarryCapactiy:    5,
@@ -140,6 +140,39 @@ func NewDefaultAnt() *Unit {
 	}
 }
 
+func (unit *Unit) findTarget(sim *T) {
+	// Target acquisition
+	closestDistSq := float64(unit.Stats.VisionRange) * float64(TileDimensions)
+	var closestEnemy *Unit
+	myPos := unit.GetCenteredPosition()
+
+	for _, badGuy := range sim.GetAllEnemyUnitsByFaction(unit.Faction) {
+		if badGuy.ID.String() == unit.ID.String() {
+			continue
+		}
+		enemyPos := badGuy.GetCenteredPosition()
+		dx := float64(enemyPos.X - myPos.X)
+		dy := float64(enemyPos.Y - myPos.Y)
+		distSq := math.Sqrt(dx*dx + dy*dy)
+
+		if distSq < closestDistSq {
+			closestDistSq = distSq
+			closestEnemy = badGuy
+		}
+
+		// Optionally filter out unreachable or dead enemies:
+		// if badGuy.IsDead() || !unit.CanSee(badGuy) {
+		//     continue
+		// }
+	}
+
+	// Act on the closest enemy
+	if closestEnemy != nil && closestEnemy.ID.String() != unit.ID.String() {
+		unit.NearestEnemy = closestEnemy
+	}
+
+}
+
 func (unit *Unit) Update(sim *T) {
 	// Check for self death
 	if unit == nil {
@@ -155,6 +188,22 @@ func (unit *Unit) Update(sim *T) {
 	switch unit.Action {
 	case IdleAction:
 		unit.Stats.ResourceCollectTime = 0
+		// Target aquisition
+		unit.findTarget(sim)
+		if unit.Destinations.IsEmpty() && unit.NearestEnemy != nil {
+			unit.Destinations.Enqueue(unit.NearestEnemy.GetCenteredPosition())
+		}
+		unit.MoveToDestination(sim)
+
+		// SetNearestEnemy
+		if unit.NearestEnemy != nil && unit.NearestEnemy.IsAlive() && unit.TargetInRange(unit.NearestEnemy.GetCenteredPosition()) {
+			unit.Stats.AttackFramesCur++
+			if unit.Stats.AttackFramesCur >= unit.Stats.AttackFrames {
+				unit.NearestEnemy.Stats.HPCur -= unit.Stats.Damage
+				unit.Stats.AttackFramesCur = 0
+				// Play SFX?
+			}
+		}
 		return
 	case MovingAction:
 		unit.Stats.ResourceCollectTime = 0
@@ -172,7 +221,7 @@ func (unit *Unit) Update(sim *T) {
 		} else {
 			unit.MoveToDestination(sim) // destination might be a unit?
 			// check if there is an enemy unit in range and set it as NearestEnemy
-			for _, enemy := range sim.GetAllEnemyUnits() {
+			for _, enemy := range sim.GetAllEnemyUnitsByFaction(unit.Faction) {
 				if enemy.GetCenteredPosition().Distance(*unit.GetCenteredPosition()) <= 300 {
 					// TODO: make a list of all the nearby enemies and pick the closest?
 					unit.NearestEnemy = enemy
@@ -181,9 +230,13 @@ func (unit *Unit) Update(sim *T) {
 			}
 		}
 	case HoldingPositionAction:
-		if unit.NearestEnemy != nil && unit.TargetInRange(unit.Position) {
-			unit.NearestEnemy.Stats.HPCur -= unit.Stats.Damage
-			// pew pew animation
+		if unit.NearestEnemy != nil && unit.NearestEnemy.IsAlive() && unit.TargetInRange(unit.NearestEnemy.GetCenteredPosition()) {
+			unit.Stats.AttackFramesCur++
+			if unit.Stats.AttackFramesCur >= unit.Stats.AttackFrames {
+				unit.NearestEnemy.Stats.HPCur -= unit.Stats.Damage
+				unit.Stats.AttackFramesCur = 0
+				// Play SFX?
+			}
 		}
 	case CollectingAction:
 		// if we are holding some resources, set home, then set DeliveringAction
@@ -203,6 +256,8 @@ func (unit *Unit) Update(sim *T) {
 			unit.NearestHome = nearest
 			unit.Stats.ResourceCollectTime = 0
 
+			//sim.FindNearestSurroundingWalkableTiles(unit.Position, unit.NearestHome.GetTilePosition())
+
 			path := sim.FindClickedPath(unit.GetTileCoordinates(), unit.NearestHome.GetTilePosition())
 			for _, p := range path {
 				unit.Destinations.Enqueue(p.ToCenteredPixelCoordinates())
@@ -211,8 +266,8 @@ func (unit *Unit) Update(sim *T) {
 		} else {
 			// move to and collect resource
 			unit.MoveToDestination(sim)
-			dist := unit.DistanceTo(unit.LastResourcePos)
-			if dist < 150 { // lots of tweaks needed here or fixes TODO
+			dist := unit.EdgeDistanceTo(unit.LastResourcePos)
+			if dist < 110 { // lots of tweaks needed here or fixes TODO
 				// TODO: play animation
 				unit.Destinations.Clear()
 				unit.Stats.ResourceCollectTime += 1
@@ -322,24 +377,24 @@ func (unit *Unit) MoveToDestination(sim *T) {
 	if !moved && !arrived && unit.Stats.ResourceCollectTime == 0 {
 		unit.StuckFrames++
 
-		if unit.StuckFrames%10 == 0 {
-			unit.TrySidestep(sim)
-			//unit.NavigateAround(sim)
+		if unit.StuckFrames%30 == 0 {
+			unit.NavigateAround(sim)
+
 		}
 
-		if unit.StuckFrames > 2000 { //|| unit.StuckSidestepAttempts > 3
-			//Only sidestep if the destination itself isn't clearly blocked
-			if unit.isDestinationBlocked(sim) {
-				unit.Action = IdleAction
-				unit.StuckFrames = 0
-				return
-			}
-		}
+		// if unit.StuckFrames > 2000 { //|| unit.StuckSidestepAttempts > 3
+		// 	//Only sidestep if the destination itself isn't clearly blocked
+		// 	if unit.isDestinationBlocked(sim) {
+		// 		unit.Action = IdleAction
+		// 		unit.StuckFrames = 0
+		// 		return
+		// 	}
+		// }
 	}
 	if arrived && len(unit.Destinations.Items) >= 1 {
 		unit.Destinations.Dequeue()
 	}
-	if arrived && len(unit.Destinations.Items) == 0 {
+	if arrived && len(unit.Destinations.Items) == 0 && unit.Action != CollectingAction && unit.Action != DeliveringAction && unit.Stats.ResourceCarried != 0 {
 		nearbyUnits := sim.GetAllNearbyFriendlyUnits(unit)
 		for _, nearbyUnit := range nearbyUnits {
 			nearbyUnit.SendMessage(sim, UnitMessageArrivedIdle)
@@ -443,7 +498,12 @@ func (unit *Unit) EdgeDistanceTo(point *vec2.T) uint {
 }
 
 func (unit *Unit) TargetInRange(point *vec2.T) bool {
-	return unit.DistanceTo(point) <= unit.Stats.AttackRange
+	val := unit.EdgeDistanceTo(point)
+	if val == 0 {
+		return false
+	}
+
+	return val <= unit.Stats.AttackRange
 }
 
 func (unit *Unit) SetPosition(pos *vec2.T) {
@@ -493,7 +553,7 @@ func (unit *Unit) computeRepulsion(sim *T) *vec2.T {
 				if rand.IntN(2) == 0 {
 					deflect.X = -1
 				}
-				push = push.Add(deflect.Scale(0.5))
+				push = push.Add(deflect.Scale(1.5))
 			}
 
 			repulsion = repulsion.Add(push)
@@ -552,4 +612,28 @@ func (unit *Unit) isDestinationBlocked(sim *T) bool {
 
 func (unit *Unit) IsAlive() bool {
 	return unit.Stats.HPCur > 0
+}
+
+func (unit *Unit) NavigateAround(sim *T) {
+	// Get direction unit was moving last
+	angle := unit.MovingAngle - math.Pi/2 // undo +π/2 used earlier
+
+	// Calculate "backwards" vector (opposite of current direction)
+	backwards := vec2.T{
+		X: -math.Cos(angle),
+		Y: -math.Sin(angle),
+	}.Normalize()
+
+	// Move one tile back — assuming tiles are 128x128
+	tileSize := 128.0
+	backDest := unit.GetCenteredPosition().Add(backwards.Scale(tileSize))
+
+	// Clamp to map boundaries if needed
+	backDest.X = math.Max(0, math.Min(backDest.X, float64(sim.world.TileMap.Width*sim.world.TileMap.TileSize-unit.Rect.Dx())))
+	backDest.Y = math.Max(0, math.Min(backDest.Y, float64(sim.world.TileMap.Height*sim.world.TileMap.TileSize-unit.Rect.Dy())))
+
+	unit.Destinations.EnqueueFront(&vec2.T{
+		X: backDest.X,
+		Y: backDest.Y,
+	})
 }

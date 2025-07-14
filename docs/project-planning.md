@@ -16,9 +16,14 @@ Game is Currently in 1.0
 - [x] Improved Fog of war with fog fading in/out 7/11
 - [x] Minimap clicking to move units 7/11
 - [x] Minimap clicking to move camera 7/11
-- Selected Unit UI - started 7/11
+- [x] Unit Grouping hotkeys - 7/13
+- [x] Double click unit group to center map on group - 7/13
+- [x] Selected Unit UI - started 7/11-13
+- [x] Unit Grouping UI - 7/13
+- Attack Animation
 - Unit limits/food stat + building to increase it (slowly generating larvae?)
 - Hold shift + click more units adds them to the selected group of units
+- health bars on selected unit area
   food ideas from nerds
   tunnels to other hives
   other hives create other units
@@ -30,13 +35,11 @@ Game is Currently in 1.0
 - Rally Points for buildings
 
 - Local unit avoidance
-- Attack Animation
 
 - Different unit types/sizes - workers, fighters, ranged, royalty, etc
 - Attack Move action
 - Overal code refactor to prevent all magic numbers
 
-- Unit Grouping hotkeys
 - Camera location hotkeys
 - Fix issue with construction not being local to a unit
 - UI Tooltips for unit costs

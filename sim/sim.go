@@ -27,11 +27,8 @@ type T struct {
 	playerState PlayerState
 	stateMu     sync.RWMutex
 
-	playerSpawnX, playerSpawnY float64
-	playerUnits                []*Unit
-	playerBuildings            []BuildingInterface
-	enemyUnits                 []*Unit
-	enemySpawnX, enemySpawnY   float64
+	unitMap     map[int][]*Unit
+	buildingMap map[int][]BuildingInterface
 
 	ActionKeyPressed ActionKeyPressed
 }
@@ -90,9 +87,10 @@ func New(tps int, tileMap *tilemap.Tilemap) *T {
 		playerState: PlayerState{
 			Sucrose: 9999,
 		},
-		//playerWorkers: make([]Worker, 1),
-		playerUnits: make([]*Unit, 0, 10),
-		enemyUnits:  make([]*Unit, 0, 10),
+		// playerUnits: make([]*Unit, 0, 10),
+		// enemyUnits:  make([]*Unit, 0, 10),
+		unitMap:     make(map[int][]*Unit),
+		buildingMap: make(map[int][]BuildingInterface),
 	}
 	bus.Subscribe("ConstructUnitEvent", sim.HandleConstructUnitEvent)
 	return sim
@@ -112,70 +110,72 @@ func (s *T) HandleConstructUnitEvent(event eventing.Event) {
 }
 
 func (s *T) Update() {
-	for _, unit := range s.playerUnits {
-		unit.Update(s)
+	for _, um := range s.unitMap {
+		for _, unit := range um {
+			unit.Update(s)
+		}
 	}
-	for _, building := range s.playerBuildings {
-		building.Update(s)
-	}
-	for _, unit := range s.enemyUnits {
-		unit.Update(s)
+	for _, bm := range s.buildingMap {
+		for _, building := range bm {
+			building.Update(s)
+		}
 	}
 }
 
 func (s *T) RemoveUnit(u *Unit) {
-	removed := false
-	s.playerUnits = slices.DeleteFunc(s.playerUnits, func(other *Unit) bool {
-		if other.ID == u.ID {
-			removed = true
-			return true
-		}
-		return false
-	})
-	if !removed {
-		s.enemyUnits = slices.DeleteFunc(s.enemyUnits, func(other *Unit) bool {
-			return other.ID == u.ID
-		})
+	faction := u.Faction
+	if s.unitMap[int(faction)] == nil {
+		return
 	}
+	s.unitMap[int(faction)] = slices.DeleteFunc(s.unitMap[int(faction)], func(other *Unit) bool {
+		return other.ID.String() == u.ID.String()
+	})
 }
 
 func (s *T) AddUnit(u *Unit) {
-	s.playerUnits = append(s.playerUnits, u)
+	faction := u.Faction
+	if s.unitMap[int(faction)] == nil {
+		s.unitMap[int(faction)] = make([]*Unit, 0)
+	}
+	s.unitMap[int(faction)] = append(s.unitMap[int(faction)], u)
 }
-func (s *T) AddEnemyUnit(u *Unit) {
-	s.enemyUnits = append(s.enemyUnits, u)
-}
+
 func (s *T) AddBuilding(b BuildingInterface) {
-	s.playerBuildings = append(s.playerBuildings, b)
-	s.world.TileMap.AddCollisionRect(b.GetRect())
+	faction := b.GetFaction()
+	if s.buildingMap[int(faction)] == nil {
+		s.buildingMap[int(faction)] = make([]BuildingInterface, 0)
+	}
 }
 func (s *T) RemoveBuilding(b BuildingInterface) {
-	s.playerBuildings = slices.DeleteFunc(s.playerBuildings, func(other BuildingInterface) bool {
+	faction := b.GetFaction()
+	if s.buildingMap[int(faction)] == nil {
+		return
+	}
+	s.buildingMap[int(faction)] = slices.DeleteFunc(s.buildingMap[int(faction)], func(other BuildingInterface) bool {
 		return other.GetID() == b.GetID()
 	})
 	s.world.TileMap.RemoveCollisionRect(b.GetRect())
 }
 
 func (s *T) GetUnitByID(id string) (*Unit, error) {
-	for _, unit := range s.playerUnits {
-		if unit.ID.String() == id {
-			return unit, nil
-		}
-	}
-	for _, unit := range s.enemyUnits {
-		if unit.ID.String() == id {
-			return unit, nil
+	for _, um := range s.unitMap {
+		for _, unit := range um {
+			if unit.ID.String() == id {
+				return unit, nil
+			}
 		}
 	}
 	return nil, fmt.Errorf("unable to find unit with ID:%v", id)
 }
 func (s *T) GetBuildingByID(id string) (BuildingInterface, error) {
-	for _, hive := range s.playerBuildings {
-		if hive.GetID().String() == id {
-			return hive, nil
+	for _, bm := range s.buildingMap {
+		for _, bld := range bm {
+			if bld.GetID().String() == id {
+				return bld, nil
+			}
 		}
 	}
-	return nil, fmt.Errorf("unable to find unit with ID:%v", id)
+	return nil, fmt.Errorf("unable to find building with ID:%v", id)
 }
 
 func (s *T) IssueAction(ids []string, point *image.Point) error {
@@ -203,7 +203,7 @@ func (s *T) issueSingleAction(id string, point *image.Point) error {
 		return fmt.Errorf("tile clicked was not found")
 	}
 
-	unit.DestinationType = s.DetermineDestinationType(point)
+	unit.DestinationType = s.DetermineDestinationType(point, unit.Faction)
 	switch s.ActionKeyPressed {
 	case NoneKeyPressed:
 	case AttackKeyPressed:
@@ -243,25 +243,19 @@ func (s *T) issueGroupAction(ids []string, point *image.Point) error {
 
 	// Gather units by ID
 	var units []*Unit
+	var positions []*vec2.T
 	for _, id := range ids {
 		unit, err := s.GetUnitByID(id)
 		if err == nil && unit != nil {
 			units = append(units, unit)
+			positions = append(positions, unit.GetCenteredPosition())
 		}
 	}
 	if len(units) == 0 {
 		return nil
 	}
 
-	// Calculate the centroid of the selected units
-	var sumX, sumY float64
-	for _, unit := range units {
-		pos := unit.GetCenteredPosition()
-		sumX += pos.X
-		sumY += pos.Y
-	}
-	centroid := vec2.T{X: sumX / float64(len(units)), Y: sumY / float64(len(units))}
-
+	centroid := s.FindUnitGroupCenter(positions)
 	// If units are very far apart, migrate them closer to the centroid first
 	const maxSpread = 120.0 // adjust as needed
 	var maxDist float64
@@ -367,13 +361,18 @@ func (s *T) FindNearestSurroundingWalkableTiles(currentPos *vec2.T, unwalkableCo
 	return closest
 }
 
-func (s *T) DetermineDestinationType(point *image.Point) DestinationType {
-	// This should use factions instead
-	for _, enemy := range s.enemyUnits {
-		if point.In(*enemy.Rect) {
-			return EnemyDestination
+func (s *T) DetermineDestinationType(point *image.Point, selfFaction uint) DestinationType {
+	for factionIndex, um := range s.unitMap {
+		if factionIndex == int(selfFaction) {
+			continue
+		}
+		for _, u := range um {
+			if point.In(*u.Rect) {
+				return EnemyDestination
+			}
 		}
 	}
+
 	tile := s.world.TileMap.GetTileByPosition(point.X, point.Y)
 	if tile != nil && (tile.Type == "wood" || tile.Type == "sucrose") {
 		return ResourceDestination
@@ -383,68 +382,44 @@ func (s *T) DetermineDestinationType(point *image.Point) DestinationType {
 }
 
 func (s *T) GetAllUnits() []*Unit {
-	return append(s.enemyUnits, s.playerUnits...)
+	var allUnits []*Unit
+	for _, um := range s.unitMap {
+		allUnits = append(allUnits, um...)
+	}
+	return allUnits
+}
+
+func (s *T) GetAllUnitsByFaction(faction uint) []*Unit {
+	if s.unitMap[int(faction)] == nil {
+		return nil
+	}
+	return s.unitMap[int(faction)]
 }
 
 func (s *T) GetAllPlayerUnits() []*Unit {
-	return s.playerUnits
+	if s.unitMap[PlayerFaction] == nil {
+		return nil
+	}
+	return s.unitMap[PlayerFaction]
 }
 
-func (s *T) GetAllEnemyUnits() []*Unit {
-	return s.enemyUnits
-}
-
-func (s *T) GetAllNearbyCollidersHarvesting(x, y int) []*image.Rectangle {
-	var nearbyColliders []*image.Rectangle
-	for _, unit := range s.enemyUnits {
-		distance := unit.DistanceTo(&vec2.T{X: float64(x), Y: float64(y)})
-		if distance == 0 {
+func (s *T) GetAllEnemyUnitsByFaction(faction uint) []*Unit {
+	var allEnemyUnits []*Unit
+	for factionIndex, um := range s.unitMap {
+		if factionIndex == int(faction) { // skip self-faction
 			continue
 		}
-		if distance <= NearbyDistance {
-			nearbyColliders = append(nearbyColliders, unit.Rect)
-		}
+		allEnemyUnits = append(allEnemyUnits, um...)
 	}
-	for _, building := range s.playerBuildings {
-		distance := building.DistanceTo(vec2.T{X: float64(x), Y: float64(y)})
-		if distance == 0 {
-			continue
-		}
-		if distance <= NearbyDistance {
-			nearbyColliders = append(nearbyColliders, building.GetRect())
-		}
-	}
-	return nearbyColliders
-}
-func (s *T) GetAllNearbyColliders(x, y int) []*Collider {
-	var nearbyColliders []*Collider
-	for _, unit := range append(s.enemyUnits, s.playerUnits...) {
-		if unit == nil {
-			continue
-		}
-		distance := unit.DistanceTo(&vec2.T{X: float64(x), Y: float64(y)})
-		if distance <= NearbyDistance {
-			nearbyColliders = append(nearbyColliders, &Collider{
-				Rect:    unit.Rect,
-				OwnerID: unit.ID.String(),
-			})
-		}
-	}
-	for _, building := range s.playerBuildings {
-		distance := building.DistanceTo(vec2.T{X: float64(x), Y: float64(y)})
-		if distance <= NearbyDistance {
-			nearbyColliders = append(nearbyColliders, &Collider{
-				Rect:    building.GetRect(),
-				OwnerID: building.GetID().String(),
-			})
-		}
-	}
-	return nearbyColliders
+	return allEnemyUnits
 }
 
 func (s *T) GetAllNearbyFriendlyUnits(sourceUnit *Unit) []*Unit {
 	var nearbyUnits []*Unit
-	for _, unit := range s.playerUnits {
+	if s.unitMap[int(sourceUnit.Faction)] == nil {
+		return nil
+	}
+	for _, unit := range s.unitMap[int(sourceUnit.Faction)] {
 		if sourceUnit.ID.String() == unit.ID.String() {
 			continue
 		}
@@ -458,7 +433,7 @@ func (s *T) GetAllNearbyFriendlyUnits(sourceUnit *Unit) []*Unit {
 
 func (s *T) GetAllCollidersOverlapping(rect *image.Rectangle) []*Collider {
 	var colliders []*Collider
-	for _, unit := range append(s.enemyUnits, s.playerUnits...) {
+	for _, unit := range s.GetAllUnits() {
 		if unit == nil {
 			continue
 		}
@@ -471,7 +446,7 @@ func (s *T) GetAllCollidersOverlapping(rect *image.Rectangle) []*Collider {
 			})
 		}
 	}
-	for _, building := range s.playerBuildings {
+	for _, building := range s.GetAllBuildings() {
 		if building.GetType() == BuildingTypeBridge { // bridges dont have collision!
 			continue
 		}
@@ -499,7 +474,11 @@ func (s *T) GetAllCollidersOverlapping(rect *image.Rectangle) []*Collider {
 }
 
 func (s *T) GetAllBuildings() []BuildingInterface {
-	return s.playerBuildings
+	var allBuildings []BuildingInterface
+	for _, bm := range s.buildingMap {
+		allBuildings = append(allBuildings, bm...)
+	}
+	return allBuildings
 }
 
 func (s *T) DetermineUnitOrHiveById(id string) string { // TODO use building.GetType()
@@ -560,7 +539,7 @@ func (s *T) ConstructBuilding(target *image.Rectangle, builderID string) bool {
 		// actually build the thing
 		s.playerState.Wood -= BuildingWoodCost
 		inConstructionBuilding := NewInConstructionBuilding(target.Min.X, target.Min.Y, BuildingTypeBridge) // always bridge for now, but easy to change
-		s.playerBuildings = append(s.playerBuildings, inConstructionBuilding)
+		s.buildingMap[int(unit.Faction)] = append(s.buildingMap[int(unit.Faction)], inConstructionBuilding)
 		return true
 	}
 }
@@ -631,4 +610,14 @@ func (s *T) isLineWalkable(start, end *vec2.T) bool {
 
 func (s *T) SetActionKeyPressed(key ActionKeyPressed) {
 	s.ActionKeyPressed = key
+}
+
+func (s *T) FindUnitGroupCenter(positions []*vec2.T) vec2.T {
+	// Calculate the centroid of the selected units
+	var sumX, sumY float64
+	for _, pos := range positions {
+		sumX += pos.X
+		sumY += pos.Y
+	}
+	return vec2.T{X: sumX / float64(len(positions)), Y: sumY / float64(len(positions))}
 }

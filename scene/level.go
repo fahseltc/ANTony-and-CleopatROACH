@@ -70,7 +70,7 @@ func NewLevelCollection() *LevelCollection {
 			e1 := sim.NewDefaultAnt()
 			e1.Faction = 1
 			e1.SetTilePosition(14, 11)
-			scene.sim.AddEnemyUnit(e1)
+			scene.sim.AddUnit(e1)
 
 			scene.CompletionCondition = NewSceneCompletion(queen, king, scene.tileMap.MapCompletionObjects[0].Rect)
 			return queen.ID.String(), king.ID.String()
@@ -547,13 +547,13 @@ func NewLevelCollection() *LevelCollection {
 		LevelIntroText: "",
 		SetupFunc: func(s *PlayScene) (string, string) {
 
-			for i := 0; i < 5; i++ {
+			for i := 0; i < 15; i++ {
 				u := sim.NewDefaultAnt()
 				u.SetTilePosition(9, i)
 				s.sim.AddUnit(u)
 			}
 
-			for i := 0; i < 5; i++ {
+			for i := 0; i < 15; i++ {
 				u := sim.NewDefaultAnt()
 				u.SetTilePosition(5, i)
 				s.sim.AddUnit(u)
@@ -577,11 +577,17 @@ func NewLevelCollection() *LevelCollection {
 			s.sim.AddBuilding(h)
 
 			//bad guys
-			for i := 0; i < 5; i++ {
+			for i := 0; i < 15; i++ {
 				u := sim.NewDefaultAnt()
 				u.Faction = 1
 				u.SetTilePosition(21, 14+i)
-				s.sim.AddEnemyUnit(u)
+				s.sim.AddUnit(u)
+			}
+			for i := 0; i < 15; i++ {
+				u := sim.NewDefaultAnt()
+				u.Faction = 1
+				u.SetTilePosition(23, 14+i)
+				s.sim.AddUnit(u)
 			}
 
 			return "", ""

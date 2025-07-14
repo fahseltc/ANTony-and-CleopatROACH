@@ -49,6 +49,9 @@ func (s *SelectedUnitArea) Draw(screen *ebiten.Image, sprites map[string]*Sprite
 			}
 			id := s.selectedIDs[unitCount]
 			spr := sprites[id]
+			if spr == nil {
+				return
+			}
 
 			x := float64(s.rect.Min.X + (colNum * (IconDimension + IconPadding)))
 			y := float64(s.rect.Min.Y + (rowNum * (IconDimension + IconPadding)))

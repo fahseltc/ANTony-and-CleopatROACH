@@ -29,7 +29,7 @@ func NewMenuScene(fonts *fonts.All, sound *audio.SoundManager) *MenuScene {
 		txt:   "ANTony & CleopatROACH",
 		fonts: fonts,
 		sound: sound,
-		pause: ui.NewPause(sound, *fonts),
+		pause: ui.NewPause(sound, fonts),
 	}
 	scene.startBtn = ui.NewButton(fonts, ui.WithText("START"), ui.WithRect(image.Rectangle{
 		Min: image.Point{X: 200, Y: 520},

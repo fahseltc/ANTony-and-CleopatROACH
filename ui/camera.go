@@ -2,6 +2,8 @@ package ui
 
 import (
 	"gamejam/log"
+	"gamejam/sim"
+	"gamejam/vec2"
 	"image/color"
 	"log/slog"
 	"math"
@@ -248,4 +250,24 @@ func (c *Camera) FadeOut(speed uint8) {
 	c.IsFadingOut = true
 	c.IsFadingIn = false
 	c.FadeAlpha = 0 // Start fully transparent
+}
+
+func (c *Camera) CenterCameraOnUnitGroupByIds(ids []string, s *sim.T) {
+	var positions []*vec2.T
+	for _, id := range ids {
+		u, err := s.GetUnitByID(id)
+		if err == nil {
+			positions = append(positions, u.GetCenteredPosition())
+		} else {
+			b, err := s.GetBuildingByID(id)
+			if err == nil {
+				positions = append(positions, b.GetCenteredPosition())
+			}
+		}
+	}
+
+	center := s.FindUnitGroupCenter(positions)
+	if !math.IsNaN(center.X) && !math.IsNaN(center.Y) {
+		c.SetPosition(center.ToPoint().X, center.ToPoint().Y)
+	}
 }

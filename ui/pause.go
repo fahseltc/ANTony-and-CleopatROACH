@@ -14,7 +14,7 @@ type Pause struct {
 	sound     *audio.SoundManager
 	rect      *image.Rectangle
 	bg        *ebiten.Image
-	font      fonts.All
+	font      *fonts.All
 	SFXSlider *Slider
 	MSXSlider *Slider
 	closeBtn  *Button
@@ -22,7 +22,7 @@ type Pause struct {
 	Hidden bool
 }
 
-func NewPause(sound *audio.SoundManager, fonts fonts.All) *Pause {
+func NewPause(sound *audio.SoundManager, fonts *fonts.All) *Pause {
 	rect := &image.Rectangle{Min: image.Point{X: 200, Y: 175}, Max: image.Point{X: 600, Y: 575}}
 	scaled := util.ScaleImage(util.LoadImage("ui/metalPanel.png"), float32(rect.Dx()), float32(rect.Dy()))
 	p := &Pause{
@@ -34,7 +34,7 @@ func NewPause(sound *audio.SoundManager, fonts fonts.All) *Pause {
 		MSXSlider: NewSlider("Music", rect.Min.X+50, rect.Min.Y+174, fonts, sound.GlobalMSXVolume),
 		Hidden:    true,
 	}
-	p.closeBtn = NewButton(&fonts, WithText("Close"), WithRect(
+	p.closeBtn = NewButton(fonts, WithText("Close"), WithRect(
 		image.Rectangle{
 			Min: image.Point{
 				X: rect.Min.X + 100, // 400 wide
