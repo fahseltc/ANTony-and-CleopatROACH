@@ -20,10 +20,11 @@ Game is Currently in 1.0
 - [x] Double click unit group to center map on group - 7/13
 - [x] Selected Unit UI - started 7/11-13
 - [x] Unit Grouping UI - 7/13
+- [x] health bars on selected unit area - 7/14
 - Attack Animation
 - Unit limits/food stat + building to increase it (slowly generating larvae?)
 - Hold shift + click more units adds them to the selected group of units
-- health bars on selected unit area
+
   food ideas from nerds
   tunnels to other hives
   other hives create other units
@@ -32,6 +33,7 @@ Game is Currently in 1.0
   The Antnex / Myrmicastle
   worker unit: Toilerbee / grubscribe /
   fighter: Antagonist / Mandibrawler
+
 - Rally Points for buildings
 
 - Local unit avoidance

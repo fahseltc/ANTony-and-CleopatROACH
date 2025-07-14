@@ -145,6 +145,7 @@ func (s *T) AddBuilding(b BuildingInterface) {
 	if s.buildingMap[int(faction)] == nil {
 		s.buildingMap[int(faction)] = make([]BuildingInterface, 0)
 	}
+	s.buildingMap[int(faction)] = append(s.buildingMap[int(faction)], b)
 }
 func (s *T) RemoveBuilding(b BuildingInterface) {
 	faction := b.GetFaction()

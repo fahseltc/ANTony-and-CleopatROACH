@@ -27,7 +27,10 @@ type ButtonPanel struct {
 
 	panelRect *image.Rectangle
 
-	btns []*Button
+	btns    []*Button
+	altBtns []*Button
+
+	AltModeEnabled bool
 }
 
 func NewUnitButtonPanel(fonts *fonts.All, s *sim.T) *ButtonPanel {
@@ -182,28 +185,70 @@ func NewWorkerUnitButtonPanel(fonts *fonts.All, s *sim.T) *ButtonPanel {
 
 	buildBtn := NewButton(fonts,
 		WithRect(image.Rectangle{Min: image.Pt(btnX, btnY), Max: image.Pt(btnX+BtnDimension, btnY+BtnDimension)}),
-		WithImage(util.LoadImage("TEXTURE_MISSING.png"), util.LoadImage("TEXTURE_MISSING.png")),
+		WithImage(util.LoadImage("ui/btn/build-btn.png"), util.LoadImage("ui/btn/build-btn-pressed.png")),
 		WithClickFunc(func() {
 			btnPanel.log.Info("buildbtnclicked")
-			//s.SetActionKeyPressed(sim.MoveKeyPressed)
+			btnPanel.AltModeEnabled = true
 		}),
-		//WithKeyActivation(ebiten.KeyZ),
+		WithKeyActivation(ebiten.KeyB),
 		WithToolTip(NewTooltip(*fonts, image.Rectangle{}, LeftAlignment)),
 	)
 	btnPanel.btns = append(btnPanel.btns, buildBtn)
+
+	// Setup Alt buttons when 'build' is selected
+	btnY = pos.Y
+	bridgeBtn := NewButton(fonts,
+		WithRect(image.Rectangle{Min: image.Pt(btnX, btnY), Max: image.Pt(btnX+BtnDimension, btnY+BtnDimension)}),
+		WithImage(util.LoadImage("ui/btn/make-bridge-btn.png"), util.LoadImage("ui/btn/make-bridge-btn-pressed.png")),
+		WithClickFunc(func() {
+			btnPanel.log.Info("makebridgebtnclicked")
+			s.EventBus.Publish(eventing.Event{
+				Type: "MakeBridgeButtonClickedEvent",
+			})
+
+		}),
+		WithKeyActivation(ebiten.KeyQ),
+		WithToolTip(NewTooltip(*fonts, image.Rectangle{}, LeftAlignment)),
+	)
+	btnPanel.altBtns = append(btnPanel.altBtns, bridgeBtn)
+
+	btnY += BtnDimension + BtnPad + BtnDimension + BtnPad
+	cancelBtn := NewButton(fonts,
+		WithRect(image.Rectangle{Min: image.Pt(btnX, btnY), Max: image.Pt(btnX+BtnDimension, btnY+BtnDimension)}),
+		WithImage(util.LoadImage("ui/btn/stop-btn.png"), util.LoadImage("ui/btn/stop-btn-pressed.png")),
+		WithClickFunc(func() {
+			btnPanel.log.Info("cancelBuildbtnclicked")
+			btnPanel.AltModeEnabled = false
+		}),
+		WithKeyActivation(ebiten.KeyZ),
+		WithToolTip(NewTooltip(*fonts, image.Rectangle{}, LeftAlignment)),
+	)
+	btnPanel.altBtns = append(btnPanel.altBtns, cancelBtn)
 
 	return btnPanel
 }
 
 func (b *ButtonPanel) Update() {
-	for _, btn := range b.btns {
-		btn.Update()
+	if !b.AltModeEnabled {
+		for _, btn := range b.btns {
+			btn.Update()
+		}
+	} else {
+		for _, btn := range b.altBtns {
+			btn.Update()
+		}
 	}
+
 }
 func (b *ButtonPanel) Draw(screen *ebiten.Image) {
 	//ebitenutil.DrawRect(screen, float64(b.panelRect.Min.X), float64(b.panelRect.Min.Y), float64(b.panelRect.Dx()), float64(b.panelRect.Dy()), color.RGBA{100, 100, 100, 255})
-
-	for _, btn := range b.btns {
-		btn.Draw(screen)
+	if !b.AltModeEnabled {
+		for _, btn := range b.btns {
+			btn.Draw(screen)
+		}
+	} else {
+		for _, btn := range b.altBtns {
+			btn.Draw(screen)
+		}
 	}
 }

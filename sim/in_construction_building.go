@@ -20,12 +20,12 @@ func NewInConstructionBuilding(x, y int, targetBuilding BuildingType) *InConstru
 
 func (icb *InConstructionBuilding) Update(sim *T) {
 	// check if there are ants around?
-	icb.ProgressCurrent += 1
-	if icb.ProgressCurrent <= icb.ProgressMax {
+	icb.Stats.ProgressCurrent += 1
+	if icb.Stats.ProgressCurrent <= icb.Stats.ProgressMax {
 		return
 	}
 	// else create the new building
-	icb.ProgressCurrent = 0
+	icb.Stats.ProgressCurrent = 0
 	sim.RemoveBuilding(icb)
 	sim.world.TileMap.RemoveCollisionRect(icb.Rect)
 	switch icb.targetBuilding {

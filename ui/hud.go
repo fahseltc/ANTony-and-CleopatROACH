@@ -78,14 +78,19 @@ func NewHUD(fonts *fonts.All, sim *sim.T) *HUD {
 }
 
 func (h *HUD) Update(selectedUnitIDs []string) {
+	// Reset right side build state
+	if h.RightSideState != UnitSelectedState && h.rightWorkerUnitButtonPanel.AltModeEnabled {
+		h.rightWorkerUnitButtonPanel.AltModeEnabled = false
+	}
 	switch h.RightSideState {
 	case HiddenState:
-		// do nothing
+		// do nothing +
 	case HiveSelectedState:
 		h.rightHiveButtonPanel.Update()
 	case UnitSelectedState:
 		h.rightWorkerUnitButtonPanel.Update()
 	}
+
 	h.selectedUnitArea.Update(selectedUnitIDs)
 }
 

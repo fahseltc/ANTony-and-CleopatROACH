@@ -570,45 +570,45 @@ func (unit *Unit) GetCenteredPosition() *vec2.T {
 	}
 }
 
-func (unit *Unit) isDestinationBlocked(sim *T) bool {
-	dest, _ := unit.Destinations.Peek()
-	destRect := &image.Rectangle{
-		Min: dest.ToPoint(),
-		Max: image.Point{
-			X: int(dest.X) + unit.Rect.Dx(),
-			Y: int(dest.Y) + unit.Rect.Dy(),
-		},
-	}
+// func (unit *Unit) isDestinationBlocked(sim *T) bool {
+// 	dest, _ := unit.Destinations.Peek()
+// 	destRect := &image.Rectangle{
+// 		Min: dest.ToPoint(),
+// 		Max: image.Point{
+// 			X: int(dest.X) + unit.Rect.Dx(),
+// 			Y: int(dest.Y) + unit.Rect.Dy(),
+// 		},
+// 	}
 
-	// If the destination itself is colliding, it's likely invalid
-	if unit.isColliding(destRect, sim) {
-		return true
-	}
+// 	// If the destination itself is colliding, it's likely invalid
+// 	if unit.isColliding(destRect, sim) {
+// 		return true
+// 	}
 
-	// Check 8 adjacent tiles for walls — if all are blocked, it's surrounded
-	blockedSides := 0
-	offsets := []vec2.T{
-		{X: -1, Y: 0}, {X: 1, Y: 0},
-		{X: 0, Y: -1}, {X: 0, Y: 1},
-		{X: -1, Y: -1}, {X: 1, Y: -1},
-		{X: -1, Y: 1}, {X: 1, Y: 1},
-	}
-	for _, off := range offsets {
-		pos := vec2.T{
-			X: dest.X + off.X*float64(unit.Rect.Dx()),
-			Y: dest.Y + off.Y*float64(unit.Rect.Dy()),
-		}
-		rect := &image.Rectangle{
-			Min: pos.ToPoint(),
-			Max: image.Point{X: int(pos.X) + unit.Rect.Dx(), Y: int(pos.Y) + unit.Rect.Dy()},
-		}
-		if unit.isColliding(rect, sim) {
-			blockedSides++
-		}
-	}
+// 	// Check 8 adjacent tiles for walls — if all are blocked, it's surrounded
+// 	blockedSides := 0
+// 	offsets := []vec2.T{
+// 		{X: -1, Y: 0}, {X: 1, Y: 0},
+// 		{X: 0, Y: -1}, {X: 0, Y: 1},
+// 		{X: -1, Y: -1}, {X: 1, Y: -1},
+// 		{X: -1, Y: 1}, {X: 1, Y: 1},
+// 	}
+// 	for _, off := range offsets {
+// 		pos := vec2.T{
+// 			X: dest.X + off.X*float64(unit.Rect.Dx()),
+// 			Y: dest.Y + off.Y*float64(unit.Rect.Dy()),
+// 		}
+// 		rect := &image.Rectangle{
+// 			Min: pos.ToPoint(),
+// 			Max: image.Point{X: int(pos.X) + unit.Rect.Dx(), Y: int(pos.Y) + unit.Rect.Dy()},
+// 		}
+// 		if unit.isColliding(rect, sim) {
+// 			blockedSides++
+// 		}
+// 	}
 
-	return blockedSides >= len(offsets) // surrounded
-}
+// 	return blockedSides >= len(offsets) // surrounded
+// }
 
 func (unit *Unit) IsAlive() bool {
 	return unit.Stats.HPCur > 0

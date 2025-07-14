@@ -422,12 +422,12 @@ func (s *PlayScene) createOrUpdateUnitSprites() {
 			unitSprite.EventBus = s.eventBus
 			unitSprite.SetPosition(unit.Position)
 			unitSprite.SetAngle(unit.MovingAngle)
-			unitSprite.ProgressBar.Progress = float64(unit.Stats.HPCur) / float64(unit.Stats.HPMax)
+			unitSprite.HealthBar.Progress = float64(unit.Stats.HPCur) / float64(unit.Stats.HPMax)
 
 		} else { // The sprite has already been created, update it
 			unitSprite.SetPosition(unit.Position)
 			unitSprite.SetAngle(unit.MovingAngle)
-			unitSprite.ProgressBar.Progress = float64(unit.Stats.HPCur) / float64(unit.Stats.HPMax)
+			unitSprite.HealthBar.SetProgress(float64(unit.Stats.HPCur) / float64(unit.Stats.HPMax))
 			unitSprite.CarryingSucrose = (unit.Stats.ResourceTypeCarried == sim.ResourceTypeSucrose && unit.Stats.ResourceCarried > 0)
 			unitSprite.CarryingWood = (unit.Stats.ResourceTypeCarried == sim.ResourceTypeWood && unit.Stats.ResourceCarried > 0)
 		}
@@ -450,9 +450,10 @@ func (s *PlayScene) createOrUpdateBuildingSprites() {
 				spriteBuilding = ui.NewInConstructionSprite(building.GetID())
 			}
 			spriteBuilding.SetPosition(building.GetPosition())
-		} else {
-			spriteBuilding.ProgressBar.SetProgress(building.GetProgress())
+
 		}
+		spriteBuilding.ProgressBar.SetProgress(building.GetProgress())
+		spriteBuilding.HealthBar.SetProgress(float64(building.GetStats().HPCur) / float64(building.GetStats().HPMax))
 		s.Sprites[building.GetID().String()] = spriteBuilding
 	}
 }
@@ -595,28 +596,28 @@ func (s *PlayScene) DebugDraw(screen *ebiten.Image) {
 			screen.Set(x1-1, y, color.RGBA{255, 0, 0, 255})
 		}
 	}
-	for _, spr := range s.Sprites {
-		if spr.Type == ui.SpriteTypeStatic {
-			continue
-		}
-		rect := spr.Rect
-		x0, y0 := s.Ui.Camera.MapPosToScreenPos(rect.Min.X, rect.Min.Y)
-		x1, y1 := s.Ui.Camera.MapPosToScreenPos(rect.Max.X, rect.Max.Y)
-		for x := x0; x < x1; x++ {
-			screen.Set(x, y0, color.RGBA{255, 255, 0, 255})
-			screen.Set(x, y1-1, color.RGBA{255, 255, 0, 255})
-		}
-		for y := y0; y < y1; y++ {
-			screen.Set(x0, y, color.RGBA{255, 255, 0, 255})
-			screen.Set(x1-1, y, color.RGBA{255, 255, 0, 255})
-		}
+	// for _, spr := range s.Sprites {
+	// 	if spr.Type == ui.SpriteTypeStatic {
+	// 		continue
+	// 	}
+	// 	rect := spr.Rect
+	// 	x0, y0 := s.Ui.Camera.MapPosToScreenPos(rect.Min.X, rect.Min.Y)
+	// 	x1, y1 := s.Ui.Camera.MapPosToScreenPos(rect.Max.X, rect.Max.Y)
+	// 	for x := x0; x < x1; x++ {
+	// 		screen.Set(x, y0, color.RGBA{255, 255, 0, 255})
+	// 		screen.Set(x, y1-1, color.RGBA{255, 255, 0, 255})
+	// 	}
+	// 	for y := y0; y < y1; y++ {
+	// 		screen.Set(x0, y, color.RGBA{255, 255, 0, 255})
+	// 		screen.Set(x1-1, y, color.RGBA{255, 255, 0, 255})
+	// 	}
 
-		// Draw debug circles for unit circular hitboxes
-		// center := spr.GetCenter()
-		// x0, y0 = s.Ui.Camera.MapPosToScreenPos(center.X, center.Y)
-		// zoomedRadius := 64 * s.Ui.Camera.ViewPortZoom
-		// util.DrawCircle(screen, float64(x0), float64(y0), zoomedRadius, color.RGBA{255, 25, 255, 255})
-	}
+	// 	// Draw debug circles for unit circular hitboxes
+	// 	// center := spr.GetCenter()
+	// 	// x0, y0 = s.Ui.Camera.MapPosToScreenPos(center.X, center.Y)
+	// 	// zoomedRadius := 64 * s.Ui.Camera.ViewPortZoom
+	// 	// util.DrawCircle(screen, float64(x0), float64(y0), zoomedRadius, color.RGBA{255, 25, 255, 255})
+	// }
 	for y := 0; y < s.tileMap.Height; y++ {
 		for x := 0; x < s.tileMap.Width; x++ {
 			tileType := s.tileMap.PathGrid.GetCellTile(pathing.GridCoord{X: x, Y: y})

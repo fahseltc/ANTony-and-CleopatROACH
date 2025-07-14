@@ -16,9 +16,15 @@ var (
 type Building struct {
 	ID       uuid.UUID
 	Type     BuildingType
+	Stats    *BuildingStats
 	Position *vec2.T
 	Rect     *image.Rectangle
 	Faction  uint
+}
+
+type BuildingStats struct {
+	HPMax uint
+	HPCur uint
 
 	ProgressMax     uint
 	ProgressCurrent uint
@@ -53,6 +59,8 @@ type BuildingInterface interface {
 	DistanceTo(point vec2.T) uint
 	GetProgress() float64
 
+	GetStats() *BuildingStats
+
 	// needs to be implemented by inheriting building
 	AddUnitToBuildQueue()
 }
@@ -63,13 +71,20 @@ func NewBuilding(x, y, width, height int, faction uint, bt BuildingType, progres
 		Max: image.Point{X: x + width, Y: y + height},
 	}
 	return &Building{
-		ID:          uuid.New(),
-		Type:        bt,
-		Position:    &vec2.T{X: float64(x), Y: float64(y)},
-		Rect:        rect,
-		Faction:     faction,
-		ProgressMax: progressMax,
-		VisionRange: uint(BuildingVisionRange),
+		ID:   uuid.New(),
+		Type: bt,
+		Stats: &BuildingStats{
+			HPMax: 100,
+			HPCur: 100,
+
+			ProgressMax:     progressMax,
+			ProgressCurrent: 0,
+
+			VisionRange: uint(BuildingVisionRange),
+		},
+		Position: &vec2.T{X: float64(x), Y: float64(y)},
+		Rect:     rect,
+		Faction:  faction,
 	}
 }
 
@@ -158,14 +173,17 @@ func (b *Building) DistanceTo(point vec2.T) uint {
 	return uint(math.Sqrt(xDist*xDist + yDist*yDist))
 }
 func (b *Building) GetProgress() float64 {
-	if b.ProgressMax == 0 {
+	if b.Stats.ProgressMax == 0 {
 		return 0
 	}
-	return float64(b.ProgressCurrent) / float64(b.ProgressMax)
+	return float64(b.Stats.ProgressCurrent) / float64(b.Stats.ProgressMax)
 }
 func (b *Building) Update(_ *T)          {} // Default no-op
 func (b *Building) AddUnitToBuildQueue() {}
 
 func (b *Building) GetVisionRange() uint {
-	return b.VisionRange
+	return b.Stats.VisionRange
+}
+func (b *Building) GetStats() *BuildingStats {
+	return b.Stats
 }

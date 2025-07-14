@@ -39,8 +39,8 @@ func NewRoachHive() BuildingInterface {
 func (h *Hive) Update(sim *T) {
 	if !h.buildQueue.IsEmpty() {
 		h.UnitContructing = true
-		h.ProgressCurrent += 1
-		if h.ProgressCurrent >= uint(UnitConstructionTime) {
+		h.Stats.ProgressCurrent += 1
+		if h.Stats.ProgressCurrent >= uint(UnitConstructionTime) {
 			u, err := h.buildQueue.Dequeue()
 			if err != nil {
 				return // todo handle?
@@ -49,7 +49,7 @@ func (h *Hive) Update(sim *T) {
 			u.SetPosition(h.GetNearbyPosition(sim, 128)) // unit size static for now but could change later
 			sim.AddUnit(u)
 			h.UnitContructing = false
-			h.ProgressCurrent = 0
+			h.Stats.ProgressCurrent = 0
 		}
 	}
 }

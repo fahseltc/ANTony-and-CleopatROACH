@@ -47,6 +47,7 @@ type Sprite struct {
 	CarryingSucrose bool
 	CarryingWood    bool
 
+	HealthBar   *ProgressBar
 	ProgressBar *ProgressBar
 }
 
@@ -132,6 +133,7 @@ func NewSprite(uuid uuid.UUID, Rect image.Rectangle, imgPath string, spriteType 
 		img:         scaled,
 		Selected:    false,
 		ProgressBar: NewProgressBar(Rect.Min.X, Rect.Min.Y, Rect.Dx(), 6),
+		HealthBar:   NewHealthBar(Rect.Min.X, Rect.Min.Y, Rect.Dx(), 16),
 	}
 }
 func (spr *Sprite) SetPosition(pos *vec2.T) {
@@ -146,6 +148,7 @@ func (spr *Sprite) SetPosition(pos *vec2.T) {
 		},
 	}
 	spr.SetProgressBarPosition(int(pos.X), int(pos.Y))
+	spr.SetHealthBarPosition(int(pos.X), int(pos.Y))
 }
 func (spr *Sprite) SetCenteredPosition(pos *vec2.T) {
 	if spr.Rect == nil {
@@ -181,12 +184,22 @@ func (spr *Sprite) SetTilePosition(x, y int) {
 		Max: image.Point{X: newX + TileDimensions, Y: newY + TileDimensions},
 	}
 	spr.SetProgressBarPosition(x, y)
+	spr.SetHealthBarPosition(x, y)
 }
 
 func (spr *Sprite) SetProgressBarPosition(x, y int) {
 	if spr.ProgressBar != nil && spr.Rect != nil {
 		barX := spr.Rect.Min.X
 		barY := spr.Rect.Max.Y - spr.ProgressBar.Height
+		spr.ProgressBar.X = barX
+		spr.ProgressBar.Y = barY
+	}
+}
+
+func (spr *Sprite) SetHealthBarPosition(x, y int) {
+	if spr.ProgressBar != nil && spr.Rect != nil {
+		barX := spr.Rect.Min.X
+		barY := spr.Rect.Min.Y + spr.ProgressBar.Height
 		spr.ProgressBar.X = barX
 		spr.ProgressBar.Y = barY
 	}
@@ -231,8 +244,11 @@ func (spr *Sprite) Draw(screen *ebiten.Image, camera *Camera) {
 	if spr.Selected && spr.Type != SpriteTypeStatic {
 		spr.drawSelectedBox(screen, camera)
 	}
-	if spr.ProgressBar != nil {
-		spr.ProgressBar.Draw(screen, camera)
+	// if spr.ProgressBar != nil {
+	// 	spr.ProgressBar.Draw(screen, camera)
+	// }
+	if spr.HealthBar != nil {
+		spr.HealthBar.Draw(screen, camera)
 	}
 
 }
