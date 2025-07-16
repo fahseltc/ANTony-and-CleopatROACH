@@ -5,6 +5,7 @@ import (
 	"gamejam/fonts"
 	"gamejam/log"
 	"gamejam/sim"
+	simulation "gamejam/sim"
 	"gamejam/util"
 	"image"
 	"log/slog"
@@ -33,7 +34,7 @@ type ButtonPanel struct {
 	AltModeEnabled bool
 }
 
-func NewUnitButtonPanel(fonts *fonts.All, s *sim.T) *ButtonPanel {
+func NewUnitButtonPanel(fonts *fonts.All, s *simulation.T) *ButtonPanel {
 	pos := image.Point{
 		X: GameResolutionW - PanelWidth - PanelHorizontalPad,
 		Y: GameResolutionH - PanelHeight - PanelBottomPad,
@@ -106,7 +107,7 @@ func NewUnitButtonPanel(fonts *fonts.All, s *sim.T) *ButtonPanel {
 	return btnPanel
 }
 
-func NewHiveButtonPanel(fonts *fonts.All, s *sim.T) *ButtonPanel {
+func NewHiveButtonPanel(fonts *fonts.All, s *simulation.T) *ButtonPanel {
 	pos := image.Point{
 		X: GameResolutionW - PanelWidth - PanelHorizontalPad,
 		Y: GameResolutionH - PanelHeight - PanelBottomPad,
@@ -150,21 +151,26 @@ func NewHiveButtonPanel(fonts *fonts.All, s *sim.T) *ButtonPanel {
 
 		}),
 		WithImage(util.LoadImage("ui/btn/make-ant-btn-noicon.png"), util.LoadImage("ui/btn/make-ant-btn-pressed-noicon.png")),
-		//WithKeyActivation(ebiten.KeyZ),
+		WithKeyActivation(ebiten.KeyF),
 		WithToolTip(NewTooltip(*fonts, image.Rectangle{}, LeftAlignment)),
 	)
 	btnPanel.btns = append(btnPanel.btns, fighterBtn)
 	btnY += BtnDimension + BtnPad
 
-	upgradeBtn := NewButton(fonts,
+	var upgradeBtn *Button
+	upgradeBtn = NewButton(fonts,
 		WithRect(image.Rectangle{Min: image.Pt(btnX, btnY), Max: image.Pt(btnX+BtnDimension, btnY+BtnDimension)}),
 		WithClickFunc(func() {
 			btnPanel.log.Info("upgradebtnclicked")
-
+			playerState := s.GetPlayerState()
+			if playerState.TechTree.CanResearch(sim.TechFasterGathering) {
+				playerState.TechTree.Unlock(sim.TechFasterGathering, playerState)
+				upgradeBtn.Hidden = true
+			}
 		}),
 		WithImage(util.LoadImage("ui/btn/make-ant-btn-noicon.png"), util.LoadImage("ui/btn/make-ant-btn-pressed-noicon.png")),
-		//WithKeyActivation(ebiten.KeyX),
-		WithToolTip(NewTooltip(*fonts, image.Rectangle{}, LeftAlignment)),
+		WithKeyActivation(ebiten.KeyZ),
+		WithToolTip(NewTooltip(*fonts, image.Rectangle{}, TopAlignment)),
 	)
 	btnPanel.btns = append(btnPanel.btns, upgradeBtn)
 	btnY += BtnDimension + BtnPad

@@ -15,8 +15,8 @@ import (
 )
 
 var NearbyDistance = uint(300)
-var UnitSucroseCost = uint16(50)
-var BuildingWoodCost = uint16(50)
+var UnitSucroseCost = uint(50)
+var BuildingWoodCost = uint(50)
 var BuilderMaxDistance = uint(340)
 
 type T struct {
@@ -25,7 +25,7 @@ type T struct {
 	dt       float64
 	world    *World
 
-	playerState PlayerState
+	playerState *PlayerState
 	stateMu     sync.RWMutex
 
 	unitMap     map[int][]*Unit
@@ -42,8 +42,13 @@ type Collider struct {
 }
 
 type PlayerState struct {
-	Sucrose uint16
-	Wood    uint16
+	Sucrose  uint
+	Wood     uint
+	TechTree *TechTree
+}
+
+func (ps *PlayerState) GetTechTree() *TechTree {
+	return ps.TechTree
 }
 
 type ActionKeyPressed uint
@@ -56,7 +61,7 @@ const (
 	HoldPositionKeyPressed
 )
 
-func (s *T) GetPlayerState() PlayerState {
+func (s *T) GetPlayerState() *PlayerState {
 	s.stateMu.RLock()
 	defer s.stateMu.RUnlock()
 	return s.playerState
@@ -77,8 +82,10 @@ func New(tps int, tileMap *tilemap.Tilemap) *T {
 		},
 
 		// TODO Spawn Points
-		playerState: PlayerState{
-			Sucrose: 9999,
+		playerState: &PlayerState{
+			Sucrose:  9000,
+			Wood:     100,
+			TechTree: NewTechTree(),
 		},
 		// playerUnits: make([]*Unit, 0, 10),
 		// enemyUnits:  make([]*Unit, 0, 10),
@@ -491,16 +498,16 @@ func (s *T) DetermineUnitOrHiveById(id string) string { // TODO use building.Get
 func (s *T) AddResource(amount uint, resType types.Resource) {
 	switch resType {
 	case types.ResourceTypeSucrose:
-		s.playerState.Sucrose += uint16(amount)
+		s.playerState.Sucrose += amount
 	case types.ResourceTypeWood:
-		s.playerState.Wood += uint16(amount)
+		s.playerState.Wood += amount
 	}
 }
 
-func (s *T) GetWoodAmount() uint16 {
+func (s *T) GetWoodAmount() uint {
 	return s.playerState.Wood
 }
-func (s *T) GetSucroseAmount() uint16 {
+func (s *T) GetSucroseAmount() uint {
 	return s.playerState.Sucrose
 }
 func (s *T) ConstructUnit(hiveId string) bool {
@@ -528,7 +535,7 @@ func (s *T) ConstructBuilding(target *image.Rectangle, builderID string) bool {
 
 	targetCenter := vec2.T{X: float64(target.Min.X + (target.Dx() / 2)), Y: float64(target.Min.Y + (target.Dy() / 2))}
 
-	if unit.DistanceTo(&targetCenter) > BuilderMaxDistance { // todo min should be center!
+	if unit.DistanceTo(&targetCenter) > BuilderMaxDistance {
 		return false
 	} else {
 		// actually build the thing

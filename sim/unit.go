@@ -281,7 +281,13 @@ func (unit *Unit) Update(sim *T) {
 				// TODO: play animation
 				unit.Destinations.Clear()
 				unit.Stats.ResourceCollectTime += 1
-				if unit.Stats.ResourceCollectTime >= uint(MaxResourceCollectFrames) {
+				var finalResourceCollectionTime uint
+				if sim.GetPlayerState().TechTree.UnlockedTech[TechFasterGathering] {
+					finalResourceCollectionTime = uint(float64(MaxResourceCollectFrames) * 0.8) // 20% faster
+				} else {
+					finalResourceCollectionTime = uint(MaxResourceCollectFrames)
+				}
+				if unit.Stats.ResourceCollectTime >= finalResourceCollectionTime {
 					unit.Stats.ResourceCollectTime = 0
 					tile := sim.world.TileMap.GetTileByPosition(int(unit.LastResourcePos.X), int(unit.LastResourcePos.Y))
 					if tile != nil && tile.Type != types.TileTypePlain {

@@ -32,7 +32,6 @@ type HUD struct {
 	hitboxes    []image.Rectangle
 	miniMapRect image.Rectangle
 
-	//	rightUnitButtonPanel       *ButtonPanel // Buttons for unit/s selected (move/attack/hold/etc)
 	rightWorkerUnitButtonPanel *ButtonPanel // Buttons for worker selected (spawn more units)
 	rightHiveButtonPanel       *ButtonPanel // Buttons for building selected (spawn more units)
 

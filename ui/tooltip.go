@@ -29,13 +29,13 @@ type Tooltip struct {
 }
 
 func NewTooltip(fonts fonts.All, rect image.Rectangle, alignment Alignment) *Tooltip {
-	ttRect := &image.Rectangle{
+	ttRect := image.Rectangle{
 		Min: image.Pt(rect.Min.X, rect.Min.Y),
 		Max: image.Pt(rect.Min.X+TooltipWidth, rect.Min.Y+TooltipHeight),
 	}
 	scaledBg := util.ScaleImage(util.LoadImage("ui/tooltip/tooltip-bg.png"), float32(TooltipWidth), float32(TooltipHeight))
 	tt := &Tooltip{
-		rect:      *ttRect,
+		rect:      ttRect,
 		bg:        scaledBg,
 		fonts:     fonts,
 		alignment: alignment,

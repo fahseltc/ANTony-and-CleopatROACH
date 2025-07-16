@@ -16,8 +16,9 @@ type BtnOptFunc func(*Button)
 type Button struct {
 	rect image.Rectangle
 
-	text  string
-	fonts *fonts.All
+	text   string
+	fonts  *fonts.All
+	Hidden bool
 
 	currentImg *ebiten.Image
 	defaultImg *ebiten.Image
@@ -123,6 +124,9 @@ func WithToolTip(tt TooltipInterface) BtnOptFunc {
 //
 
 func (btn *Button) Draw(screen *ebiten.Image) {
+	if btn.Hidden {
+		return
+	}
 	op := &ebiten.DrawImageOptions{}
 	op.GeoM.Translate(float64(btn.rect.Min.X), float64(btn.rect.Min.Y))
 	screen.DrawImage(btn.currentImg, op)
@@ -148,6 +152,9 @@ func (btn *Button) Draw(screen *ebiten.Image) {
 }
 
 func (btn *Button) Update() {
+	if btn.Hidden {
+		return
+	}
 	// clicks
 	if btn.OnClick != nil && inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) && btn.MouseCollides() {
 		btn.currentImg = btn.pressedImg
