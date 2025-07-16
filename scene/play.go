@@ -8,6 +8,7 @@ import (
 	"gamejam/fonts"
 	"gamejam/sim"
 	"gamejam/tilemap"
+	"gamejam/types"
 	"gamejam/ui"
 	"gamejam/util"
 	"image"
@@ -428,8 +429,8 @@ func (s *PlayScene) createOrUpdateUnitSprites() {
 			unitSprite.SetPosition(unit.Position)
 			unitSprite.SetAngle(unit.MovingAngle)
 			unitSprite.HealthBar.SetProgress(float64(unit.Stats.HPCur) / float64(unit.Stats.HPMax))
-			unitSprite.CarryingSucrose = (unit.Stats.ResourceTypeCarried == sim.ResourceTypeSucrose && unit.Stats.ResourceCarried > 0)
-			unitSprite.CarryingWood = (unit.Stats.ResourceTypeCarried == sim.ResourceTypeWood && unit.Stats.ResourceCarried > 0)
+			unitSprite.CarryingSucrose = (unit.Stats.ResourceTypeCarried == types.ResourceTypeSucrose && unit.Stats.ResourcesCarried > 0)
+			unitSprite.CarryingWood = (unit.Stats.ResourceTypeCarried == types.ResourceTypeWood && unit.Stats.ResourcesCarried > 0)
 		}
 		s.Sprites[unit.ID.String()] = unitSprite
 	}

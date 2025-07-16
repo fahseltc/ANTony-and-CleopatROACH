@@ -1,6 +1,7 @@
 package sim
 
 import (
+	"gamejam/types"
 	"gamejam/util"
 	"gamejam/vec2"
 	"image"
@@ -10,8 +11,12 @@ import (
 	"github.com/google/uuid"
 )
 
+var (
+	ResourceCollectionDistance = 110
+)
 var ArrivalThreshold = 65
 var MaxResourceCollectFrames = 30
+
 var PlayerFaction = 0
 
 var (
@@ -79,9 +84,9 @@ type UnitStats struct {
 	AttackFrames    uint
 	AttackFramesCur uint
 
-	MaxCarryCapactiy    uint
-	ResourceCarried     uint
-	ResourceTypeCarried ResourceType
+	MaxCarryCapacity    uint
+	ResourcesCarried    uint
+	ResourceTypeCarried types.Resource
 	ResourceCollectTime uint
 
 	VisionRange uint
@@ -124,9 +129,9 @@ func NewDefaultAnt() *Unit {
 			AttackRange:  40,
 			AttackFrames: 30,
 
-			MaxCarryCapactiy:    5,
-			ResourceCarried:     0,
-			ResourceTypeCarried: ResourceTypeNone,
+			MaxCarryCapacity:    5,
+			ResourcesCarried:    0,
+			ResourceTypeCarried: types.ResourceTypeNone,
 			VisionRange:         4,
 		},
 		Position: &vec2.T{},
@@ -240,7 +245,7 @@ func (unit *Unit) Update(sim *T) {
 		}
 	case CollectingAction:
 		// if we are holding some resources, set home, then set DeliveringAction
-		if unit.Stats.ResourceCarried > 0 {
+		if unit.Stats.ResourcesCarried >= unit.Stats.MaxCarryCapacity {
 			// Find the nearest hive and set it as the unit's home
 			var nearest BuildingInterface
 			minDist := uint(math.MaxUint32)
@@ -260,32 +265,28 @@ func (unit *Unit) Update(sim *T) {
 
 			path := sim.FindClickedPath(unit.GetTileCoordinates(), unit.NearestHome.GetTilePosition())
 			for _, p := range path {
-				unit.Destinations.Enqueue(p.ToCenteredPixelCoordinates())
+				unit.Destinations.Enqueue(p.ToCenteredPixelCoordinatesDouble())
 			}
 			unit.Action = DeliveringAction
 		} else {
 			// move to and collect resource
 			unit.MoveToDestination(sim)
-			dist := unit.EdgeDistanceTo(unit.LastResourcePos)
-			if dist < 110 { // lots of tweaks needed here or fixes TODO
+			dist := unit.DistanceTo(unit.LastResourcePos)
+			if unit.Destinations.IsEmpty() && int(dist) > ResourceCollectionDistance {
+				// move a little closer
+				unit.Destinations.Enqueue(unit.LastResourcePos)
+			}
+
+			if int(dist) < ResourceCollectionDistance { // lots of tweaks needed here or fixes TODO
 				// TODO: play animation
 				unit.Destinations.Clear()
 				unit.Stats.ResourceCollectTime += 1
 				if unit.Stats.ResourceCollectTime >= uint(MaxResourceCollectFrames) {
 					unit.Stats.ResourceCollectTime = 0
 					tile := sim.world.TileMap.GetTileByPosition(int(unit.LastResourcePos.X), int(unit.LastResourcePos.Y))
-					if tile != nil && tile.Type != "none" {
-						unit.Stats.ResourceCarried = 5
-						var resType ResourceType
-						switch tile.Type {
-						case "plain":
-							resType = ResourceTypeNone
-						case "sucrose":
-							resType = ResourceTypeSucrose
-						case "wood":
-							resType = ResourceTypeWood
-						}
-						unit.Stats.ResourceTypeCarried = resType
+					if tile != nil && tile.Type != types.TileTypePlain {
+						unit.Stats.ResourcesCarried = unit.Stats.MaxCarryCapacity
+						unit.Stats.ResourceTypeCarried = tile.Type.ToResourceType()
 					}
 				}
 			}
@@ -294,9 +295,9 @@ func (unit *Unit) Update(sim *T) {
 		unit.MoveToDestination(sim)
 		dist := unit.EdgeDistanceTo(unit.NearestHome.GetCenteredPosition())
 		if dist < 195 { // lots of tweaks needed here or fixes TODO
-			sim.AddResource(uint(unit.Stats.ResourceCarried), unit.Stats.ResourceTypeCarried)
-			unit.Stats.ResourceCarried = 0
-			unit.Stats.ResourceTypeCarried = ResourceTypeNone
+			sim.AddResource(uint(unit.Stats.ResourcesCarried), unit.Stats.ResourceTypeCarried)
+			unit.Stats.ResourcesCarried = 0
+			unit.Stats.ResourceTypeCarried = types.ResourceTypeNone
 			unit.Destinations.Clear()
 
 			resPos := &vec2.T{
@@ -394,7 +395,10 @@ func (unit *Unit) MoveToDestination(sim *T) {
 	if arrived && len(unit.Destinations.Items) >= 1 {
 		unit.Destinations.Dequeue()
 	}
-	if arrived && len(unit.Destinations.Items) == 0 && unit.Action != CollectingAction && unit.Action != DeliveringAction && unit.Stats.ResourceCarried != 0 {
+	if arrived && len(unit.Destinations.Items) == 0 &&
+		unit.Action != CollectingAction &&
+		unit.Action != DeliveringAction &&
+		unit.Stats.ResourcesCarried != 0 {
 		nearbyUnits := sim.GetAllNearbyFriendlyUnits(unit)
 		for _, nearbyUnit := range nearbyUnits {
 			nearbyUnit.SendMessage(sim, UnitMessageArrivedIdle)
@@ -411,6 +415,13 @@ func (unit *Unit) isColliding(rect *image.Rectangle, sim *T) bool {
 	for _, collider := range colliders {
 		if collider.OwnerID == unit.ID.String() {
 			continue // skip self
+		}
+
+		collidingUnit, _ := sim.GetUnitByID(collider.OwnerID)
+
+		// Skip unit-unit collision for workers that are not idle
+		if unit.IsWorker() && unit.Action != IdleAction && collidingUnit != nil && collidingUnit.IsWorker() {
+			continue
 		}
 		if collider.Radius > 0 && collider.Center != (image.Point{}) {
 			dx := futureUnitCenterX - float64(collider.Center.X)
@@ -570,46 +581,6 @@ func (unit *Unit) GetCenteredPosition() *vec2.T {
 	}
 }
 
-// func (unit *Unit) isDestinationBlocked(sim *T) bool {
-// 	dest, _ := unit.Destinations.Peek()
-// 	destRect := &image.Rectangle{
-// 		Min: dest.ToPoint(),
-// 		Max: image.Point{
-// 			X: int(dest.X) + unit.Rect.Dx(),
-// 			Y: int(dest.Y) + unit.Rect.Dy(),
-// 		},
-// 	}
-
-// 	// If the destination itself is colliding, it's likely invalid
-// 	if unit.isColliding(destRect, sim) {
-// 		return true
-// 	}
-
-// 	// Check 8 adjacent tiles for walls — if all are blocked, it's surrounded
-// 	blockedSides := 0
-// 	offsets := []vec2.T{
-// 		{X: -1, Y: 0}, {X: 1, Y: 0},
-// 		{X: 0, Y: -1}, {X: 0, Y: 1},
-// 		{X: -1, Y: -1}, {X: 1, Y: -1},
-// 		{X: -1, Y: 1}, {X: 1, Y: 1},
-// 	}
-// 	for _, off := range offsets {
-// 		pos := vec2.T{
-// 			X: dest.X + off.X*float64(unit.Rect.Dx()),
-// 			Y: dest.Y + off.Y*float64(unit.Rect.Dy()),
-// 		}
-// 		rect := &image.Rectangle{
-// 			Min: pos.ToPoint(),
-// 			Max: image.Point{X: int(pos.X) + unit.Rect.Dx(), Y: int(pos.Y) + unit.Rect.Dy()},
-// 		}
-// 		if unit.isColliding(rect, sim) {
-// 			blockedSides++
-// 		}
-// 	}
-
-// 	return blockedSides >= len(offsets) // surrounded
-// }
-
 func (unit *Unit) IsAlive() bool {
 	return unit.Stats.HPCur > 0
 }
@@ -636,4 +607,8 @@ func (unit *Unit) NavigateAround(sim *T) {
 		X: backDest.X,
 		Y: backDest.Y,
 	})
+}
+
+func (unit *Unit) IsWorker() bool {
+	return unit.Type == UnitTypeDefaultAnt || unit.Type == UnitTypeDefaultRoach
 }

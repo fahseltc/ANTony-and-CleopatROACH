@@ -2,6 +2,7 @@ package tilemap
 
 import (
 	"gamejam/assets"
+	"gamejam/types"
 	"gamejam/vec2"
 	"image"
 	"log"
@@ -176,14 +177,14 @@ func (tm *Tilemap) GenerateTiles() {
 			}
 			newGrid.SetCellTile(pathing.GridCoord{X: x, Y: y}, tileTag)
 
-			var tileType string
+			var tileType types.Tile
 			switch t.ID {
 			case 15:
-				tileType = "sucrose"
+				tileType = types.TileTypeSucrose
 			case 6:
-				tileType = "wood"
+				tileType = types.TileTypeWood
 			default:
-				tileType = "none"
+				tileType = types.TileTypePlain
 			}
 			newTile := &Tile{
 				Type:         tileType,

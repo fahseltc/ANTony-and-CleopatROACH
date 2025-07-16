@@ -3,7 +3,7 @@
 ## Level 1 "Lovers of the Nile"
 
 Setting: Alexandria
-Playable Faction: Roaches + Antony
+Playable Faction: Roaches + Antony (hero)
 Objectives:
 Build up a luxurious Egyptian capital (base-building and resource gathering).
 Train a small elite force to repel Roman scouts.
@@ -13,10 +13,10 @@ Optional: Throw a feast to boost morale and unlock unique units.
 Cinematic/Dialogue:
 Opens with Cleopatra lounging while Antony ignores war reports.
 Dialogue shows tension: envoys urge Antony to return to Rome.
-Cleopatra: “If you must needs depart, go in thy glory. But what is Rome to love?”
-Ends with Antony reluctantly saying: “Then must I answer Rome’s cold call…”
+Cleopatra: "If you must needs depart, go in thy glory. But what is Rome to love?""
+Ends with Antony reluctantly saying: "Then must I answer Rome’s cold..."
 
-Level 2: “The Triumvirs”
+## Level 2: "The Triumvirs"
 
 Setting: Rome
 Playable Faction: Rome (Antony, Octavius Caesar, Lepidus)
@@ -98,7 +98,3 @@ Cinematic/Dialogue:
     Snake-bite cutscene ends with Caesar arriving too late.
 
     Caesar: “She shall be buried by her Antony. A pair so famed, the world shall sigh.”
-
-"
-
-"

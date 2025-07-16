@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"gamejam/eventing"
 	"gamejam/tilemap"
+	"gamejam/types"
 	"gamejam/util"
 	"gamejam/vec2"
 	"image"
@@ -44,14 +45,6 @@ type PlayerState struct {
 	Sucrose uint16
 	Wood    uint16
 }
-
-type ResourceType uint
-
-const (
-	ResourceTypeNone ResourceType = iota
-	ResourceTypeSucrose
-	ResourceTypeWood
-)
 
 type ActionKeyPressed uint
 
@@ -232,8 +225,9 @@ func (s *T) issueSingleAction(id string, point *image.Point) error {
 	unit.Destinations.Clear()
 	steps := s.FindClickedPath(start, end)
 	for _, step := range steps {
-		unit.Destinations.Enqueue(&vec2.T{X: step.X*TileSize + HalfTileSize, Y: step.Y*TileSize + HalfTileSize}) // add 64 for half tile?
+		unit.Destinations.Enqueue(&vec2.T{X: step.X*TileSize + HalfTileSize, Y: step.Y*TileSize + HalfTileSize})
 	}
+	unit.Destinations.Enqueue(&vec2.T{X: float64(point.X), Y: float64(point.Y)})
 
 	return nil
 }
@@ -375,7 +369,7 @@ func (s *T) DetermineDestinationType(point *image.Point, selfFaction uint) Desti
 	}
 
 	tile := s.world.TileMap.GetTileByPosition(point.X, point.Y)
-	if tile != nil && (tile.Type == "wood" || tile.Type == "sucrose") {
+	if tile != nil && (tile.Type == types.TileTypeWood || tile.Type == types.TileTypeSucrose) {
 		return ResourceDestination
 	}
 
@@ -494,11 +488,11 @@ func (s *T) DetermineUnitOrHiveById(id string) string { // TODO use building.Get
 	return "neither"
 }
 
-func (s *T) AddResource(amount uint, resType ResourceType) {
+func (s *T) AddResource(amount uint, resType types.Resource) {
 	switch resType {
-	case ResourceTypeSucrose:
+	case types.ResourceTypeSucrose:
 		s.playerState.Sucrose += uint16(amount)
-	case ResourceTypeWood:
+	case types.ResourceTypeWood:
 		s.playerState.Wood += uint16(amount)
 	}
 }

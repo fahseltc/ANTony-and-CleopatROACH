@@ -1,15 +1,12 @@
 package tilemap
 
-import "image"
-
-var (
-	TileTypePlain   = "plain"
-	TileTypeSucrose = "sucrose"
-	TileTypeWood    = "wood"
+import (
+	"gamejam/types"
+	"image"
 )
 
 type Tile struct {
-	Type         string
+	Type         types.Tile
 	Coordinates  *image.Point
 	Rect         *image.Rectangle
 	TileID       int

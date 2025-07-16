@@ -35,6 +35,8 @@ Game is Currently in 1.0
   fighter: Antagonist / Mandibrawler
 
 - Rally Points for buildings
+- Roach / Ant base building mechanics?
+- Cutscene to hide UI and fade it back in.
 
 - Local unit avoidance
 
@@ -63,3 +65,5 @@ Un-prioritized
 - Hive upgrades
 - 3rd party enemies (birds, mouse, foot)
 - additional SFX (construction started, finished)
+- Ant Boats
+- Factions (roaches / ants / mantis? / )
