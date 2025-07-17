@@ -11,7 +11,7 @@ type Tech struct {
 	ID              TechID
 	Name            string
 	Description     string
-	Cost            TechCost
+	Cost            ResourceCost
 	ResearchSeconds uint
 	Dependencies    []TechID
 	Unlocked        bool
@@ -29,7 +29,7 @@ func NewTechTree() *TechTree {
 				ID:              TechFasterGathering,
 				Name:            "Faster Gathering",
 				Description:     "Workers collect resources 20% faster",
-				Cost:            TechCost{Sucrose: 250},
+				Cost:            ResourceCost{Sucrose: 250},
 				ResearchSeconds: 60,
 				Dependencies:    nil,
 			},
@@ -37,7 +37,7 @@ func NewTechTree() *TechTree {
 				ID:              TechBuildFighterUnit,
 				Name:            "Build Fighter Unit",
 				Description:     "Unlocks the ability to build Fighter units",
-				Cost:            TechCost{Sucrose: 100, Wood: 100},
+				Cost:            ResourceCost{Sucrose: 100, Wood: 100},
 				ResearchSeconds: 30,
 				Dependencies:    nil,
 			},

@@ -3,7 +3,8 @@ package types
 type Building int
 
 const (
-	BuildingTypeInConstruction Building = iota
+	BuildingTypeNone Building = iota
+	BuildingTypeInConstruction
 	BuildingTypeHive
 	BuildingTypeBarracks
 	BuildingTypeRoachHive

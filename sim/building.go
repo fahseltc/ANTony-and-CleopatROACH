@@ -27,6 +27,8 @@ type BuildingStats struct {
 	HPMax uint
 	HPCur uint
 
+	Cost ResourceCost
+
 	ProgressMax     uint
 	ProgressCurrent uint
 
@@ -68,6 +70,8 @@ func NewBuilding(x, y, width, height int, faction uint, bt types.Building, progr
 		Stats: &BuildingStats{
 			HPMax: 100,
 			HPCur: 100,
+
+			Cost: ResourceCost{},
 
 			ProgressMax:     progressMax,
 			ProgressCurrent: 0,

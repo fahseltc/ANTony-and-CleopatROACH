@@ -129,7 +129,7 @@ func NewRoachHiveSprite(uuid uuid.UUID) *Sprite {
 	return NewSprite(uuid, image.Rect(0, 0, TileDimensions*2, TileDimensions*2), "units/roach-hill.png", SpriteTypeHive)
 }
 func NewBarracksSprite(uuid uuid.UUID) *Sprite {
-	return NewSprite(uuid, image.Rect(0, 0, TileDimensions*2, TileDimensions*2), "units/barracks.png", SpriteTypeBarracks)
+	return NewSprite(uuid, image.Rect(0, 0, TileDimensions, TileDimensions), "units/barracks.png", SpriteTypeBarracks)
 }
 
 // Static Sprites
@@ -137,7 +137,7 @@ func NewBridgeSprite(uuid uuid.UUID) *Sprite {
 	return NewSprite(uuid, image.Rect(0, 0, TileDimensions, TileDimensions), "tilemap/bridge.png", SpriteTypeStatic)
 }
 func NewInConstructionSprite(uuid uuid.UUID) *Sprite {
-	return NewSprite(uuid, image.Rect(0, 0, TileDimensions, TileDimensions), "tilemap/in-construction.png", SpriteTypeInConstruction)
+	return NewSprite(uuid, image.Rect(0, 0, TileDimensions, TileDimensions), "units/in-construction.png", SpriteTypeInConstruction)
 }
 func NewHeartSprite(uuid uuid.UUID) *Sprite {
 	return NewSprite(uuid, image.Rect(0, 0, TileDimensions/2, TileDimensions/2), "ui/heart.png", SpriteTypeStatic)

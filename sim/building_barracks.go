@@ -12,6 +12,10 @@ func NewBarracksBuilding(x, y int) BuildingInterface {
 	bb := &BridgeBuilding{
 		Building: building,
 	}
+	bb.Stats.Cost = ResourceCost{
+		Wood:    100,
+		Sucrose: 100,
+	}
 
 	return bb
 }

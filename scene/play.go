@@ -87,15 +87,14 @@ func NewPlayScene(fonts *fonts.All, sound *audio.SoundManager, levelData LevelDa
 		Ui:                ui.NewUi(fonts, tileMap, simulation),
 		tileMap:           tileMap,
 		drag:              ui.NewDrag(),
-		constructionMouse: &ui.ConstructionMouse{},
+		constructionMouse: ui.NewConstructionMouse(),
 		Sprites:           make(map[string]*ui.Sprite),
 		eventBus:          simulation.EventBus,
 		Pause:             ui.NewPause(sound, fonts),
 		UnitGroupManager:  ui.NewUnitGroupManager(fonts),
 	}
-	//scene.constructionMouse.SetSprite("tilemap/bridge.png")
 	scene.eventBus.Subscribe("MakeAntButtonClickedEvent", scene.HandleMakeAntButtonClickedEvent)
-	scene.eventBus.Subscribe("MakeBridgeButtonClickedEvent", scene.HandleMakeBridgeButtonClickedEvent)
+	scene.eventBus.Subscribe("BuildingButtonClickedEvent", scene.HandleBuildingButtonClickedEvent)
 	scene.eventBus.Subscribe("BuildClickedEvent", scene.HandleBuildClickedEvent)
 	scene.eventBus.Subscribe("NotEnoughResourcesEvent", scene.NotEnoughResourcesEvent)
 	scene.eventBus.Subscribe("UnitNotUnlockedEvent", scene.UnitNotUnlockedEvent)
@@ -162,12 +161,14 @@ func (s *PlayScene) HandleMakeAntButtonClickedEvent(event eventing.Event) {
 	}
 }
 
-func (s *PlayScene) HandleMakeBridgeButtonClickedEvent(event eventing.Event) {
+func (s *PlayScene) HandleBuildingButtonClickedEvent(event eventing.Event) {
 	if len(s.selectedUnitIDs) >= 1 {
+		innerEvent := event.Data.(eventing.BuildClickedEvent)
 		unitID := s.selectedUnitIDs[0]
 		unitOrHiveString := s.sim.DetermineUnitOrHiveById(unitID)
 		if unitOrHiveString == "unit" {
 			s.constructionMouse.Enabled = true
+			s.constructionMouse.SetSprite(innerEvent.BuildingType)
 			s.drag.Enabled = false
 		}
 	}
@@ -175,7 +176,7 @@ func (s *PlayScene) HandleMakeBridgeButtonClickedEvent(event eventing.Event) {
 func (s *PlayScene) HandleBuildClickedEvent(event eventing.Event) {
 	innerEvent := event.Data.(eventing.BuildClickedEvent)
 	targetRect := innerEvent.TargetRect
-	if len(s.selectedUnitIDs) == 1 {
+	if len(s.selectedUnitIDs) >= 1 {
 		success := s.sim.ConstructBuilding(targetRect, s.selectedUnitIDs[0], innerEvent.BuildingType)
 		if !success {
 			s.eventBus.Publish(eventing.Event{
@@ -411,7 +412,7 @@ func (s *PlayScene) Update() error {
 		s.sim.ActionKeyPressed = sim.NoneKeyPressed
 	}
 	s.drag.Update(s.Sprites, s.Ui.Camera, s.Ui.HUD)
-	s.constructionMouse.Update(s.tileMap, s.sim)
+	s.constructionMouse.Update(s.tileMap, s.sim, s.Ui.Camera)
 	if !s.constructionMouse.Enabled {
 		s.drag.Enabled = true
 	}

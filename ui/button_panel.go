@@ -6,6 +6,7 @@ import (
 	"gamejam/log"
 	"gamejam/sim"
 	simulation "gamejam/sim"
+	"gamejam/types"
 	"gamejam/util"
 	"image"
 	"log/slog"
@@ -218,7 +219,6 @@ func NewWorkerUnitButtonPanel(fonts *fonts.All, s *sim.T) *ButtonPanel {
 		WithRect(image.Rectangle{Min: image.Pt(btnX, btnY), Max: image.Pt(btnX+BtnDimension, btnY+BtnDimension)}),
 		WithImage(util.LoadImage("ui/btn/build-btn.png"), util.LoadImage("ui/btn/build-btn-pressed.png")),
 		WithClickFunc(func() {
-			btnPanel.log.Info("buildbtnclicked")
 			btnPanel.AltModeEnabled = true
 		}),
 		WithKeyActivation(ebiten.KeyB),
@@ -234,15 +234,18 @@ func NewWorkerUnitButtonPanel(fonts *fonts.All, s *sim.T) *ButtonPanel {
 		WithClickFunc(func() {
 			btnPanel.log.Info("makebridgebtnclicked")
 			s.EventBus.Publish(eventing.Event{
-				Type: "MakeBridgeButtonClickedEvent",
+				Type: "BuildingButtonClickedEvent",
+				Data: eventing.BuildClickedEvent{
+					BuildingType: types.BuildingTypeBridge,
+				},
 			})
-
 		}),
 		WithKeyActivation(ebiten.KeyQ),
 		WithToolTip(NewTooltip(*fonts, image.Rectangle{}, LeftAlignment)),
 	)
 	btnPanel.altBtns = append(btnPanel.altBtns, bridgeBtn)
 
+	// Build Barracks Button
 	btnX += BtnDimension + BtnPad
 	barracksBtn := NewButton(fonts,
 		WithRect(image.Rectangle{Min: image.Pt(btnX, btnY), Max: image.Pt(btnX+BtnDimension, btnY+BtnDimension)}),
@@ -250,11 +253,13 @@ func NewWorkerUnitButtonPanel(fonts *fonts.All, s *sim.T) *ButtonPanel {
 		WithClickFunc(func() {
 			btnPanel.log.Info("buildBarracksBtnPressed")
 			s.EventBus.Publish(eventing.Event{
-				Type: "MakeBridgeButtonClickedEvent",
+				Type: "BuildingButtonClickedEvent",
+				Data: eventing.BuildClickedEvent{
+					BuildingType: types.BuildingTypeBarracks,
+				},
 			})
-
 		}),
-		WithKeyActivation(ebiten.KeyQ),
+		WithKeyActivation(ebiten.KeyE),
 		WithToolTip(NewTooltip(*fonts, image.Rectangle{}, LeftAlignment)),
 	)
 	btnPanel.altBtns = append(btnPanel.altBtns, barracksBtn)

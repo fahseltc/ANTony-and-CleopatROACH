@@ -10,7 +10,7 @@ type InConstructionBuilding struct {
 }
 
 func NewInConstructionBuilding(x, y int, targetBuilding types.Building) *InConstructionBuilding {
-	building := NewBuilding(x, y, TileDimensions, TileDimensions, 1, types.BuildingTypeInConstruction, uint(BridgeBuildTime))
+	building := NewBuilding(x, y, TileDimensions, TileDimensions, 0, types.BuildingTypeInConstruction, uint(BridgeBuildTime))
 
 	icb := &InConstructionBuilding{
 		Building:       building,
@@ -33,6 +33,9 @@ func (icb *InConstructionBuilding) Update(sim *T) {
 	switch icb.targetBuilding {
 	case types.BuildingTypeInConstruction: // shouldnt happen
 	case types.BuildingTypeHive:
+	case types.BuildingTypeBarracks:
+		bb := NewBarracksBuilding(int(icb.Position.X), int(icb.Position.Y))
+		sim.AddBuilding(bb)
 	case types.BuildingTypeBridge:
 		bb := NewBridgeBuilding(int(icb.Position.X), int(icb.Position.Y))
 		sim.AddBuilding(bb)

@@ -8,8 +8,8 @@
     "startingLevel": 3,
     "resolution": {
         "external": {
-            "w": 800,
-            "h": 600
+            "w": 1200,
+            "h": 900
         },
         "internal": {
             "w": 800,

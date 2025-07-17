@@ -525,25 +525,29 @@ func (s *T) ConstructUnit(hiveId string, unitType types.Unit) bool {
 	}
 }
 
-func (s *T) ConstructBuilding(target *image.Rectangle, builderID string, building types.Building) bool {
-	if s.playerState.Wood < BuildingWoodCost { // cant afford it
-		return false
-	}
+func (s *T) ConstructBuilding(target *image.Rectangle, builderID string, buildingType types.Building) bool {
 	unit, err := s.GetUnitByID(builderID)
 	if err != nil {
 		return false // todo print builder doesnt exist
 	}
 
-	targetCenter := vec2.T{X: float64(target.Min.X + (target.Dx() / 2)), Y: float64(target.Min.Y + (target.Dy() / 2))}
+	building := UtilBuildingTypeToBuilding(buildingType)
 
-	if unit.DistanceTo(&targetCenter) > BuilderMaxDistance {
+	//targetCenter := vec2.T{X: float64(target.Min.X + (target.Dx() / 2)), Y: float64(target.Min.Y + (target.Dy() / 2))}
+
+	//if unit.DistanceTo(&targetCenter) > BuilderMaxDistance {
+	if !building.GetStats().Cost.CanAfford(*s.playerState) {
 		return false
 	} else {
 		// actually build the thing
-		s.playerState.Wood -= BuildingWoodCost
-		inConstructionBuilding := NewInConstructionBuilding(target.Min.X, target.Min.Y, types.BuildingTypeBridge) // always bridge for now, but easy to change
-		s.buildingMap[int(unit.Faction)] = append(s.buildingMap[int(unit.Faction)], inConstructionBuilding)
-		return true
+		bought := building.GetStats().Cost.Purchase(*&s.playerState)
+		if bought {
+			inConstructionBuilding := NewInConstructionBuilding(target.Min.X, target.Min.Y, buildingType)
+			s.buildingMap[int(unit.Faction)] = append(s.buildingMap[int(unit.Faction)], inConstructionBuilding)
+			return true
+		} else {
+			return false
+		}
 	}
 }
 
