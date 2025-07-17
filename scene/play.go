@@ -403,9 +403,9 @@ func (s *PlayScene) Update() error {
 			if err == nil && spr.Selected {
 				unit.Destinations.Clear()
 				if s.sim.ActionKeyPressed == sim.StopKeyPressed {
-					unit.Action = sim.IdleAction
+					unit.ChangeState(&sim.IdleState{})
 				} else {
-					unit.Action = sim.HoldingPositionAction
+					//unit.Action = sim.HoldingPositionAction
 				}
 			}
 		}
@@ -648,17 +648,23 @@ func (s *PlayScene) DebugDraw(screen *ebiten.Image) {
 		}
 	}
 
-	// Draw destination paths
+	// Draw Unit destination paths
 	for _, unit := range s.sim.GetAllUnits() {
 		if !unit.Destinations.IsEmpty() {
 			lastPos := unit.GetCenteredPosition()
 			for _, dest := range unit.Destinations.Items {
+				if dest == nil || lastPos == nil {
+					return
+				}
 				x0, y0 := s.Ui.Camera.MapPosToScreenPos(int(lastPos.X), int(lastPos.Y))
 				x1, y1 := s.Ui.Camera.MapPosToScreenPos(int(dest.X), int(dest.Y))
 				util.DrawLine(screen, float64(x0), float64(y0), float64(x1), float64(y1), color.RGBA{0, 0, 255, 255})
 				lastPos = dest
 			}
 		}
+		// Draw unit state
+		cx, cy := s.Ui.Camera.MapPosToScreenPos(unit.Position.ToPoint().X, unit.Position.ToPoint().Y)
+		ebitenutil.DebugPrintAt(screen, unit.CurrentState.Name(), cx, cy)
 	}
 	ebitenutil.DebugPrintAt(screen, fmt.Sprintf("camera:%v,%v", s.Ui.Camera.ViewPortX, s.Ui.Camera.ViewPortY), 1, 1)
 	mx, my := ebiten.CursorPosition()

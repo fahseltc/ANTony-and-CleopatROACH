@@ -13,10 +13,10 @@ func (unit *Unit) SendMessage(sim *T, msg UnitMessage) {
 	case UnitMessageNone:
 	case UnitMessageArrivedIdle:
 		unit.Destinations.Clear()
-		unit.Action = IdleAction
+		unit.ChangeState(&IdleState{})
 		nearbyUnits := sim.GetAllNearbyFriendlyUnits(unit)
 		for _, nearbyUnit := range nearbyUnits {
-			if nearbyUnit.Action != IdleAction {
+			if nearbyUnit.CurrentState.Name() != "idle" {
 				nearbyUnit.SendMessage(sim, UnitMessageArrivedIdle)
 			}
 		}

@@ -124,6 +124,9 @@ func (s *T) Update() {
 }
 
 func (s *T) RemoveUnit(u *Unit) {
+	if u == nil {
+		return
+	}
 	faction := u.Faction
 	if s.unitMap[int(faction)] == nil {
 		return
@@ -147,7 +150,9 @@ func (s *T) AddBuilding(b BuildingInterface) {
 		s.buildingMap[int(faction)] = make([]BuildingInterface, 0)
 	}
 	s.buildingMap[int(faction)] = append(s.buildingMap[int(faction)], b)
+	s.world.TileMap.AddCollisionRect(b.GetRect())
 }
+
 func (s *T) RemoveBuilding(b BuildingInterface) {
 	faction := b.GetFaction()
 	if s.buildingMap[int(faction)] == nil {
@@ -214,16 +219,17 @@ func (s *T) issueSingleAction(id string, point *image.Point) error {
 	// case HoldPositionKeyPressed:
 	// }
 	switch unit.DestinationType {
-	case EnemyDestination:
-		unit.Action = AttackMovingAction
-	case ResourceDestination:
-		unit.Action = CollectingAction
+	case types.DestinationTypeEnemy:
+
+		//unit.Action = AttackMovingAction
+	case types.DestinationTypeResource:
 		unit.LastResourcePos = &vec2.T{
 			X: float64(clickedTile.Coordinates.X*int(TileSize) + int(HalfTileSize)),
 			Y: float64(clickedTile.Coordinates.Y*int(TileSize) + int(HalfTileSize)),
 		}
-	case LocationDestination:
-		unit.Action = AttackMovingAction
+		unit.ChangeState(&HarvestingState{})
+	case types.DestinationTypeTile:
+		unit.ChangeState(&MovingState{})
 	}
 
 	start := unit.GetTileCoordinates()
@@ -364,24 +370,24 @@ func (s *T) FindNearestSurroundingWalkableTiles(currentPos *vec2.T, unwalkableCo
 	return closest
 }
 
-func (s *T) DetermineDestinationType(point *image.Point, selfFaction uint) DestinationType {
+func (s *T) DetermineDestinationType(point *image.Point, selfFaction uint) types.Destination {
 	for factionIndex, um := range s.unitMap {
 		if factionIndex == int(selfFaction) {
 			continue
 		}
 		for _, u := range um {
 			if point.In(*u.Rect) {
-				return EnemyDestination
+				return types.DestinationTypeEnemy
 			}
 		}
 	}
 
 	tile := s.world.TileMap.GetTileByPosition(point.X, point.Y)
 	if tile != nil && (tile.Type == types.TileTypeWood || tile.Type == types.TileTypeSucrose) {
-		return ResourceDestination
+		return types.DestinationTypeResource
 	}
 
-	return LocationDestination
+	return types.DestinationTypeTile
 }
 
 func (s *T) GetAllUnits() []*Unit {
@@ -540,7 +546,7 @@ func (s *T) ConstructBuilding(target *image.Rectangle, builderID string, buildin
 		return false
 	} else {
 		// actually build the thing
-		bought := building.GetStats().Cost.Purchase(*&s.playerState)
+		bought := building.GetStats().Cost.Purchase(s.playerState)
 		if bought {
 			inConstructionBuilding := NewInConstructionBuilding(target.Min.X, target.Min.Y, buildingType)
 			s.buildingMap[int(unit.Faction)] = append(s.buildingMap[int(unit.Faction)], inConstructionBuilding)
