@@ -21,6 +21,7 @@ type SpriteType int
 const (
 	SpriteTypeDefault SpriteType = iota
 	SpriteTypeHive
+	SpriteTypeBarracks
 	SpriteTypeWorker
 	SpriteTypeFighter
 	SpriteTypeRoyal
@@ -126,6 +127,9 @@ func NewHiveSprite(uuid uuid.UUID) *Sprite {
 }
 func NewRoachHiveSprite(uuid uuid.UUID) *Sprite {
 	return NewSprite(uuid, image.Rect(0, 0, TileDimensions*2, TileDimensions*2), "units/roach-hill.png", SpriteTypeHive)
+}
+func NewBarracksSprite(uuid uuid.UUID) *Sprite {
+	return NewSprite(uuid, image.Rect(0, 0, TileDimensions*2, TileDimensions*2), "units/barracks.png", SpriteTypeBarracks)
 }
 
 // Static Sprites

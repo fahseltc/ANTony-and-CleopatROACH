@@ -5,6 +5,7 @@ import (
 	"gamejam/eventing"
 	"gamejam/sim"
 	"gamejam/tilemap"
+	"gamejam/types"
 	"gamejam/util"
 	"image"
 
@@ -18,6 +19,8 @@ type ConstructionMouse struct {
 	Enabled            bool
 	constructingSprite *ebiten.Image
 	placementRect      *image.Rectangle
+
+	placingBuildingType types.Building
 
 	placementValid bool
 }
@@ -50,7 +53,8 @@ func (cm *ConstructionMouse) Update(tm *tilemap.Tilemap, sim *sim.T) {
 				sim.EventBus.Publish(eventing.Event{
 					Type: "BuildClickedEvent",
 					Data: eventing.BuildClickedEvent{
-						TargetRect: matchingRect,
+						TargetRect:   matchingRect,
+						BuildingType: cm.placingBuildingType,
 					},
 				})
 			}

@@ -78,7 +78,6 @@ func NewPlayScene(fonts *fonts.All, sound *audio.SoundManager, levelData LevelDa
 
 	tileMap := tilemap.NewTilemap(levelData.TileMapPath)
 	simulation := sim.New(60, tileMap)
-	constructionMouse := &ui.ConstructionMouse{}
 	scene := &PlayScene{
 		Config:            config,
 		sound:             sound,
@@ -88,13 +87,13 @@ func NewPlayScene(fonts *fonts.All, sound *audio.SoundManager, levelData LevelDa
 		Ui:                ui.NewUi(fonts, tileMap, simulation),
 		tileMap:           tileMap,
 		drag:              ui.NewDrag(),
-		constructionMouse: constructionMouse,
+		constructionMouse: &ui.ConstructionMouse{},
 		Sprites:           make(map[string]*ui.Sprite),
 		eventBus:          simulation.EventBus,
 		Pause:             ui.NewPause(sound, fonts),
 		UnitGroupManager:  ui.NewUnitGroupManager(fonts),
 	}
-	scene.constructionMouse.SetSprite("tilemap/bridge.png")
+	//scene.constructionMouse.SetSprite("tilemap/bridge.png")
 	scene.eventBus.Subscribe("MakeAntButtonClickedEvent", scene.HandleMakeAntButtonClickedEvent)
 	scene.eventBus.Subscribe("MakeBridgeButtonClickedEvent", scene.HandleMakeBridgeButtonClickedEvent)
 	scene.eventBus.Subscribe("BuildClickedEvent", scene.HandleBuildClickedEvent)
@@ -174,9 +173,10 @@ func (s *PlayScene) HandleMakeBridgeButtonClickedEvent(event eventing.Event) {
 	}
 }
 func (s *PlayScene) HandleBuildClickedEvent(event eventing.Event) {
-	targetRect := event.Data.(eventing.BuildClickedEvent).TargetRect
+	innerEvent := event.Data.(eventing.BuildClickedEvent)
+	targetRect := innerEvent.TargetRect
 	if len(s.selectedUnitIDs) == 1 {
-		success := s.sim.ConstructBuilding(targetRect, s.selectedUnitIDs[0])
+		success := s.sim.ConstructBuilding(targetRect, s.selectedUnitIDs[0], innerEvent.BuildingType)
 		if !success {
 			s.eventBus.Publish(eventing.Event{
 				Type: "NotEnoughResourcesEvent",
@@ -461,6 +461,8 @@ func (s *PlayScene) createOrUpdateBuildingSprites() {
 				spriteBuilding = ui.NewBridgeSprite(building.GetID())
 			case types.BuildingTypeHive:
 				spriteBuilding = ui.NewHiveSprite(building.GetID())
+			case types.BuildingTypeBarracks:
+				spriteBuilding = ui.NewBarracksSprite(building.GetID())
 			case types.BuildingTypeRoachHive:
 				spriteBuilding = ui.NewRoachHiveSprite(building.GetID())
 			case types.BuildingTypeInConstruction:

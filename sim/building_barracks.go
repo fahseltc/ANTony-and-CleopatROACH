@@ -7,7 +7,7 @@ type BarracksBuilding struct {
 }
 
 func NewBarracksBuilding(x, y int) BuildingInterface {
-	building := NewBuilding(x, y, TileDimensions, TileDimensions, 1, types.BuildingTypeBridge, 0)
+	building := NewBuilding(x, y, TileDimensions, TileDimensions, 1, types.BuildingTypeBarracks, 0)
 
 	bb := &BridgeBuilding{
 		Building: building,

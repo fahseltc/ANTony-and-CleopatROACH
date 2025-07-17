@@ -2,6 +2,7 @@ package eventing
 
 import (
 	"fmt"
+	"gamejam/types"
 	"image"
 	"time"
 )
@@ -32,8 +33,8 @@ type SceneCompletionEvent struct {
 }
 
 type BuildClickedEvent struct {
-	TargetRect *image.Rectangle
-	// building type
+	TargetRect   *image.Rectangle
+	BuildingType types.Building
 }
 
 type NotificationEvent struct {

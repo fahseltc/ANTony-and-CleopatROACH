@@ -525,7 +525,7 @@ func (s *T) ConstructUnit(hiveId string, unitType types.Unit) bool {
 	}
 }
 
-func (s *T) ConstructBuilding(target *image.Rectangle, builderID string) bool {
+func (s *T) ConstructBuilding(target *image.Rectangle, builderID string, building types.Building) bool {
 	if s.playerState.Wood < BuildingWoodCost { // cant afford it
 		return false
 	}

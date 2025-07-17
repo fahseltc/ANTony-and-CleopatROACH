@@ -243,6 +243,22 @@ func NewWorkerUnitButtonPanel(fonts *fonts.All, s *sim.T) *ButtonPanel {
 	)
 	btnPanel.altBtns = append(btnPanel.altBtns, bridgeBtn)
 
+	btnX += BtnDimension + BtnPad
+	barracksBtn := NewButton(fonts,
+		WithRect(image.Rectangle{Min: image.Pt(btnX, btnY), Max: image.Pt(btnX+BtnDimension, btnY+BtnDimension)}),
+		WithImage(util.LoadImage("ui/btn/build-btn.png"), util.LoadImage("ui/btn/build-btn-pressed.png")),
+		WithClickFunc(func() {
+			btnPanel.log.Info("buildBarracksBtnPressed")
+			s.EventBus.Publish(eventing.Event{
+				Type: "MakeBridgeButtonClickedEvent",
+			})
+
+		}),
+		WithKeyActivation(ebiten.KeyQ),
+		WithToolTip(NewTooltip(*fonts, image.Rectangle{}, LeftAlignment)),
+	)
+	btnPanel.altBtns = append(btnPanel.altBtns, barracksBtn)
+
 	btnY += BtnDimension + BtnPad + BtnDimension + BtnPad
 	cancelBtn := NewButton(fonts,
 		WithRect(image.Rectangle{Min: image.Pt(btnX, btnY), Max: image.Pt(btnX+BtnDimension, btnY+BtnDimension)}),
