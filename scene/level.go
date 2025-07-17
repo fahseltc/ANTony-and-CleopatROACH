@@ -2,6 +2,7 @@ package scene
 
 import (
 	"gamejam/sim"
+	"gamejam/types"
 	"gamejam/ui"
 	"image"
 
@@ -216,7 +217,7 @@ func NewLevelCollection() *LevelCollection {
 					nil,
 					func(ps *PlayScene) bool {
 						for _, bld := range ps.sim.GetAllBuildings() {
-							if bld.GetType() == sim.BuildingTypeInConstruction {
+							if bld.GetType() == types.BuildingTypeInConstruction {
 								return true
 							}
 						}

@@ -16,9 +16,11 @@ type BtnOptFunc func(*Button)
 type Button struct {
 	rect image.Rectangle
 
-	text   string
-	fonts  *fonts.All
-	Hidden bool
+	text  string
+	fonts *fonts.All
+
+	Hidden    bool // Completely not shown or updated
+	GreyedOut bool // shown greyed out but still clickable
 
 	currentImg *ebiten.Image
 	defaultImg *ebiten.Image
@@ -129,6 +131,11 @@ func (btn *Button) Draw(screen *ebiten.Image) {
 	}
 	op := &ebiten.DrawImageOptions{}
 	op.GeoM.Translate(float64(btn.rect.Min.X), float64(btn.rect.Min.Y))
+	if btn.GreyedOut {
+		gray := ebiten.ColorM{}
+		gray.Scale(0.5, 0.5, 0.5, 1) // darken RGB, keep alpha
+		op.ColorM = gray
+	}
 	screen.DrawImage(btn.currentImg, op)
 
 	if btn.text != "" {
@@ -161,6 +168,7 @@ func (btn *Button) Update() {
 	}
 	if btn.OnClick != nil && inpututil.IsMouseButtonJustReleased(ebiten.MouseButtonLeft) && btn.MouseCollides() {
 		btn.OnClick()
+
 		btn.currentImg = btn.defaultImg
 	}
 	// key presses
@@ -169,6 +177,7 @@ func (btn *Button) Update() {
 	}
 	if btn.key != 999 && inpututil.IsKeyJustReleased(btn.key) {
 		btn.OnClick()
+
 		btn.currentImg = btn.defaultImg
 	}
 }

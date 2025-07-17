@@ -21,7 +21,9 @@ type SpriteType int
 const (
 	SpriteTypeDefault SpriteType = iota
 	SpriteTypeHive
-	SpriteTypeUnit
+	SpriteTypeWorker
+	SpriteTypeFighter
+	SpriteTypeRoyal
 	SpriteTypeStatic
 	SpriteTypeInConstruction
 	// Add more sprite types as needed
@@ -54,7 +56,8 @@ type Sprite struct {
 // Units
 func NewRoyalAntSprite(uuid uuid.UUID) *Sprite {
 	size := 192
-	spr := NewSprite(uuid, image.Rect(0, 0, size, size), "units/ants/ant-royal.png", SpriteTypeUnit)
+	spr := NewSprite(uuid, image.Rect(0, 0, size, size), "units/ants/ant-royal.png", SpriteTypeRoyal)
+	spr.ProgressBar = nil
 	spr.carryingSucroseSS = util.LoadImage("units/ants/ant-royal-carrying-sucrose.png")
 	spr.carryingWoodSS = util.LoadImage("units/ants/ant-royal-carrying-wood.png")
 	spr.defaultSS = util.LoadImage("units/ants/ant-royal-walk.png")
@@ -64,10 +67,24 @@ func NewRoyalAntSprite(uuid uuid.UUID) *Sprite {
 	)
 	return spr
 }
+func NewFighterAntSprite(uuid uuid.UUID) *Sprite {
+	size := 192
+	spr := NewSprite(uuid, image.Rect(0, 0, size, size), "units/ants/warrior-ant.png", SpriteTypeFighter)
+	spr.ProgressBar = nil
+	//spr.carryingSucroseSS = util.LoadImage("units/ants/ant-royal-carrying-sucrose.png")
+	//spr.carryingWoodSS = util.LoadImage("units/ants/ant-royal-carrying-wood.png")
+	//spr.defaultSS = util.LoadImage("units/ants/ant-royal-walk.png")
+	// spr.Animation = NewSpriteAnimation(
+	// 	spr.defaultSS,
+	// 	192, 192, 4, 4, true,
+	// )
+	return spr
+}
 
 func NewRoyalRoachSprite(uuid uuid.UUID) *Sprite {
 	size := 192
-	spr := NewSprite(uuid, image.Rect(0, 0, size, size), "units/roaches/roach-royal.png", SpriteTypeUnit)
+	spr := NewSprite(uuid, image.Rect(0, 0, size, size), "units/roaches/roach-royal.png", SpriteTypeRoyal)
+	spr.ProgressBar = nil
 	spr.carryingSucroseSS = util.LoadImage("units/roaches/roach-royal-carrying-sucrose.png")
 	spr.carryingWoodSS = util.LoadImage("units/roaches/roach-royal-carrying-wood.png")
 	spr.defaultSS = util.LoadImage("units/roaches/roach-royal-walk.png")
@@ -78,7 +95,8 @@ func NewRoyalRoachSprite(uuid uuid.UUID) *Sprite {
 	return spr
 }
 func NewDefaultAntSprite(uuid uuid.UUID) *Sprite {
-	spr := NewSprite(uuid, image.Rect(0, 0, TileDimensions, TileDimensions), "units/ants/ant.png", SpriteTypeUnit)
+	spr := NewSprite(uuid, image.Rect(0, 0, TileDimensions, TileDimensions), "units/ants/ant.png", SpriteTypeWorker)
+	spr.ProgressBar = nil
 	spr.carryingSucroseSS = util.LoadImage("units/ants/ant-carrying-sucrose.png")
 	spr.carryingWoodSS = util.LoadImage("units/ants/ant-carrying-wood.png")
 	spr.defaultSS = util.LoadImage("units/ants/ant-walk.png")
@@ -90,7 +108,8 @@ func NewDefaultAntSprite(uuid uuid.UUID) *Sprite {
 	return spr
 }
 func NewDefaultRoachSprite(uuid uuid.UUID) *Sprite {
-	spr := NewSprite(uuid, image.Rect(0, 0, TileDimensions, TileDimensions), "units/roaches/roach.png", SpriteTypeUnit)
+	spr := NewSprite(uuid, image.Rect(0, 0, TileDimensions, TileDimensions), "units/roaches/roach.png", SpriteTypeWorker)
+	spr.ProgressBar = nil
 	spr.carryingSucroseSS = util.LoadImage("units/roaches/roach-carrying-sucrose.png")
 	spr.carryingWoodSS = util.LoadImage("units/roaches/roach-carrying-wood.png")
 	spr.defaultSS = util.LoadImage("units/roaches/roach-walk.png")
@@ -132,8 +151,8 @@ func NewSprite(uuid uuid.UUID, Rect image.Rectangle, imgPath string, spriteType 
 		Rect:        &Rect,
 		img:         scaled,
 		Selected:    false,
-		ProgressBar: NewProgressBar(Rect.Min.X, Rect.Min.Y, Rect.Dx(), 6),
-		HealthBar:   NewHealthBar(Rect.Min.X, Rect.Min.Y, Rect.Dx(), 16),
+		ProgressBar: NewProgressBar(0, 0, Rect.Dx(), 10),
+		HealthBar:   NewHealthBar(0, 0, Rect.Dx(), 10),
 	}
 }
 func (spr *Sprite) SetPosition(pos *vec2.T) {
@@ -147,8 +166,6 @@ func (spr *Sprite) SetPosition(pos *vec2.T) {
 			Y: int(pos.Y) + spr.Rect.Dy(),
 		},
 	}
-	spr.SetProgressBarPosition(int(pos.X), int(pos.Y))
-	spr.SetHealthBarPosition(int(pos.X), int(pos.Y))
 }
 func (spr *Sprite) SetCenteredPosition(pos *vec2.T) {
 	if spr.Rect == nil {
@@ -183,25 +200,19 @@ func (spr *Sprite) SetTilePosition(x, y int) {
 		Min: image.Point{X: newX, Y: newY},
 		Max: image.Point{X: newX + TileDimensions, Y: newY + TileDimensions},
 	}
-	spr.SetProgressBarPosition(x, y)
-	spr.SetHealthBarPosition(x, y)
 }
 
 func (spr *Sprite) SetProgressBarPosition(x, y int) {
-	if spr.ProgressBar != nil && spr.Rect != nil {
-		barX := spr.Rect.Min.X
-		barY := spr.Rect.Max.Y - spr.ProgressBar.Height
-		spr.ProgressBar.X = barX
-		spr.ProgressBar.Y = barY
+	if spr.ProgressBar != nil {
+		spr.ProgressBar.X = x
+		spr.ProgressBar.Y = y + spr.Rect.Dy() - spr.ProgressBar.Height
 	}
 }
 
 func (spr *Sprite) SetHealthBarPosition(x, y int) {
-	if spr.ProgressBar != nil && spr.Rect != nil {
-		barX := spr.Rect.Min.X
-		barY := spr.Rect.Min.Y + spr.ProgressBar.Height
-		spr.ProgressBar.X = barX
-		spr.ProgressBar.Y = barY
+	if spr.HealthBar != nil {
+		spr.HealthBar.X = x
+		spr.HealthBar.Y = y
 	}
 }
 
@@ -244,10 +255,12 @@ func (spr *Sprite) Draw(screen *ebiten.Image, camera *Camera) {
 	if spr.Selected && spr.Type != SpriteTypeStatic {
 		spr.drawSelectedBox(screen, camera)
 	}
-	// if spr.ProgressBar != nil {
-	// 	spr.ProgressBar.Draw(screen, camera)
-	// }
+	if spr.ProgressBar != nil {
+		spr.SetProgressBarPosition(spr.Rect.Min.X, spr.Rect.Min.Y)
+		spr.ProgressBar.Draw(screen, camera)
+	}
 	if spr.HealthBar != nil {
+		spr.SetHealthBarPosition(spr.Rect.Min.X, spr.Rect.Min.Y)
 		spr.HealthBar.Draw(screen, camera)
 	}
 

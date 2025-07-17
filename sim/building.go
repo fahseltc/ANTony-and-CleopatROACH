@@ -1,6 +1,7 @@
 package sim
 
 import (
+	"gamejam/types"
 	"gamejam/vec2"
 	"image"
 	"math"
@@ -15,7 +16,7 @@ var (
 
 type Building struct {
 	ID       uuid.UUID
-	Type     BuildingType
+	Type     types.Building
 	Stats    *BuildingStats
 	Position *vec2.T
 	Rect     *image.Rectangle
@@ -32,22 +33,13 @@ type BuildingStats struct {
 	VisionRange uint
 }
 
-type BuildingType int
-
-const (
-	BuildingTypeInConstruction BuildingType = iota
-	BuildingTypeHive
-	BuildingTypeRoachHive
-	BuildingTypeBridge
-)
-
 type BuildingInterface interface {
 	//SetPosition(x, y, width, height int)
 	SetTilePosition(x, y int)
 	GetTilePosition() *vec2.T
 	GetAdjacentCoordinates() []*vec2.T
 	GetID() uuid.UUID
-	GetType() BuildingType
+	GetType() types.Building
 	GetPosition() *vec2.T
 	GetCenteredPosition() *vec2.T
 	GetClosestPosition(*vec2.T) *vec2.T
@@ -55,17 +47,17 @@ type BuildingInterface interface {
 	GetFaction() uint
 	GetVisionRange() uint
 
-	Update(sim *T) // if buildings have an Update behavior
-	DistanceTo(point vec2.T) uint
+	Update(*T) // if buildings have an Update behavior
+	DistanceTo(vec2.T) uint
 	GetProgress() float64
 
 	GetStats() *BuildingStats
 
 	// needs to be implemented by inheriting building
-	AddUnitToBuildQueue()
+	AddUnitToBuildQueue(types.Unit)
 }
 
-func NewBuilding(x, y, width, height int, faction uint, bt BuildingType, progressMax uint) *Building {
+func NewBuilding(x, y, width, height int, faction uint, bt types.Building, progressMax uint) *Building {
 	rect := &image.Rectangle{
 		Min: image.Point{X: x, Y: y},
 		Max: image.Point{X: x + width, Y: y + height},
@@ -134,9 +126,9 @@ func (b *Building) GetAdjacentCoordinates() []*vec2.T {
 	return adjacent
 }
 
-func (b *Building) GetID() uuid.UUID      { return b.ID }
-func (b *Building) GetType() BuildingType { return b.Type }
-func (b *Building) GetPosition() *vec2.T  { return b.Position }
+func (b *Building) GetID() uuid.UUID        { return b.ID }
+func (b *Building) GetType() types.Building { return b.Type }
+func (b *Building) GetPosition() *vec2.T    { return b.Position }
 func (b *Building) GetCenteredPosition() *vec2.T {
 	if b.Rect == nil {
 		return b.Position
@@ -178,8 +170,8 @@ func (b *Building) GetProgress() float64 {
 	}
 	return float64(b.Stats.ProgressCurrent) / float64(b.Stats.ProgressMax)
 }
-func (b *Building) Update(_ *T)          {} // Default no-op
-func (b *Building) AddUnitToBuildQueue() {}
+func (b *Building) Update(_ *T)                      {} // Default no-op
+func (b *Building) AddUnitToBuildQueue(_ types.Unit) {}
 
 func (b *Building) GetVisionRange() uint {
 	return b.Stats.VisionRange

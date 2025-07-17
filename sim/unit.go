@@ -13,6 +13,8 @@ import (
 
 var (
 	ResourceCollectionDistance = 110
+	AttackZoneLength           = 130.0
+	AttackZoneWidth            = 130.0
 )
 var ArrivalThreshold = 65
 var MaxResourceCollectFrames = 30
@@ -44,20 +46,11 @@ const (
 	EnemyDestination
 )
 
-type UnitType int
-
-const (
-	UnitTypeDefaultAnt UnitType = iota
-	UnitTypeRoyalAnt
-	UnitTypeDefaultRoach
-	UnitTypeRoyalRoach
-)
-
 type Unit struct {
 	ID          uuid.UUID
 	Stats       *UnitStats
 	Position    *vec2.T
-	Type        UnitType
+	Type        types.Unit
 	Rect        *image.Rectangle
 	MovingAngle float64
 
@@ -94,7 +87,7 @@ type UnitStats struct {
 
 func NewRoyalRoach() *Unit {
 	u := NewDefaultAnt()
-	u.Type = UnitTypeRoyalRoach
+	u.Type = types.UnitTypeRoyalRoach
 	size := 128 // match sprite
 	u.Rect.Min = image.Point{0, 0}
 	u.Rect.Max = image.Point{size, size}
@@ -103,7 +96,16 @@ func NewRoyalRoach() *Unit {
 
 func NewRoyalAnt() *Unit {
 	u := NewDefaultAnt()
-	u.Type = UnitTypeRoyalAnt
+	u.Type = types.UnitTypeRoyalAnt
+	size := 128 // match sprite
+	u.Rect.Min = image.Point{0, 0}
+	u.Rect.Max = image.Point{size, size}
+	return u
+}
+
+func NewFighterAnt() *Unit {
+	u := NewDefaultAnt()
+	u.Type = types.UnitTypeFighterAnt
 	size := 128 // match sprite
 	u.Rect.Min = image.Point{0, 0}
 	u.Rect.Max = image.Point{size, size}
@@ -112,14 +114,14 @@ func NewRoyalAnt() *Unit {
 
 func NewDefaultRoach() *Unit {
 	u := NewDefaultAnt()
-	u.Type = UnitTypeDefaultRoach
+	u.Type = types.UnitTypeDefaultRoach
 	return u
 }
 
 func NewDefaultAnt() *Unit {
 	return &Unit{
 		ID:   uuid.New(),
-		Type: UnitTypeDefaultAnt,
+		Type: types.UnitTypeDefaultAnt,
 		Stats: &UnitStats{
 			HPMax:     100,
 			HPCur:     100,
@@ -146,36 +148,75 @@ func NewDefaultAnt() *Unit {
 }
 
 func (unit *Unit) findTarget(sim *T) {
-	// Target acquisition
-	closestDistSq := float64(unit.Stats.VisionRange) * float64(TileDimensions)
-	var closestEnemy *Unit
-	myPos := unit.GetCenteredPosition()
-
-	for _, badGuy := range sim.GetAllEnemyUnitsByFaction(unit.Faction) {
-		if badGuy.ID.String() == unit.ID.String() {
+	bestScore := math.Inf(-1)
+	var bestTarget *Unit
+	for _, enemy := range sim.GetAllEnemyUnitsByFaction(unit.Faction) {
+		if enemy.ID == unit.ID {
 			continue
 		}
-		enemyPos := badGuy.GetCenteredPosition()
-		dx := float64(enemyPos.X - myPos.X)
-		dy := float64(enemyPos.Y - myPos.Y)
-		distSq := math.Sqrt(dx*dx + dy*dy)
-
-		if distSq < closestDistSq {
-			closestDistSq = distSq
-			closestEnemy = badGuy
+		score := unit.EvaluateEnemy(enemy)
+		if score > bestScore {
+			bestScore = score
+			bestTarget = enemy
 		}
+	}
+	if bestTarget != nil {
+		unit.NearestEnemy = bestTarget
+	}
+}
 
-		// Optionally filter out unreachable or dead enemies:
-		// if badGuy.IsDead() || !unit.CanSee(badGuy) {
-		//     continue
-		// }
+func (u *Unit) IsInAttackZone(target *Unit) bool {
+	center := u.GetCenteredPosition()
+	angle := u.MovingAngle - math.Pi/2 // because you adjusted earlier
+
+	// Direction vector
+	forward := vec2.T{
+		X: math.Cos(angle),
+		Y: math.Sin(angle),
 	}
 
-	// Act on the closest enemy
-	if closestEnemy != nil && closestEnemy.ID.String() != unit.ID.String() {
-		unit.NearestEnemy = closestEnemy
+	// Vector from self to target
+	toTarget := target.GetCenteredPosition().Sub(*center)
+
+	// Project onto forward direction
+	distance := toTarget.Dot(forward)
+	if distance < 0 || distance > AttackZoneLength {
+		return false // not in front or too far
 	}
 
+	// Perpendicular distance from center line
+	sideVec := toTarget.Sub(forward.Scale(distance))
+	sideDist := sideVec.Length()
+
+	return sideDist <= AttackZoneWidth/2
+}
+
+func (unit *Unit) EvaluateEnemy(enemy *Unit) float64 {
+	if !enemy.IsAlive() {
+		return math.Inf(-1)
+	}
+
+	score := 0.0
+	distance := unit.GetCenteredPosition().Distance(*enemy.GetCenteredPosition())
+	if distance > float64(unit.Stats.VisionRange*uint(TileSize)) {
+		return math.Inf(-1)
+	}
+
+	// Prefer closer enemies
+	score -= distance
+
+	// Prefer low HP enemies
+	score -= float64(enemy.Stats.HPCur) * 1.5
+
+	// Prefer enemies attacking us
+	if enemy.NearestEnemy != nil && enemy.NearestEnemy.ID == unit.ID {
+		score += 300
+	}
+
+	// Prefer high damage enemies
+	score += float64(enemy.Stats.Damage) * 2
+
+	return score
 }
 
 func (unit *Unit) Update(sim *T) {
@@ -193,47 +234,100 @@ func (unit *Unit) Update(sim *T) {
 	switch unit.Action {
 	case IdleAction:
 		unit.Stats.ResourceCollectTime = 0
-		// Target aquisition
-		unit.findTarget(sim)
-		if unit.Destinations.IsEmpty() && unit.NearestEnemy != nil {
-			unit.Destinations.Enqueue(unit.NearestEnemy.GetCenteredPosition())
-		}
-		unit.MoveToDestination(sim)
 
-		// SetNearestEnemy
-		if unit.NearestEnemy != nil && unit.NearestEnemy.IsAlive() && unit.TargetInRange(unit.NearestEnemy.GetCenteredPosition()) {
-			unit.Stats.AttackFramesCur++
-			if unit.Stats.AttackFramesCur >= unit.Stats.AttackFrames {
-				unit.NearestEnemy.Stats.HPCur -= unit.Stats.Damage
-				unit.Stats.AttackFramesCur = 0
-				// Play SFX?
+		// 1. Try to find a new enemy target
+		unit.findTarget(sim)
+
+		if unit.NearestEnemy == nil || !unit.NearestEnemy.IsAlive() {
+			// Still move toward something if available
+			if unit.Destinations.IsEmpty() {
+				unit.findTarget(sim)
+				if unit.NearestEnemy != nil && unit.NearestEnemy.IsAlive() {
+					unit.Destinations.Enqueue(unit.NearestEnemy.GetCenteredPosition())
+				}
 			}
+			unit.MoveToDestination(sim)
+			return
+		}
+
+		// 3. If in range and in attack zone, attack
+		if unit.TargetInRange(unit.NearestEnemy.GetCenteredPosition()) {
+			if unit.IsInAttackZone(unit.NearestEnemy) {
+				unit.Stats.AttackFramesCur++
+				if unit.Stats.AttackFramesCur >= unit.Stats.AttackFrames {
+					unit.NearestEnemy.Stats.HPCur -= unit.Stats.Damage
+					unit.Stats.AttackFramesCur = 0
+				}
+			} else {
+				// Adjust position to get enemy in attack zone
+				toEnemy := unit.NearestEnemy.GetCenteredPosition().Sub(*unit.GetCenteredPosition())
+				newPos := unit.NearestEnemy.GetCenteredPosition().Sub(toEnemy.Normalize().Scale(30))
+				unit.Destinations.EnqueueFront(&newPos)
+				unit.MoveToDestination(sim)
+			}
+		} else {
+			// Not in range, move toward enemy
+			if unit.Destinations.IsEmpty() {
+				unit.Destinations.Enqueue(unit.NearestEnemy.GetCenteredPosition())
+			}
+			unit.MoveToDestination(sim)
 		}
 		return
+
+	// case IdleAction:
+	// 	unit.Stats.ResourceCollectTime = 0
+	// 	// Target aquisition
+	// 	unit.findTarget(sim)
+	// 	if unit.Destinations.IsEmpty() && unit.NearestEnemy != nil {
+	// 		unit.Destinations.Enqueue(unit.NearestEnemy.GetCenteredPosition())
+	// 	}
+	// 	unit.MoveToDestination(sim)
+
+	// 	if unit.NearestEnemy != nil && unit.NearestEnemy.IsAlive() && unit.TargetInRange(unit.NearestEnemy.GetCenteredPosition()) {
+	// 		if unit.IsInAttackZone(unit.NearestEnemy) {
+	// 			unit.Stats.AttackFramesCur++
+	// 			if unit.Stats.AttackFramesCur >= unit.Stats.AttackFrames {
+	// 				unit.NearestEnemy.Stats.HPCur -= unit.Stats.Damage
+	// 				unit.Stats.AttackFramesCur = 0
+	// 			}
+	// 		} else {
+	// 			// Try to reposition slightly to get the enemy in front
+	// 			toEnemy := unit.NearestEnemy.GetCenteredPosition().Sub(*unit.GetCenteredPosition())
+	// 			newPos := unit.NearestEnemy.GetCenteredPosition().Sub(toEnemy.Normalize().Scale(30))
+	// 			unit.Destinations.EnqueueFront(&newPos)
+	// 		}
+	// 	}
+
+	// 	return
 	case MovingAction:
 		unit.Stats.ResourceCollectTime = 0
 		unit.MoveToDestination(sim)
+		return
 	case AttackMovingAction:
 		unit.Stats.ResourceCollectTime = 0
-		if unit.NearestEnemy != nil && unit.NearestEnemy.IsAlive() && unit.TargetInRange(unit.NearestEnemy.GetCenteredPosition()) {
-			unit.Stats.AttackFramesCur++
-			if unit.Stats.AttackFramesCur >= unit.Stats.AttackFrames {
-				unit.NearestEnemy.Stats.HPCur -= unit.Stats.Damage
-				unit.Stats.AttackFramesCur = 0
-				// Play SFX?
-			}
 
-		} else {
-			unit.MoveToDestination(sim) // destination might be a unit?
-			// check if there is an enemy unit in range and set it as NearestEnemy
-			for _, enemy := range sim.GetAllEnemyUnitsByFaction(unit.Faction) {
-				if enemy.GetCenteredPosition().Distance(*unit.GetCenteredPosition()) <= 300 {
-					// TODO: make a list of all the nearby enemies and pick the closest?
-					unit.NearestEnemy = enemy
-					break
+		if unit.NearestEnemy != nil && unit.NearestEnemy.IsAlive() && unit.TargetInRange(unit.NearestEnemy.GetCenteredPosition()) {
+			if unit.IsInAttackZone(unit.NearestEnemy) {
+				unit.Stats.AttackFramesCur++
+				if unit.Stats.AttackFramesCur >= unit.Stats.AttackFrames {
+					unit.NearestEnemy.Stats.HPCur -= unit.Stats.Damage
+					unit.Stats.AttackFramesCur = 0
 				}
+			} else {
+				toEnemy := unit.NearestEnemy.GetCenteredPosition().Sub(*unit.GetCenteredPosition())
+				newPos := unit.NearestEnemy.GetCenteredPosition().Sub(toEnemy.Normalize().Scale(30))
+				unit.Destinations.EnqueueFront(&newPos)
+			}
+		} else if unit.NearestEnemy == nil || !unit.NearestEnemy.IsAlive() {
+			unit.findTarget(sim)
+			if unit.NearestEnemy != nil && unit.NearestEnemy.IsAlive() {
+				unit.Destinations.Enqueue(unit.NearestEnemy.GetCenteredPosition())
 			}
 		}
+
+		unit.MoveToDestination(sim) // Always try to move
+		return
+
 	case HoldingPositionAction:
 		if unit.NearestEnemy != nil && unit.NearestEnemy.IsAlive() && unit.TargetInRange(unit.NearestEnemy.GetCenteredPosition()) {
 			unit.Stats.AttackFramesCur++
@@ -316,7 +410,6 @@ func (unit *Unit) Update(sim *T) {
 			}
 			unit.Action = CollectingAction
 		}
-
 	}
 }
 func (unit *Unit) MoveToDestination(sim *T) {
@@ -339,7 +432,8 @@ func (unit *Unit) MoveToDestination(sim *T) {
 	if toTarget.Length() > 0 {
 		toTarget = toTarget.Normalize()
 	}
-	moveVec := toTarget.Add(*repulsion).Normalize().Scale(speed)
+	repulsionWeight := 2.0
+	moveVec := toTarget.Add(repulsion.Scale(repulsionWeight)).Normalize().Scale(speed)
 
 	moveX := math.Copysign(math.Min(math.Abs(moveVec.X), speed), moveVec.X)
 	moveY := math.Copysign(math.Min(math.Abs(moveVec.Y), speed), moveVec.Y)
@@ -375,6 +469,7 @@ func (unit *Unit) MoveToDestination(sim *T) {
 	dxRot := float64(newCentered.X - oldX)
 	dyRot := float64(newCentered.Y - oldY)
 	if dxRot != 0 || dyRot != 0 { // update angle only if moved
+		unit.StuckFrames = 0
 		unit.MovingAngle = math.Atan2(dyRot, dxRot) + math.Pi/2 // adjust for sprite orientation
 	}
 	arrived := math.Abs(dx) <= float64(ArrivalThreshold) && math.Abs(dy) <= float64(ArrivalThreshold)
@@ -385,7 +480,8 @@ func (unit *Unit) MoveToDestination(sim *T) {
 		unit.StuckFrames++
 
 		if unit.StuckFrames%30 == 0 {
-			unit.NavigateAround(sim)
+			//unit.NavigateAround(sim)
+			unit.TrySidestep(sim)
 
 		}
 
@@ -616,5 +712,5 @@ func (unit *Unit) NavigateAround(sim *T) {
 }
 
 func (unit *Unit) IsWorker() bool {
-	return unit.Type == UnitTypeDefaultAnt || unit.Type == UnitTypeDefaultRoach
+	return unit.Type == types.UnitTypeDefaultAnt || unit.Type == types.UnitTypeDefaultRoach
 }

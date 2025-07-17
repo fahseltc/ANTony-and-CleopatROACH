@@ -18,8 +18,12 @@ type Event struct {
 }
 
 type NotEnoughResourcesEvent struct {
-	ResourceName     string
-	TargetBeingBuilt string
+	ResourceName   string
+	UnitBeingBuilt string
+}
+
+type UnitNotUnlockedEvent struct {
+	UnitName string
 }
 
 type SceneCompletionEvent struct {
@@ -32,8 +36,17 @@ type BuildClickedEvent struct {
 	// building type
 }
 
+type NotificationEvent struct {
+	Message string
+}
+
 type ConstructUnitEvent struct {
-	HiveID string
+	HiveID   string
+	UnitType string
+}
+
+type MakeAntButtonClickedEvent struct {
+	UnitType string
 }
 
 type ToggleRightSideHUDEvent struct {

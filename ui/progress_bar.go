@@ -19,7 +19,7 @@ func NewProgressBar(x, y, width, height int) *ProgressBar {
 	return &ProgressBar{
 		X:           x,
 		Y:           y,
-		Width:       width,
+		Width:       width - 1,
 		Height:      height,
 		Progress:    0.0,
 		BgColor:     color.RGBA{64, 64, 64, 255},
@@ -31,7 +31,7 @@ func NewHealthBar(x, y, width, height int) *ProgressBar {
 	return &ProgressBar{
 		X:           x,
 		Y:           y + 25,
-		Width:       width,
+		Width:       width - 1,
 		Height:      height,
 		Progress:    0.0,
 		BgColor:     color.RGBA{64, 64, 64, 255},
@@ -51,15 +51,15 @@ func (pb *ProgressBar) SetProgress(p float64) {
 }
 
 func (pb *ProgressBar) Draw(screen *ebiten.Image, camera *Camera) {
-	// if pb.Progress == 0 {
-	// 	return
-	// }
+	if pb.Progress == 0 {
+		return
+	}
 	// Map world position to screen position using camera
 	screenX, screenY := camera.MapPosToScreenPos(pb.X, pb.Y)
 
 	// Draw background
 	bg := ebiten.NewImage(pb.Width, pb.Height)
-	//bg.Fill(pb.BgColor)
+	bg.Fill(pb.BgColor)
 	op := &ebiten.DrawImageOptions{}
 	op.GeoM.Scale(camera.ViewPortZoom, camera.ViewPortZoom)
 	op.GeoM.Translate(float64(screenX), float64(screenY))
@@ -67,12 +67,12 @@ func (pb *ProgressBar) Draw(screen *ebiten.Image, camera *Camera) {
 
 	// Draw progress
 	fgWidth := int(float64(pb.Width) * pb.Progress)
-	if fgWidth > 0 {
-		fg := ebiten.NewImage(fgWidth, pb.Height)
+	if fgWidth-2 > 0 {
+		fg := ebiten.NewImage(fgWidth-2, pb.Height-2)
 		fg.Fill(pb.FgColor)
 		op2 := &ebiten.DrawImageOptions{}
 		op2.GeoM.Scale(camera.ViewPortZoom, camera.ViewPortZoom)
-		op2.GeoM.Translate(float64(screenX), float64(screenY))
+		op2.GeoM.Translate(float64(screenX)+1, float64(screenY)+1)
 		screen.DrawImage(fg, op2)
 	}
 }

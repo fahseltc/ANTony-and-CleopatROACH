@@ -132,28 +132,47 @@ func NewHiveButtonPanel(fonts *fonts.All, s *simulation.T) *ButtonPanel {
 		WithRect(image.Rectangle{Min: image.Pt(btnX, btnY), Max: image.Pt(btnX+BtnDimension, btnY+BtnDimension)}),
 		WithClickFunc(func() {
 			btnPanel.log.Info("workerbtnclicked")
-			btnPanel.log.Info("MakeAntButtonClickedEvent")
 			s.EventBus.Publish(eventing.Event{
 				Type: "MakeAntButtonClickedEvent",
+				Data: &eventing.MakeAntButtonClickedEvent{
+					UnitType: "worker",
+				},
 			})
 		}),
-		WithImage(util.LoadImage("ui/btn/make-ant-btn-noicon.png"), util.LoadImage("ui/btn/make-ant-btn-pressed-noicon.png")),
+		WithImage(util.LoadImage("ui/btn/make-worker-btn.png"), util.LoadImage("ui/btn/make-worker-btn-pressed.png")),
 		WithKeyActivation(ebiten.KeyQ),
 		WithToolTip(NewTooltip(*fonts, image.Rectangle{}, LeftAlignment)),
 	)
 	btnPanel.btns = append(btnPanel.btns, workerBtn)
 	btnY += BtnDimension + BtnPad
 
-	fighterBtn := NewButton(fonts,
+	var fighterBtn *Button
+	fighterBtn = NewButton(fonts,
 		WithRect(image.Rectangle{Min: image.Pt(btnX, btnY), Max: image.Pt(btnX+BtnDimension, btnY+BtnDimension)}),
 		WithClickFunc(func() {
 			btnPanel.log.Info("fighterbtnclicked")
+			if fighterBtn.GreyedOut {
+				s.EventBus.Publish(eventing.Event{
+					Type: "UnitNotUnlockedEvent",
+					Data: eventing.UnitNotUnlockedEvent{
+						UnitName: "Fighter",
+					},
+				})
+			} else {
+				s.EventBus.Publish(eventing.Event{
+					Type: "MakeAntButtonClickedEvent",
+					Data: &eventing.MakeAntButtonClickedEvent{
+						UnitType: "fighter",
+					},
+				})
+			}
 
 		}),
-		WithImage(util.LoadImage("ui/btn/make-ant-btn-noicon.png"), util.LoadImage("ui/btn/make-ant-btn-pressed-noicon.png")),
+		WithImage(util.LoadImage("ui/btn/make-fighter-btn.png"), util.LoadImage("ui/btn/make-fighter-btn-pressed.png")),
 		WithKeyActivation(ebiten.KeyF),
 		WithToolTip(NewTooltip(*fonts, image.Rectangle{}, LeftAlignment)),
 	)
+	fighterBtn.GreyedOut = true
 	btnPanel.btns = append(btnPanel.btns, fighterBtn)
 	btnY += BtnDimension + BtnPad
 
@@ -166,9 +185,15 @@ func NewHiveButtonPanel(fonts *fonts.All, s *simulation.T) *ButtonPanel {
 			if playerState.TechTree.CanResearch(sim.TechFasterGathering) {
 				playerState.TechTree.Unlock(sim.TechFasterGathering, playerState)
 				upgradeBtn.Hidden = true
+				s.EventBus.Publish(eventing.Event{
+					Type: "NotificationEvent",
+					Data: eventing.NotificationEvent{
+						Message: playerState.TechTree.GetDescription(sim.TechFasterGathering),
+					},
+				})
 			}
 		}),
-		WithImage(util.LoadImage("ui/btn/make-ant-btn-noicon.png"), util.LoadImage("ui/btn/make-ant-btn-pressed-noicon.png")),
+		WithImage(util.LoadImage("ui/btn/upgrade-btn.png"), util.LoadImage("ui/btn/upgrade-btn-pressed.png")),
 		WithKeyActivation(ebiten.KeyZ),
 		WithToolTip(NewTooltip(*fonts, image.Rectangle{}, TopAlignment)),
 	)
@@ -235,6 +260,7 @@ func NewWorkerUnitButtonPanel(fonts *fonts.All, s *sim.T) *ButtonPanel {
 }
 
 func (b *ButtonPanel) Update() {
+	// Check sim global state for buildings presence and allow Fighters to be made
 	if !b.AltModeEnabled {
 		for _, btn := range b.btns {
 			btn.Update()

@@ -1,14 +1,16 @@
 package sim
 
+import "gamejam/types"
+
 var BridgeBuildTime = 160
 
 type InConstructionBuilding struct {
 	*Building
-	targetBuilding BuildingType
+	targetBuilding types.Building
 }
 
-func NewInConstructionBuilding(x, y int, targetBuilding BuildingType) *InConstructionBuilding {
-	building := NewBuilding(x, y, TileDimensions, TileDimensions, 1, BuildingTypeInConstruction, uint(BridgeBuildTime))
+func NewInConstructionBuilding(x, y int, targetBuilding types.Building) *InConstructionBuilding {
+	building := NewBuilding(x, y, TileDimensions, TileDimensions, 1, types.BuildingTypeInConstruction, uint(BridgeBuildTime))
 
 	icb := &InConstructionBuilding{
 		Building:       building,
@@ -29,9 +31,9 @@ func (icb *InConstructionBuilding) Update(sim *T) {
 	sim.RemoveBuilding(icb)
 	sim.world.TileMap.RemoveCollisionRect(icb.Rect)
 	switch icb.targetBuilding {
-	case BuildingTypeInConstruction: // shouldnt happen
-	case BuildingTypeHive:
-	case BuildingTypeBridge:
+	case types.BuildingTypeInConstruction: // shouldnt happen
+	case types.BuildingTypeHive:
+	case types.BuildingTypeBridge:
 		bb := NewBridgeBuilding(int(icb.Position.X), int(icb.Position.Y))
 		sim.AddBuilding(bb)
 		//sim.world.TileMap.AddCollisionRect()

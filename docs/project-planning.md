@@ -28,7 +28,7 @@ Game is Currently in 1.0
   food ideas from nerds
   tunnels to other hives
   other hives create other units
-  swarmament / the fight hive
+  swarmament / the fight hive / Mandibarracks
   The Antagonist
   The Antnex / Myrmicastle
   worker unit: Toilerbee / grubscribe /

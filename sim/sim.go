@@ -97,13 +97,14 @@ func New(tps int, tileMap *tilemap.Tilemap) *T {
 }
 func (s *T) HandleConstructUnitEvent(event eventing.Event) {
 	hiveID := event.Data.(eventing.ConstructUnitEvent).HiveID
-	success := s.ConstructUnit(hiveID)
+	unitType := types.UtilUnitTypeFromString(event.Data.(eventing.ConstructUnitEvent).UnitType)
+	success := s.ConstructUnit(hiveID, unitType)
 	if !success {
 		s.EventBus.Publish(eventing.Event{
 			Type: "NotEnoughResourcesEvent",
 			Data: eventing.NotEnoughResourcesEvent{
-				ResourceName:     "Sucrose",
-				TargetBeingBuilt: "Ant",
+				ResourceName:   "Sucrose",
+				UnitBeingBuilt: unitType.ToString(),
 			},
 		})
 	}
@@ -205,13 +206,13 @@ func (s *T) issueSingleAction(id string, point *image.Point) error {
 	}
 
 	unit.DestinationType = s.DetermineDestinationType(point, unit.Faction)
-	switch s.ActionKeyPressed {
-	case NoneKeyPressed:
-	case AttackKeyPressed:
-	case MoveKeyPressed:
-	case StopKeyPressed:
-	case HoldPositionKeyPressed:
-	}
+	// switch s.ActionKeyPressed {
+	// case NoneKeyPressed:
+	// case AttackKeyPressed:
+	// case MoveKeyPressed:
+	// case StopKeyPressed:
+	// case HoldPositionKeyPressed:
+	// }
 	switch unit.DestinationType {
 	case EnemyDestination:
 		unit.Action = AttackMovingAction
@@ -449,7 +450,7 @@ func (s *T) GetAllCollidersOverlapping(rect *image.Rectangle) []*Collider {
 		}
 	}
 	for _, building := range s.GetAllBuildings() {
-		if building.GetType() == BuildingTypeBridge { // bridges dont have collision!
+		if building.GetType() == types.BuildingTypeBridge { // bridges dont have collision!
 			continue
 		}
 		if building.GetRect().Overlaps(*rect) {
@@ -510,14 +511,14 @@ func (s *T) GetWoodAmount() uint {
 func (s *T) GetSucroseAmount() uint {
 	return s.playerState.Sucrose
 }
-func (s *T) ConstructUnit(hiveId string) bool {
+func (s *T) ConstructUnit(hiveId string, unitType types.Unit) bool {
 	hive, err := s.GetBuildingByID(hiveId)
 	if err != nil {
 		return false
 	}
 	if s.playerState.Sucrose >= UnitSucroseCost {
 		s.playerState.Sucrose -= UnitSucroseCost
-		hive.AddUnitToBuildQueue()
+		hive.AddUnitToBuildQueue(unitType)
 		return true
 	} else {
 		return false
@@ -540,7 +541,7 @@ func (s *T) ConstructBuilding(target *image.Rectangle, builderID string) bool {
 	} else {
 		// actually build the thing
 		s.playerState.Wood -= BuildingWoodCost
-		inConstructionBuilding := NewInConstructionBuilding(target.Min.X, target.Min.Y, BuildingTypeBridge) // always bridge for now, but easy to change
+		inConstructionBuilding := NewInConstructionBuilding(target.Min.X, target.Min.Y, types.BuildingTypeBridge) // always bridge for now, but easy to change
 		s.buildingMap[int(unit.Faction)] = append(s.buildingMap[int(unit.Faction)], inConstructionBuilding)
 		return true
 	}

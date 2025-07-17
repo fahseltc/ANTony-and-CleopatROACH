@@ -49,3 +49,6 @@ func (a T) ToCenteredPixelCoordinatesDouble() *T {
 		Y: a.Y*TileSize + 2*HalfTileSize,
 	}
 }
+func (a T) Dot(b T) float64 {
+	return a.X*b.X + a.Y*b.Y
+}

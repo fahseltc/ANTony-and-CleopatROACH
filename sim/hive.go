@@ -1,6 +1,7 @@
 package sim
 
 import (
+	"gamejam/types"
 	"gamejam/util"
 	"gamejam/vec2"
 	"image"
@@ -17,7 +18,7 @@ type Hive struct {
 }
 
 func NewHive() BuildingInterface {
-	building := NewBuilding(0, 0, TileDimensions*2, TileDimensions*2, 0, BuildingTypeHive, uint(UnitConstructionTime))
+	building := NewBuilding(0, 0, TileDimensions*2, TileDimensions*2, 0, types.BuildingTypeHive, uint(UnitConstructionTime))
 	h := &Hive{
 		Building:        building,
 		UnitContructing: false,
@@ -27,7 +28,7 @@ func NewHive() BuildingInterface {
 }
 
 func NewRoachHive() BuildingInterface {
-	building := NewBuilding(0, 0, TileDimensions*2, TileDimensions*2, 0, BuildingTypeRoachHive, uint(UnitConstructionTime))
+	building := NewBuilding(0, 0, TileDimensions*2, TileDimensions*2, 0, types.BuildingTypeRoachHive, uint(UnitConstructionTime))
 	h := &Hive{
 		Building:        building,
 		UnitContructing: false,
@@ -46,7 +47,7 @@ func (h *Hive) Update(sim *T) {
 				return // todo handle?
 			}
 			// make sure position isnt colliding with anything and try again
-			u.SetPosition(h.GetNearbyPosition(sim, 128)) // unit size static for now but could change later
+			u.SetPosition(h.GetNearbyPosition(sim, u.Rect.Dx())) // unit size static for now but could change later
 			sim.AddUnit(u)
 			h.UnitContructing = false
 			h.Stats.ProgressCurrent = 0
@@ -60,13 +61,27 @@ func (h *Hive) DistanceTo(point vec2.T) uint {
 	return uint(math.Sqrt(math.Pow(xDist, 2) + math.Pow(yDist, 2)))
 }
 
-func (h *Hive) AddUnitToBuildQueue() {
+func (h *Hive) AddUnitToBuildQueue(unitType types.Unit) {
 	var unit *Unit
 	switch h.Type {
-	case BuildingTypeHive:
-		unit = NewDefaultAnt()
-	case BuildingTypeRoachHive:
-		unit = NewDefaultRoach()
+	case types.BuildingTypeHive:
+		switch unitType {
+		case types.UnitTypeDefaultAnt:
+			unit = NewDefaultAnt()
+		case types.UnitTypeFighterAnt:
+			unit = NewFighterAnt()
+		default:
+			unit = NewDefaultAnt()
+		}
+	case types.BuildingTypeRoachHive:
+		switch unitType {
+		case types.UnitTypeDefaultAnt:
+			unit = NewDefaultRoach()
+		// case UnitTypeFighterAnt:
+		// 	unit = NewFighterAnt()
+		default:
+			unit = NewDefaultRoach()
+		}
 	}
 	h.buildQueue.Enqueue(unit)
 }

@@ -99,6 +99,8 @@ func NewPlayScene(fonts *fonts.All, sound *audio.SoundManager, levelData LevelDa
 	scene.eventBus.Subscribe("MakeBridgeButtonClickedEvent", scene.HandleMakeBridgeButtonClickedEvent)
 	scene.eventBus.Subscribe("BuildClickedEvent", scene.HandleBuildClickedEvent)
 	scene.eventBus.Subscribe("NotEnoughResourcesEvent", scene.NotEnoughResourcesEvent)
+	scene.eventBus.Subscribe("UnitNotUnlockedEvent", scene.UnitNotUnlockedEvent)
+	scene.eventBus.Subscribe("NotificationEvent", scene.NotificationEvent)
 
 	scene.QueenID, scene.KingID = levelData.SetupFunc(scene)
 
@@ -116,9 +118,13 @@ func NewPlayScene(fonts *fonts.All, sound *audio.SoundManager, levelData LevelDa
 	return scene
 }
 
+func (s *PlayScene) NotificationEvent(event eventing.Event) {
+	s.CurrentNotification = ui.NewNotification(&s.fonts.Med, event.Data.(eventing.NotificationEvent).Message)
+}
+
 func (s *PlayScene) NotEnoughResourcesEvent(event eventing.Event) {
 	resName := event.Data.(eventing.NotEnoughResourcesEvent).ResourceName
-	target := event.Data.(eventing.NotEnoughResourcesEvent).TargetBeingBuilt
+	target := event.Data.(eventing.NotEnoughResourcesEvent).UnitBeingBuilt
 
 	var str string
 	if target == "Bridge" {
@@ -129,6 +135,11 @@ func (s *PlayScene) NotEnoughResourcesEvent(event eventing.Event) {
 
 	s.CurrentNotification = ui.NewNotification(&s.fonts.Med, str)
 }
+func (s *PlayScene) UnitNotUnlockedEvent(event eventing.Event) {
+	unitName := event.Data.(eventing.UnitNotUnlockedEvent).UnitName
+
+	s.CurrentNotification = ui.NewNotification(&s.fonts.Med, fmt.Sprintf("%v Unit not unlocked yet!", unitName))
+}
 
 func (s *PlayScene) setupSFX() {
 	s.eventBus.Subscribe("PlayIssueActionSFX", s.sound.PlayIssueActionSFX)
@@ -138,11 +149,14 @@ func (s *PlayScene) HandleMakeAntButtonClickedEvent(event eventing.Event) {
 	if len(s.selectedUnitIDs) == 1 {
 		hiveID := s.selectedUnitIDs[0]
 		unitOrHiveString := s.sim.DetermineUnitOrHiveById(hiveID)
+		innerEvent := event.Data.(*eventing.MakeAntButtonClickedEvent)
+		unitType := innerEvent.UnitType
 		if unitOrHiveString == "hive" {
 			s.eventBus.Publish(eventing.Event{
 				Type: "ConstructUnitEvent",
 				Data: eventing.ConstructUnitEvent{
-					HiveID: hiveID,
+					HiveID:   hiveID,
+					UnitType: unitType,
 				},
 			})
 		}
@@ -150,7 +164,7 @@ func (s *PlayScene) HandleMakeAntButtonClickedEvent(event eventing.Event) {
 }
 
 func (s *PlayScene) HandleMakeBridgeButtonClickedEvent(event eventing.Event) {
-	if len(s.selectedUnitIDs) == 1 {
+	if len(s.selectedUnitIDs) >= 1 {
 		unitID := s.selectedUnitIDs[0]
 		unitOrHiveString := s.sim.DetermineUnitOrHiveById(unitID)
 		if unitOrHiveString == "unit" {
@@ -167,8 +181,8 @@ func (s *PlayScene) HandleBuildClickedEvent(event eventing.Event) {
 			s.eventBus.Publish(eventing.Event{
 				Type: "NotEnoughResourcesEvent",
 				Data: eventing.NotEnoughResourcesEvent{ // todo: add reason why, for example "unit not close enough" etc
-					ResourceName:     "Wood",
-					TargetBeingBuilt: "Bridge",
+					ResourceName:   "Wood",
+					UnitBeingBuilt: "Bridge",
 				},
 			})
 		}
@@ -411,13 +425,15 @@ func (s *PlayScene) createOrUpdateUnitSprites() {
 		unitSprite := s.Sprites[unit.ID.String()]
 		if unitSprite == nil {
 			switch unit.Type {
-			case sim.UnitTypeDefaultAnt:
+			case types.UnitTypeDefaultAnt:
 				unitSprite = ui.NewDefaultAntSprite(unit.ID)
-			case sim.UnitTypeDefaultRoach:
+			case types.UnitTypeFighterAnt:
+				unitSprite = ui.NewFighterAntSprite(unit.ID)
+			case types.UnitTypeDefaultRoach:
 				unitSprite = ui.NewDefaultRoachSprite(unit.ID)
-			case sim.UnitTypeRoyalAnt:
+			case types.UnitTypeRoyalAnt:
 				unitSprite = ui.NewRoyalAntSprite(unit.ID)
-			case sim.UnitTypeRoyalRoach:
+			case types.UnitTypeRoyalRoach:
 				unitSprite = ui.NewRoyalRoachSprite(unit.ID)
 			}
 			unitSprite.EventBus = s.eventBus
@@ -441,13 +457,13 @@ func (s *PlayScene) createOrUpdateBuildingSprites() {
 		spriteBuilding := s.Sprites[building.GetID().String()]
 		if spriteBuilding == nil {
 			switch building.GetType() {
-			case sim.BuildingTypeBridge:
+			case types.BuildingTypeBridge:
 				spriteBuilding = ui.NewBridgeSprite(building.GetID())
-			case sim.BuildingTypeHive:
+			case types.BuildingTypeHive:
 				spriteBuilding = ui.NewHiveSprite(building.GetID())
-			case sim.BuildingTypeRoachHive:
+			case types.BuildingTypeRoachHive:
 				spriteBuilding = ui.NewRoachHiveSprite(building.GetID())
-			case sim.BuildingTypeInConstruction:
+			case types.BuildingTypeInConstruction:
 				spriteBuilding = ui.NewInConstructionSprite(building.GetID())
 			}
 			spriteBuilding.SetPosition(building.GetPosition())
@@ -472,7 +488,7 @@ func (s *PlayScene) updateRemoveInactiveSprites() {
 			continue // static sprites are never removed automatically - they dont exist in the SIM, just in UI
 		}
 		if _, exists := activeIDs[id]; !exists {
-			if spr.Type == ui.SpriteTypeUnit { // if it was a unit, replace it with a blood splat
+			if spr.Type == ui.SpriteTypeWorker || spr.Type == ui.SpriteTypeFighter { // if it was a unit, replace it with a blood splat
 				bloodSprite := ui.NewBloodSprite(uuid.New())
 				bloodSprite.SetCenteredPosition(spr.GetCenteredPosition())
 				s.Sprites[bloodSprite.Id.String()] = bloodSprite

@@ -28,7 +28,7 @@ func NewTechTree() *TechTree {
 			TechFasterGathering: {
 				ID:              TechFasterGathering,
 				Name:            "Faster Gathering",
-				Description:     "Workers collect resources 20%% faster",
+				Description:     "Workers collect resources 20% faster",
 				Cost:            TechCost{Sucrose: 250},
 				ResearchSeconds: 60,
 				Dependencies:    nil,
@@ -72,4 +72,7 @@ func (tt *TechTree) Unlock(id TechID, playerState *PlayerState) bool {
 		}
 	}
 	return false
+}
+func (tt *TechTree) GetDescription(id TechID) string {
+	return tt.AvailableTech[id].Description
 }
