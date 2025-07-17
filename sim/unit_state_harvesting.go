@@ -79,11 +79,11 @@ func (s *HarvestingState) determineResourceHarvested(unit *Unit, sim *T) types.R
 func (s *HarvestingState) determineNearestHive(unit *Unit, sim *T) BuildingInterface {
 	var nearest BuildingInterface
 	minDist := uint(math.MaxUint32)
-	for _, hive := range sim.GetAllBuildings() {
-		if hive.GetFaction() == unit.Faction {
-			dist := unit.DistanceTo(hive.GetCenteredPosition())
+	for _, building := range sim.GetAllBuildings() {
+		if building.GetFaction() == unit.Faction && (building.GetType() == types.BuildingTypeHive || building.GetType() == types.BuildingTypeRoachHive) {
+			dist := unit.DistanceTo(building.GetCenteredPosition())
 			if nearest == nil || dist < minDist {
-				nearest = hive
+				nearest = building
 				minDist = dist
 			}
 		}

@@ -90,13 +90,6 @@ func (d *Drag) Update(sprites map[string]*Sprite, camera *Camera, HUD *HUD) {
 
 		d.log.Info("Units Selected", "array", selectedIDs)
 	}
-
-	// if HUD.IsPointInside(pt) && !d.btnHeld { // abort updating selected units if the click is inside the UI elements
-	// 	// d.dragRect = image.Rectangle{Min: image.Pt(0, 0), Max: image.Pt(0, 0)}
-	// 	// d.firstClickPoint = image.Point{X: 0, Y: 0}
-	// 	return
-	// }
-
 }
 
 func (d *Drag) Draw(screen *ebiten.Image) {

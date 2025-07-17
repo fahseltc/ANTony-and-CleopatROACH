@@ -124,3 +124,11 @@ func (h *HUD) IsPointInside(pt image.Point) bool {
 func (h *HUD) IsPointInsideMinimap(pt image.Point) bool {
 	return pt.In(h.miniMapRect)
 }
+
+func (h *HUD) EnableFighterButton() {
+	for _, btn := range h.rightHiveButtonPanel.btns {
+		if btn.description == "fighter_btn" {
+			btn.GreyedOut = false
+		}
+	}
+}

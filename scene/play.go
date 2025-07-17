@@ -175,9 +175,8 @@ func (s *PlayScene) HandleBuildingButtonClickedEvent(event eventing.Event) {
 }
 func (s *PlayScene) HandleBuildClickedEvent(event eventing.Event) {
 	innerEvent := event.Data.(eventing.BuildClickedEvent)
-	targetRect := innerEvent.TargetRect
 	if len(s.selectedUnitIDs) >= 1 {
-		success := s.sim.ConstructBuilding(targetRect, s.selectedUnitIDs[0], innerEvent.BuildingType)
+		success := s.sim.ConstructBuilding(innerEvent.TargetCoordinates, s.selectedUnitIDs[0], innerEvent.BuildingType)
 		if !success {
 			s.eventBus.Publish(eventing.Event{
 				Type: "NotEnoughResourcesEvent",
@@ -193,6 +192,11 @@ func (s *PlayScene) HandleBuildClickedEvent(event eventing.Event) {
 }
 
 func (s *PlayScene) Update() error {
+	// Monitor tech unlocks
+	if s.sim.GetPlayerState().TechTree.UnlockedTech[sim.TechBuildFighterUnit] {
+		s.Ui.HUD.EnableFighterButton()
+	}
+
 	if !s.songStarted {
 		s.songStarted = true
 		s.sound.Play("msx_gamesong1")
@@ -234,7 +238,6 @@ func (s *PlayScene) Update() error {
 				}
 			}
 		}
-		//s.selectedUnitIDs = hotkeyUnits
 	}
 	// Update sim before cutscenes so things happen in the world as they play.
 	s.sim.Update()
@@ -300,7 +303,7 @@ func (s *PlayScene) Update() error {
 		}
 		bld, err := s.sim.GetBuildingByID(spr.Id.String()) // remove unfactioned buildings from selection
 		if err == nil {
-			if bld.GetFaction() != 0 {
+			if bld.GetFaction() != uint(PlayerFaction) {
 				spr.Selected = false
 				continue
 			}
@@ -664,7 +667,9 @@ func (s *PlayScene) DebugDraw(screen *ebiten.Image) {
 		}
 		// Draw unit state
 		cx, cy := s.Ui.Camera.MapPosToScreenPos(unit.Position.ToPoint().X, unit.Position.ToPoint().Y)
-		ebitenutil.DebugPrintAt(screen, unit.CurrentState.Name(), cx, cy)
+		if unit.CurrentState != nil {
+			ebitenutil.DebugPrintAt(screen, unit.CurrentState.Name(), cx, cy)
+		}
 	}
 	ebitenutil.DebugPrintAt(screen, fmt.Sprintf("camera:%v,%v", s.Ui.Camera.ViewPortX, s.Ui.Camera.ViewPortY), 1, 1)
 	mx, my := ebiten.CursorPosition()

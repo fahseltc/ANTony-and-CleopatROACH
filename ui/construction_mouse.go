@@ -31,8 +31,8 @@ type ConstructionMouse struct {
 func NewConstructionMouse() *ConstructionMouse {
 	cm := &ConstructionMouse{
 		Enabled:        false,
-		bridgeSprite:   util.LoadImage("units/bridge.png"),
-		barracksSprite: util.LoadImage("units/barracks.png"),
+		bridgeSprite:   util.LoadImage("buildings/bridge.png"),
+		barracksSprite: util.LoadImage("buildings/barracks.png"),
 	}
 	return cm
 }
@@ -56,14 +56,13 @@ func (cm *ConstructionMouse) Update(tm *tilemap.Tilemap, sim *sim.T, camera *Cam
 	if inpututil.IsMouseButtonJustReleased(ebiten.MouseButtonLeft) && cm.placingBuildingType != types.BuildingTypeNone {
 		mx, my := ebiten.CursorPosition()
 		mapX, mapY := camera.ScreenPosToMapPos(mx, my)
+		tileX := mapX / 128
+		tileY := mapY / 128
 		sim.EventBus.Publish(eventing.Event{
 			Type: "BuildClickedEvent",
 			Data: eventing.BuildClickedEvent{
-				TargetRect: &image.Rectangle{
-					Min: image.Pt(mapX, mapY),
-					Max: image.Pt(mapX+tm.TileSize, mapY+tm.TileSize),
-				},
-				BuildingType: cm.placingBuildingType,
+				TargetCoordinates: image.Point{X: tileX, Y: tileY},
+				BuildingType:      cm.placingBuildingType,
 			},
 		})
 		// for _, mo := range tm.MapObjects {

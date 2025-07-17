@@ -14,7 +14,8 @@ import (
 type BtnOptFunc func(*Button)
 
 type Button struct {
-	rect image.Rectangle
+	rect        image.Rectangle
+	description string
 
 	text  string
 	fonts *fonts.All

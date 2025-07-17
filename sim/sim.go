@@ -11,7 +11,6 @@ import (
 	"log/slog"
 	"math"
 	"slices"
-	"sync"
 )
 
 var NearbyDistance = uint(300)
@@ -26,7 +25,6 @@ type T struct {
 	world    *World
 
 	playerState *PlayerState
-	stateMu     sync.RWMutex
 
 	unitMap     map[int][]*Unit
 	buildingMap map[int][]BuildingInterface
@@ -62,9 +60,10 @@ const (
 )
 
 func (s *T) GetPlayerState() *PlayerState {
-	s.stateMu.RLock()
-	defer s.stateMu.RUnlock()
 	return s.playerState
+}
+func (s *T) SetPlayerState(ps *PlayerState) {
+	s.playerState = ps
 }
 
 func New(tps int, tileMap *tilemap.Tilemap) *T {
@@ -524,14 +523,19 @@ func (s *T) ConstructUnit(hiveId string, unitType types.Unit) bool {
 	}
 	if s.playerState.Sucrose >= UnitSucroseCost {
 		s.playerState.Sucrose -= UnitSucroseCost
-		hive.AddUnitToBuildQueue(unitType)
+		newUnit := UtilUnitTypeToUnit(unitType)
+		hive.AddItemToBuildQueue(&QueuedItem{
+			Type:             types.QueuedItemTypeUnit,
+			Unit:             newUnit,
+			ConstructionTime: newUnit.Stats.ConstructionTime,
+		})
 		return true
 	} else {
 		return false
 	}
 }
 
-func (s *T) ConstructBuilding(target *image.Rectangle, builderID string, buildingType types.Building) bool {
+func (s *T) ConstructBuilding(tileCoords image.Point, builderID string, buildingType types.Building) bool {
 	unit, err := s.GetUnitByID(builderID)
 	if err != nil {
 		return false // todo print builder doesnt exist
@@ -548,7 +552,7 @@ func (s *T) ConstructBuilding(target *image.Rectangle, builderID string, buildin
 		// actually build the thing
 		bought := building.GetStats().Cost.Purchase(s.playerState)
 		if bought {
-			inConstructionBuilding := NewInConstructionBuilding(target.Min.X, target.Min.Y, buildingType)
+			inConstructionBuilding := NewInConstructionBuilding(tileCoords.X*TileDimensions, tileCoords.Y*TileDimensions, buildingType)
 			s.buildingMap[int(unit.Faction)] = append(s.buildingMap[int(unit.Faction)], inConstructionBuilding)
 			return true
 		} else {

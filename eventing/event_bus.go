@@ -33,8 +33,8 @@ type SceneCompletionEvent struct {
 }
 
 type BuildClickedEvent struct {
-	TargetRect   *image.Rectangle
-	BuildingType types.Building
+	TargetCoordinates image.Point
+	BuildingType      types.Building
 }
 
 type NotificationEvent struct {

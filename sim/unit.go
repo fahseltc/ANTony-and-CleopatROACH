@@ -57,6 +57,8 @@ type UnitStats struct {
 	ResourcesCarried    uint
 	ResourceTypeCarried types.Resource
 
+	ConstructionTime uint
+
 	VisionRange uint
 }
 
@@ -81,6 +83,7 @@ func NewRoyalAnt() *Unit {
 func NewFighterAnt() *Unit {
 	u := NewDefaultAnt()
 	u.Type = types.UnitTypeFighterAnt
+	u.Stats.Damage = 25
 	size := 128 // match sprite
 	u.Rect.Min = image.Point{0, 0}
 	u.Rect.Max = image.Point{size, size}
@@ -110,7 +113,9 @@ func NewDefaultAnt() *Unit {
 			MaxCarryCapacity:    5,
 			ResourcesCarried:    0,
 			ResourceTypeCarried: types.ResourceTypeNone,
-			VisionRange:         4,
+
+			ConstructionTime: 60,
+			VisionRange:      4,
 		},
 		Position: &vec2.T{},
 		Rect: &image.Rectangle{

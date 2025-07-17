@@ -37,8 +37,8 @@ func NewTechTree() *TechTree {
 				ID:              TechBuildFighterUnit,
 				Name:            "Build Fighter Unit",
 				Description:     "Unlocks the ability to build Fighter units",
-				Cost:            ResourceCost{Sucrose: 100, Wood: 100},
-				ResearchSeconds: 30,
+				Cost:            ResourceCost{Sucrose: 0, Wood: 0}, // Unlocked via building
+				ResearchSeconds: 0,
 				Dependencies:    nil,
 			},
 		},

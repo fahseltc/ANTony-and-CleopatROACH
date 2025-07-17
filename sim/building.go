@@ -5,6 +5,7 @@ import (
 	"gamejam/vec2"
 	"image"
 	"math"
+	"sort"
 
 	"github.com/google/uuid"
 )
@@ -54,12 +55,13 @@ type BuildingInterface interface {
 	GetProgress() float64
 
 	GetStats() *BuildingStats
+	GetNearbyPosition(sim *T, unitSize int) *vec2.T
 
 	// needs to be implemented by inheriting building
-	AddUnitToBuildQueue(types.Unit)
+	AddItemToBuildQueue(*QueuedItem)
 }
 
-func NewBuilding(x, y, width, height int, faction uint, bt types.Building, progressMax uint) *Building {
+func NewBuilding(x, y, width, height int, faction uint, bt types.Building) *Building {
 	rect := &image.Rectangle{
 		Min: image.Point{X: x, Y: y},
 		Max: image.Point{X: x + width, Y: y + height},
@@ -73,7 +75,7 @@ func NewBuilding(x, y, width, height int, faction uint, bt types.Building, progr
 
 			Cost: ResourceCost{},
 
-			ProgressMax:     progressMax,
+			ProgressMax:     0,
 			ProgressCurrent: 0,
 
 			VisionRange: uint(BuildingVisionRange),
@@ -174,12 +176,96 @@ func (b *Building) GetProgress() float64 {
 	}
 	return float64(b.Stats.ProgressCurrent) / float64(b.Stats.ProgressMax)
 }
-func (b *Building) Update(_ *T)                      {} // Default no-op
-func (b *Building) AddUnitToBuildQueue(_ types.Unit) {}
+func (b *Building) Update(_ *T)                       {} // Default no-op
+func (b *Building) AddItemToBuildQueue(_ *QueuedItem) {}
 
 func (b *Building) GetVisionRange() uint {
 	return b.Stats.VisionRange
 }
 func (b *Building) GetStats() *BuildingStats {
 	return b.Stats
+}
+
+func (b *Building) GetNearbyPosition(sim *T, unitSize int) *vec2.T {
+	const maxRadius = 3
+	const tileSize = 128
+	center := b.GetCenteredPosition()
+
+	type spawnCandidate struct {
+		point   image.Point
+		rect    *image.Rectangle
+		density int
+	}
+	// TODO this sucks make it better
+
+	var candidates []spawnCandidate
+
+	for dx := -maxRadius; dx <= maxRadius; dx++ {
+		for dy := -maxRadius; dy <= maxRadius; dy++ {
+			x := int(center.X) + dx*tileSize
+			y := int(center.Y) + dy*tileSize
+
+			rect := &image.Rectangle{
+				Min: image.Point{X: x - unitSize/2, Y: y - unitSize/2},
+				Max: image.Point{X: x + unitSize/2, Y: y + unitSize/2},
+			}
+
+			if rect.Overlaps(*b.Rect) {
+				continue
+			}
+
+			// Score this tile by number of units overlapping or nearby
+			density := 0
+			for _, unit := range sim.GetAllUnits() {
+				if unit == nil || unit.ID.String() == b.ID.String() {
+					continue
+				}
+				// Check proximity (not just overlap)
+				unitCenter := unit.GetCenteredPosition()
+				dist := math.Hypot(float64(int(unitCenter.X)-x), float64(int(unitCenter.Y)-y))
+				if dist < float64(tileSize*2) { // count units within 2-tile radius
+					density++
+				}
+			}
+
+			candidates = append(candidates, spawnCandidate{
+				point:   image.Point{X: x - unitSize/2, Y: y - unitSize/2},
+				rect:    rect,
+				density: density,
+			})
+		}
+	}
+
+	// Sort by least density first
+	sort.Slice(candidates, func(i, j int) bool {
+		return candidates[i].density < candidates[j].density
+	})
+
+	// Try the best candidates in order
+	for _, c := range candidates {
+		colliders := sim.GetAllCollidersOverlapping(c.rect)
+		collision := false
+		for _, collider := range colliders {
+			if collider.OwnerID == b.ID.String() {
+				continue
+			}
+			if c.rect.Overlaps(*collider.Rect) {
+				collision = true
+				break
+			}
+		}
+
+		if !collision {
+			return &vec2.T{
+				X: float64(c.point.X),
+				Y: float64(c.point.Y),
+			}
+		}
+	}
+
+	// Fallback position
+	return &vec2.T{
+		X: float64(center.X + tileSize),
+		Y: float64(center.Y),
+	}
 }

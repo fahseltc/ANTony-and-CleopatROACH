@@ -4,53 +4,51 @@ import (
 	"gamejam/types"
 	"gamejam/util"
 	"gamejam/vec2"
-	"image"
 	"math"
-	"sort"
 )
-
-var UnitConstructionTime = 120
 
 type Hive struct {
 	*Building
-	buildQueue      *util.Queue[*Unit]
-	UnitContructing bool
+	buildQueue *util.Queue[*QueuedItem]
 }
 
 func NewHive() BuildingInterface {
-	building := NewBuilding(0, 0, TileDimensions*2, TileDimensions*2, 0, types.BuildingTypeHive, uint(UnitConstructionTime))
+	building := NewBuilding(0, 0, TileDimensions*2, TileDimensions*2, 0, types.BuildingTypeHive)
 	h := &Hive{
-		Building:        building,
-		UnitContructing: false,
-		buildQueue:      util.NewQueue[*Unit](),
+		Building:   building,
+		buildQueue: util.NewQueue[*QueuedItem](),
 	}
 	return h
 }
 
 func NewRoachHive() BuildingInterface {
-	building := NewBuilding(0, 0, TileDimensions*2, TileDimensions*2, 0, types.BuildingTypeRoachHive, uint(UnitConstructionTime))
+	building := NewBuilding(0, 0, TileDimensions*2, TileDimensions*2, 0, types.BuildingTypeRoachHive)
 	h := &Hive{
-		Building:        building,
-		UnitContructing: false,
-		buildQueue:      util.NewQueue[*Unit](),
+		Building:   building,
+		buildQueue: util.NewQueue[*QueuedItem](),
 	}
 	return h
 }
 
 func (h *Hive) Update(sim *T) {
 	if !h.buildQueue.IsEmpty() {
-		h.UnitContructing = true
+		queuedItem, err := h.buildQueue.Peek()
+		if err != nil {
+			return
+		}
+		if h.Stats.ProgressMax == 0 {
+			h.Stats.ProgressMax = queuedItem.ConstructionTime
+		}
 		h.Stats.ProgressCurrent += 1
-		if h.Stats.ProgressCurrent >= uint(UnitConstructionTime) {
-			u, err := h.buildQueue.Dequeue()
+		if h.Stats.ProgressCurrent >= h.Stats.ProgressMax {
+			queuedItem, err = h.buildQueue.Dequeue()
 			if err != nil {
 				return // todo handle?
 			}
-			// make sure position isnt colliding with anything and try again
-			u.SetPosition(h.GetNearbyPosition(sim, u.Rect.Dx())) // unit size static for now but could change later
-			sim.AddUnit(u)
-			h.UnitContructing = false
+			queuedItem.OnComplete(sim, h) // returns bool - we could check it if neeed
+
 			h.Stats.ProgressCurrent = 0
+			h.Stats.ProgressMax = 0
 		}
 	}
 }
@@ -61,111 +59,20 @@ func (h *Hive) DistanceTo(point vec2.T) uint {
 	return uint(math.Sqrt(math.Pow(xDist, 2) + math.Pow(yDist, 2)))
 }
 
-func (h *Hive) AddUnitToBuildQueue(unitType types.Unit) {
-	var unit *Unit
-	switch h.Type {
-	case types.BuildingTypeHive:
-		switch unitType {
-		case types.UnitTypeDefaultAnt:
-			unit = NewDefaultAnt()
-		case types.UnitTypeFighterAnt:
-			unit = NewFighterAnt()
-		default:
-			unit = NewDefaultAnt()
-		}
-	case types.BuildingTypeRoachHive:
-		switch unitType {
-		case types.UnitTypeDefaultAnt:
-			unit = NewDefaultRoach()
-		// case UnitTypeFighterAnt:
-		// 	unit = NewFighterAnt()
-		default:
-			unit = NewDefaultRoach()
-		}
-	}
-	h.buildQueue.Enqueue(unit)
-}
-
-func (h *Hive) GetNearbyPosition(sim *T, unitSize int) *vec2.T {
-	const maxRadius = 3
-	const tileSize = 128
-	center := h.GetCenteredPosition()
-
-	type spawnCandidate struct {
-		point   image.Point
-		rect    *image.Rectangle
-		density int
-	}
-	// TODO this sucks make it better
-
-	var candidates []spawnCandidate
-
-	for dx := -maxRadius; dx <= maxRadius; dx++ {
-		for dy := -maxRadius; dy <= maxRadius; dy++ {
-			x := int(center.X) + dx*tileSize
-			y := int(center.Y) + dy*tileSize
-
-			rect := &image.Rectangle{
-				Min: image.Point{X: x - unitSize/2, Y: y - unitSize/2},
-				Max: image.Point{X: x + unitSize/2, Y: y + unitSize/2},
-			}
-
-			if rect.Overlaps(*h.Rect) {
-				continue
-			}
-
-			// Score this tile by number of units overlapping or nearby
-			density := 0
-			for _, unit := range sim.GetAllUnits() {
-				if unit == nil || unit.ID.String() == h.ID.String() {
-					continue
-				}
-				// Check proximity (not just overlap)
-				unitCenter := unit.GetCenteredPosition()
-				dist := math.Hypot(float64(int(unitCenter.X)-x), float64(int(unitCenter.Y)-y))
-				if dist < float64(tileSize*2) { // count units within 2-tile radius
-					density++
-				}
-			}
-
-			candidates = append(candidates, spawnCandidate{
-				point:   image.Point{X: x - unitSize/2, Y: y - unitSize/2},
-				rect:    rect,
-				density: density,
-			})
-		}
-	}
-
-	// Sort by least density first
-	sort.Slice(candidates, func(i, j int) bool {
-		return candidates[i].density < candidates[j].density
-	})
-
-	// Try the best candidates in order
-	for _, c := range candidates {
-		colliders := sim.GetAllCollidersOverlapping(c.rect)
-		collision := false
-		for _, collider := range colliders {
-			if collider.OwnerID == h.ID.String() {
-				continue
-			}
-			if c.rect.Overlaps(*collider.Rect) {
-				collision = true
-				break
-			}
-		}
-
-		if !collision {
-			return &vec2.T{
-				X: float64(c.point.X),
-				Y: float64(c.point.Y),
-			}
-		}
-	}
-
-	// Fallback position
-	return &vec2.T{
-		X: float64(center.X + tileSize),
-		Y: float64(center.Y),
-	}
+func (h *Hive) AddItemToBuildQueue(item *QueuedItem) {
+	h.buildQueue.Enqueue(item)
+	// 	switch h.Type {
+	// case types.BuildingTypeHive:
+	// 	h.buildQueue.Enqueue(item)
+	// case types.BuildingTypeRoachHive:
+	// 	switch unitType {
+	// 	case types.UnitTypeDefaultAnt:
+	// 		unit = NewDefaultRoach()
+	// 	// case UnitTypeFighterAnt:
+	// 	// 	unit = NewFighterAnt()
+	// 	default:
+	// 		unit = NewDefaultRoach()
+	// 	}
+	// }
+	// h.buildQueue.Enqueue(unit)
 }

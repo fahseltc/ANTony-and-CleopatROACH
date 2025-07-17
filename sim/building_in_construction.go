@@ -1,6 +1,9 @@
 package sim
 
-import "gamejam/types"
+import (
+	"gamejam/eventing"
+	"gamejam/types"
+)
 
 var BridgeBuildTime = 160
 
@@ -10,7 +13,7 @@ type InConstructionBuilding struct {
 }
 
 func NewInConstructionBuilding(x, y int, targetBuilding types.Building) *InConstructionBuilding {
-	building := NewBuilding(x, y, TileDimensions, TileDimensions, 0, types.BuildingTypeInConstruction, uint(BridgeBuildTime))
+	building := NewBuilding(x, y, TileDimensions, TileDimensions, uint(PlayerFaction), types.BuildingTypeInConstruction)
 
 	icb := &InConstructionBuilding{
 		Building:       building,
@@ -30,12 +33,22 @@ func (icb *InConstructionBuilding) Update(sim *T) {
 	icb.Stats.ProgressCurrent = 0
 	sim.RemoveBuilding(icb)
 	sim.world.TileMap.RemoveCollisionRect(icb.Rect)
+
 	switch icb.targetBuilding {
-	case types.BuildingTypeInConstruction: // shouldnt happen
+	case types.BuildingTypeInConstruction: // shouldnt ever happen
 	case types.BuildingTypeHive:
 	case types.BuildingTypeBarracks:
 		bb := NewBarracksBuilding(int(icb.Position.X), int(icb.Position.Y))
 		sim.AddBuilding(bb)
+		state := sim.GetPlayerState()
+		state.TechTree.Unlock(TechBuildFighterUnit, sim.GetPlayerState())
+		sim.world.TileMap.AddCollisionRect(bb.GetRect())
+		sim.EventBus.Publish(eventing.Event{
+			Type: "NotificationEvent",
+			Data: eventing.NotificationEvent{
+				Message: "Fighter units unlocked!",
+			},
+		})
 	case types.BuildingTypeBridge:
 		bb := NewBridgeBuilding(int(icb.Position.X), int(icb.Position.Y))
 		sim.AddBuilding(bb)
