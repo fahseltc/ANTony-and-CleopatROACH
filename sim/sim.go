@@ -14,8 +14,6 @@ import (
 )
 
 var NearbyDistance = uint(300)
-var UnitSucroseCost = uint(50)
-var BuildingWoodCost = uint(50)
 var BuilderMaxDistance = uint(340)
 
 type T struct {
@@ -490,8 +488,8 @@ func (s *T) GetAllBuildings() []BuildingInterface {
 }
 
 func (s *T) DetermineUnitOrHiveById(id string) string { // TODO use building.GetType()
-	_, err := s.GetBuildingByID(id)
-	if err == nil {
+	b, err := s.GetBuildingByID(id)
+	if err == nil && b.GetType() == types.BuildingTypeHive {
 		return "hive"
 	}
 	_, err2 := s.GetUnitByID(id)
@@ -521,8 +519,12 @@ func (s *T) ConstructUnit(hiveId string, unitType types.Unit) bool {
 	if err != nil {
 		return false
 	}
-	if s.playerState.Sucrose >= UnitSucroseCost {
-		s.playerState.Sucrose -= UnitSucroseCost
+	newUnit := UtilUnitTypeToUnit(unitType)
+	if s.playerState.Sucrose >= newUnit.Stats.ResourceCost.Sucrose &&
+		s.playerState.Wood >= newUnit.Stats.ResourceCost.Wood {
+		s.playerState.Sucrose -= newUnit.Stats.ResourceCost.Sucrose
+		s.playerState.Wood -= newUnit.Stats.ResourceCost.Wood
+
 		newUnit := UtilUnitTypeToUnit(unitType)
 		hive.AddItemToBuildQueue(&QueuedItem{
 			Type:             types.QueuedItemTypeUnit,

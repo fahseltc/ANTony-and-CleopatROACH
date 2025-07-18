@@ -18,7 +18,7 @@ type PortraitTextArea struct {
 func NewPortraitTextArea(fonts *fonts.All, text string, portraitType PortraitType) *PortraitTextArea {
 	pta := &PortraitTextArea{
 		Ta: NewTextArea(
-			fonts, text,
+			fonts.Med, text,
 		),
 		portrait:    util.LoadImage(portraitType.String()),
 		portraitPos: &image.Point{X: 6, Y: 406},

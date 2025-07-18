@@ -109,6 +109,7 @@ func WithKeyActivation(key ebiten.Key) BtnOptFunc {
 func WithToolTip(tt TooltipInterface) BtnOptFunc {
 	return func(btn *Button) {
 		btn.tooltip = tt
+		btn.tooltip.ReAlignToRect(&btn.rect)
 		btn.tooltip.GetAlignment().Align(btn.rect, tt.GetRect())
 	}
 }

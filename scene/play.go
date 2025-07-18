@@ -100,6 +100,8 @@ func NewPlayScene(fonts *fonts.All, sound *audio.SoundManager, levelData LevelDa
 	scene.eventBus.Subscribe("UnitNotUnlockedEvent", scene.UnitNotUnlockedEvent)
 	scene.eventBus.Subscribe("NotificationEvent", scene.NotificationEvent)
 
+	scene.eventBus.Subscribe("SetRallyPointEvent", scene.SetRallyPointEvent)
+
 	scene.QueenID, scene.KingID = levelData.SetupFunc(scene)
 
 	scene.setupSFX()
@@ -120,6 +122,19 @@ func (s *PlayScene) NotificationEvent(event eventing.Event) {
 	s.CurrentNotification = ui.NewNotification(&s.fonts.Med, event.Data.(eventing.NotificationEvent).Message)
 }
 
+func (s *PlayScene) SetRallyPointEvent(event eventing.Event) {
+	hiveID := s.selectedUnitIDs[0]
+	unitOrHiveString := s.sim.DetermineUnitOrHiveById(hiveID)
+	if unitOrHiveString == "hive" {
+		hive, err := s.sim.GetBuildingByID(hiveID)
+		if err == nil {
+			mouseWorldX, mouseWorldY := s.Ui.Camera.MousePosToMapPos()
+			pt := &image.Point{X: mouseWorldX, Y: mouseWorldY}
+			s.ActionIssuedLocation = pt
+			hive.SetRallyPoint(pt)
+		}
+	}
+}
 func (s *PlayScene) NotEnoughResourcesEvent(event eventing.Event) {
 	resName := event.Data.(eventing.NotEnoughResourcesEvent).ResourceName
 	target := event.Data.(eventing.NotEnoughResourcesEvent).UnitBeingBuilt
@@ -329,6 +344,19 @@ func (s *PlayScene) Update() error {
 					s.Ui.HUD.RightSideState = ui.HiveSelectedState
 					s.constructionMouse.Enabled = false
 				}
+				// Handle single hive clicks
+				if inpututil.IsMouseButtonJustReleased(ebiten.MouseButtonRight) {
+					mx, my := ebiten.CursorPosition()
+					if !s.Ui.HUD.IsPointInside(image.Pt(mx, my)) { // if its not in the UI, set the rally point
+						hive, err := s.sim.GetBuildingByID(s.selectedUnitIDs[0])
+						if err != nil {
+							return nil
+						}
+						mapX, mapY := s.Ui.Camera.ScreenPosToMapPos(mx, my)
+						s.ActionIssuedLocation = &image.Point{X: mapX, Y: mapY}
+						hive.SetRallyPoint(&image.Point{X: mapX, Y: mapY})
+					}
+				}
 			case "unit":
 				// hide HIVE build ui element
 				if s.Ui.HUD.RightSideState != ui.UnitSelectedState { // hide hive build UI
@@ -356,31 +384,40 @@ func (s *PlayScene) Update() error {
 						})
 					}
 				}
+			default:
+				s.Ui.HUD.RightSideState = ui.HiddenState
 			}
 		} else {
-			// Handle multiple unit or building selected
-			if s.Ui.HUD.RightSideState != ui.UnitSelectedState {
-				s.Ui.HUD.RightSideState = ui.UnitSelectedState
-				s.constructionMouse.Enabled = false
-			}
-			if inpututil.IsMouseButtonJustReleased(ebiten.MouseButtonRight) { // activate on buttonRelease to debounce
-				mx, my := ebiten.CursorPosition()
-				if !s.Ui.HUD.IsPointInside(image.Pt(mx, my)) {
-					mapX, mapY := s.Ui.Camera.ScreenPosToMapPos(mx, my)
-					s.ActionIssuedLocation = &image.Point{X: mapX, Y: mapY}
-					s.sim.IssueAction(s.selectedUnitIDs, s.ActionIssuedLocation)
-					s.eventBus.Publish(eventing.Event{
-						Type: "PlayIssueActionSFX",
-					})
-				} else if s.Ui.HUD.IsPointInsideMinimap(image.Pt(mx, my)) {
-					worldX, worldY := s.Ui.MiniMap.ToWorldPixels(mx, my, s.tileMap)
-					s.ActionIssuedLocation = &image.Point{X: worldX, Y: worldY}
-					s.sim.IssueAction(s.selectedUnitIDs, s.ActionIssuedLocation)
-					s.eventBus.Publish(eventing.Event{
-						Type: "PlayIssueActionSFX",
-					})
+			unitOrHiveString := s.sim.DetermineUnitOrHiveById(s.selectedUnitIDs[0])
+			switch unitOrHiveString {
+			case "unit":
+				// Handle multiple unit or building selected
+				if s.Ui.HUD.RightSideState != ui.UnitSelectedState {
+					s.Ui.HUD.RightSideState = ui.UnitSelectedState
+					s.constructionMouse.Enabled = false
 				}
+				if inpututil.IsMouseButtonJustReleased(ebiten.MouseButtonRight) { // activate on buttonRelease to debounce
+					mx, my := ebiten.CursorPosition()
+					if !s.Ui.HUD.IsPointInside(image.Pt(mx, my)) {
+						mapX, mapY := s.Ui.Camera.ScreenPosToMapPos(mx, my)
+						s.ActionIssuedLocation = &image.Point{X: mapX, Y: mapY}
+						s.sim.IssueAction(s.selectedUnitIDs, s.ActionIssuedLocation)
+						s.eventBus.Publish(eventing.Event{
+							Type: "PlayIssueActionSFX",
+						})
+					} else if s.Ui.HUD.IsPointInsideMinimap(image.Pt(mx, my)) {
+						worldX, worldY := s.Ui.MiniMap.ToWorldPixels(mx, my, s.tileMap)
+						s.ActionIssuedLocation = &image.Point{X: worldX, Y: worldY}
+						s.sim.IssueAction(s.selectedUnitIDs, s.ActionIssuedLocation)
+						s.eventBus.Publish(eventing.Event{
+							Type: "PlayIssueActionSFX",
+						})
+					}
+				}
+			default:
+				s.Ui.HUD.RightSideState = ui.HiddenState
 			}
+
 		}
 	} else {
 		// zero units selected - hide the rightside HUD

@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"fmt"
 	"gamejam/eventing"
 	"gamejam/fonts"
 	"gamejam/log"
@@ -63,7 +64,7 @@ func NewUnitButtonPanel(fonts *fonts.All, s *simulation.T) *ButtonPanel {
 		}),
 		WithImage(util.LoadImage("ui/btn/atk-btn.png"), util.LoadImage("ui/btn/atk-btn-pressed.png")),
 		WithKeyActivation(ebiten.KeyQ),
-		WithToolTip(NewTooltip(*fonts, image.Rectangle{}, LeftAlignment)),
+		WithToolTip(NewTooltip(*fonts, image.Rectangle{}, LeftAlignment, "")),
 	)
 	btnPanel.btns = append(btnPanel.btns, atkBtn)
 	btnY += BtnDimension + BtnPad
@@ -76,7 +77,7 @@ func NewUnitButtonPanel(fonts *fonts.All, s *simulation.T) *ButtonPanel {
 			s.SetActionKeyPressed(sim.MoveKeyPressed)
 		}),
 		WithKeyActivation(ebiten.KeyZ),
-		WithToolTip(NewTooltip(*fonts, image.Rectangle{}, LeftAlignment)),
+		WithToolTip(NewTooltip(*fonts, image.Rectangle{}, LeftAlignment, "")),
 	)
 	btnPanel.btns = append(btnPanel.btns, moveBtn)
 	btnX += BtnDimension + BtnPad
@@ -88,7 +89,7 @@ func NewUnitButtonPanel(fonts *fonts.All, s *simulation.T) *ButtonPanel {
 			s.SetActionKeyPressed(sim.StopKeyPressed)
 		}),
 		WithKeyActivation(ebiten.KeyX),
-		WithToolTip(NewTooltip(*fonts, image.Rectangle{}, LeftAlignment)),
+		WithToolTip(NewTooltip(*fonts, image.Rectangle{}, LeftAlignment, "")),
 	)
 	btnPanel.btns = append(btnPanel.btns, stopBtn)
 	btnX += BtnDimension + BtnPad
@@ -101,7 +102,7 @@ func NewUnitButtonPanel(fonts *fonts.All, s *simulation.T) *ButtonPanel {
 			s.SetActionKeyPressed(sim.HoldPositionKeyPressed)
 		}),
 		WithKeyActivation(ebiten.KeyC),
-		WithToolTip(NewTooltip(*fonts, image.Rectangle{}, LeftAlignment)),
+		WithToolTip(NewTooltip(*fonts, image.Rectangle{}, LeftAlignment, "")),
 	)
 	btnPanel.btns = append(btnPanel.btns, holdBtn)
 
@@ -122,8 +123,8 @@ func NewHiveButtonPanel(fonts *fonts.All, s *simulation.T) *ButtonPanel {
 	}
 
 	// Buttons laid out as follows:
-	// [Worker]
-	// [Fighter]
+	// [Worker] [Fighter]
+	// [Rally]
 	// [Upgrade]
 
 	btnX := pos.X
@@ -142,11 +143,12 @@ func NewHiveButtonPanel(fonts *fonts.All, s *simulation.T) *ButtonPanel {
 		}),
 		WithImage(util.LoadImage("ui/btn/make-worker-btn.png"), util.LoadImage("ui/btn/make-worker-btn-pressed.png")),
 		WithKeyActivation(ebiten.KeyQ),
-		WithToolTip(NewTooltip(*fonts, image.Rectangle{}, LeftAlignment)),
+		WithToolTip(NewTooltip(*fonts, image.Rectangle{}, LeftAlignment, fmt.Sprintf("Build a Worker unit for %v Sucrose", 50)))),
 	)
 	btnPanel.btns = append(btnPanel.btns, workerBtn)
-	btnY += BtnDimension + BtnPad
 
+	// Make Fighter Button
+	btnX += BtnDimension + BtnPad
 	var fighterBtn *Button
 	fighterBtn = NewButton(fonts,
 		WithRect(image.Rectangle{Min: image.Pt(btnX, btnY), Max: image.Pt(btnX+BtnDimension, btnY+BtnDimension)}),
@@ -170,14 +172,33 @@ func NewHiveButtonPanel(fonts *fonts.All, s *simulation.T) *ButtonPanel {
 
 		}),
 		WithImage(util.LoadImage("ui/btn/make-fighter-btn.png"), util.LoadImage("ui/btn/make-fighter-btn-pressed.png")),
-		WithKeyActivation(ebiten.KeyF),
-		WithToolTip(NewTooltip(*fonts, image.Rectangle{}, LeftAlignment)),
+		WithKeyActivation(ebiten.KeyE),
+		WithToolTip(NewTooltip(*fonts, image.Rectangle{}, TopAlignment, fmt.Sprintf("Build a Fighter unit for %v Sucrose", 100))), // Todo load this info dynamically
 	)
 	fighterBtn.GreyedOut = true
 	fighterBtn.description = "fighter_btn"
 	btnPanel.btns = append(btnPanel.btns, fighterBtn)
-	btnY += BtnDimension + BtnPad
 
+	// Rally Button
+	btnX -= BtnDimension + BtnPad
+	btnY += BtnDimension + BtnPad
+	var rallyBtn *Button
+	rallyBtn = NewButton(fonts,
+		WithRect(image.Rectangle{Min: image.Pt(btnX, btnY), Max: image.Pt(btnX+BtnDimension, btnY+BtnDimension)}),
+		WithClickFunc(func() {
+			btnPanel.log.Info("rallybtnclicked")
+			s.EventBus.Publish(eventing.Event{
+				Type: "SetRallyPointEvent",
+			})
+		}),
+		WithImage(util.LoadImage("ui/btn/rally-btn.png"), util.LoadImage("ui/btn/rally-btn-pressed.png")),
+		WithKeyActivation(ebiten.KeyF),
+		WithToolTip(NewTooltip(*fonts, image.Rectangle{}, LeftAlignment, "Set the rally point where units will walk towards after being constructed")),
+	)
+	btnPanel.btns = append(btnPanel.btns, rallyBtn)
+
+	// Upgrade Button
+	btnY += BtnDimension + BtnPad
 	var upgradeBtn *Button
 	upgradeBtn = NewButton(fonts,
 		WithRect(image.Rectangle{Min: image.Pt(btnX, btnY), Max: image.Pt(btnX+BtnDimension, btnY+BtnDimension)}),
@@ -197,10 +218,9 @@ func NewHiveButtonPanel(fonts *fonts.All, s *simulation.T) *ButtonPanel {
 		}),
 		WithImage(util.LoadImage("ui/btn/upgrade-btn.png"), util.LoadImage("ui/btn/upgrade-btn-pressed.png")),
 		WithKeyActivation(ebiten.KeyZ),
-		WithToolTip(NewTooltip(*fonts, image.Rectangle{}, TopAlignment)),
+		WithToolTip(NewTooltip(*fonts, image.Rectangle{}, TopAlignment, "")),
 	)
 	btnPanel.btns = append(btnPanel.btns, upgradeBtn)
-	btnY += BtnDimension + BtnPad
 
 	return btnPanel
 }
@@ -223,7 +243,7 @@ func NewWorkerUnitButtonPanel(fonts *fonts.All, s *sim.T) *ButtonPanel {
 			btnPanel.AltModeEnabled = true
 		}),
 		WithKeyActivation(ebiten.KeyB),
-		WithToolTip(NewTooltip(*fonts, image.Rectangle{}, LeftAlignment)),
+		WithToolTip(NewTooltip(*fonts, image.Rectangle{}, LeftAlignment, "")),
 	)
 	btnPanel.btns = append(btnPanel.btns, buildBtn)
 
@@ -242,7 +262,7 @@ func NewWorkerUnitButtonPanel(fonts *fonts.All, s *sim.T) *ButtonPanel {
 			})
 		}),
 		WithKeyActivation(ebiten.KeyQ),
-		WithToolTip(NewTooltip(*fonts, image.Rectangle{}, LeftAlignment)),
+		WithToolTip(NewTooltip(*fonts, image.Rectangle{}, LeftAlignment, "")),
 	)
 	btnPanel.altBtns = append(btnPanel.altBtns, bridgeBtn)
 
@@ -261,7 +281,7 @@ func NewWorkerUnitButtonPanel(fonts *fonts.All, s *sim.T) *ButtonPanel {
 			})
 		}),
 		WithKeyActivation(ebiten.KeyE),
-		WithToolTip(NewTooltip(*fonts, image.Rectangle{}, LeftAlignment)),
+		WithToolTip(NewTooltip(*fonts, image.Rectangle{}, TopAlignment, "")),
 	)
 	btnPanel.altBtns = append(btnPanel.altBtns, barracksBtn)
 
@@ -274,7 +294,7 @@ func NewWorkerUnitButtonPanel(fonts *fonts.All, s *sim.T) *ButtonPanel {
 			btnPanel.AltModeEnabled = false
 		}),
 		WithKeyActivation(ebiten.KeyZ),
-		WithToolTip(NewTooltip(*fonts, image.Rectangle{}, LeftAlignment)),
+		WithToolTip(NewTooltip(*fonts, image.Rectangle{}, LeftAlignment, "")),
 	)
 	btnPanel.altBtns = append(btnPanel.altBtns, cancelBtn)
 

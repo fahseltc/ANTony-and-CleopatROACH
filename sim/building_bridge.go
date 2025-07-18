@@ -15,6 +15,7 @@ func NewBridgeBuilding(x, y int) BuildingInterface {
 	bb.Stats.Cost = ResourceCost{
 		Wood: 50,
 	}
+	bb.Stats.ProgressMax = 90
 
 	return bb
 }

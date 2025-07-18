@@ -16,6 +16,7 @@ func NewBarracksBuilding(x, y int) BuildingInterface {
 		Wood:    100,
 		Sucrose: 100,
 	}
+	bb.Stats.ProgressMax = 120
 
 	return bb
 }

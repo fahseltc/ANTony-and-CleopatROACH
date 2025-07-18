@@ -7,15 +7,18 @@ import (
 )
 
 type All struct {
-	XSmall text.Face
-	Small  text.Face
-	Med    text.Face
-	Large  text.Face
-	XLarge text.Face
+	XXSmall text.Face
+	XSmall  text.Face
+	Small   text.Face
+	Med     text.Face
+	Large   text.Face
+	XLarge  text.Face
 }
 
 func Load(path string) *All {
 	fonts := &All{}
+	xxs, _ := loadTTFFont(path, 4)
+	fonts.XXSmall = xxs
 	xs, _ := loadTTFFont(path, 8)
 	fonts.XSmall = xs
 	s, _ := loadTTFFont(path, 12)

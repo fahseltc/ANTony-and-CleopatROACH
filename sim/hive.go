@@ -4,12 +4,15 @@ import (
 	"gamejam/types"
 	"gamejam/util"
 	"gamejam/vec2"
+	"image"
 	"math"
 )
 
 type Hive struct {
 	*Building
 	buildQueue *util.Queue[*QueuedItem]
+
+	rallyPoint *image.Point
 }
 
 func NewHive() BuildingInterface {
@@ -45,7 +48,10 @@ func (h *Hive) Update(sim *T) {
 			if err != nil {
 				return // todo handle?
 			}
-			queuedItem.OnComplete(sim, h) // returns bool - we could check it if neeed
+			newUnit := queuedItem.OnComplete(sim, h)
+			if queuedItem.Type == types.QueuedItemTypeUnit && h.rallyPoint != nil {
+				sim.issueGroupAction([]string{newUnit.ID.String()}, h.rallyPoint)
+			}
 
 			h.Stats.ProgressCurrent = 0
 			h.Stats.ProgressMax = 0
@@ -61,18 +67,8 @@ func (h *Hive) DistanceTo(point vec2.T) uint {
 
 func (h *Hive) AddItemToBuildQueue(item *QueuedItem) {
 	h.buildQueue.Enqueue(item)
-	// 	switch h.Type {
-	// case types.BuildingTypeHive:
-	// 	h.buildQueue.Enqueue(item)
-	// case types.BuildingTypeRoachHive:
-	// 	switch unitType {
-	// 	case types.UnitTypeDefaultAnt:
-	// 		unit = NewDefaultRoach()
-	// 	// case UnitTypeFighterAnt:
-	// 	// 	unit = NewFighterAnt()
-	// 	default:
-	// 		unit = NewDefaultRoach()
-	// 	}
-	// }
-	// h.buildQueue.Enqueue(unit)
+}
+
+func (h *Hive) SetRallyPoint(rallypoint *image.Point) {
+	h.rallyPoint = rallypoint
 }

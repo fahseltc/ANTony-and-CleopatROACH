@@ -19,6 +19,8 @@ func NewInConstructionBuilding(x, y int, targetBuilding types.Building) *InConst
 		Building:       building,
 		targetBuilding: targetBuilding,
 	}
+	b := UtilBuildingTypeToBuilding(targetBuilding)
+	icb.Stats.ProgressMax = b.GetStats().ProgressMax
 
 	return icb
 }

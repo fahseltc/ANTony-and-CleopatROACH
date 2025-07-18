@@ -190,6 +190,12 @@ func (c *Camera) ScreenPosToMapPos(x, y int) (int, int) {
 	mapY := (float64(y) - float64(c.ViewPortY)) / c.ViewPortZoom
 	return int(mapX), int(mapY)
 }
+func (c *Camera) MousePosToMapPos() (int, int) {
+	mx, my := ebiten.CursorPosition()
+	mapX := (float64(mx) - float64(c.ViewPortX)) / c.ViewPortZoom
+	mapY := (float64(my) - float64(c.ViewPortY)) / c.ViewPortZoom
+	return int(mapX), int(mapY)
+}
 
 func (c *Camera) MapPosToScreenPos(x, y int) (int, int) {
 	screenX := float64(x)*c.ViewPortZoom + float64(c.ViewPortX)

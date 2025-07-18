@@ -12,7 +12,7 @@ type QueuedItem struct {
 	TechID           TechID
 }
 
-func (qi *QueuedItem) OnComplete(s *T, constructingBuilding BuildingInterface) bool {
+func (qi *QueuedItem) OnComplete(s *T, constructingBuilding BuildingInterface) *Unit {
 	switch qi.Type {
 	case types.QueuedItemTypeTech:
 		unlocked := s.GetPlayerState().TechTree.Unlock(qi.TechID, s.GetPlayerState())
@@ -23,13 +23,13 @@ func (qi *QueuedItem) OnComplete(s *T, constructingBuilding BuildingInterface) b
 					Message: s.GetPlayerState().TechTree.GetDescription(qi.TechID),
 				},
 			})
-			return true
+			return nil
 		}
 	case types.QueuedItemTypeUnit:
 		newUnit := qi.Unit
 		newUnit.SetPosition(constructingBuilding.GetNearbyPosition(s, newUnit.Rect.Dx()))
 		s.AddUnit(newUnit)
-		return true
+		return newUnit
 	}
-	return false
+	return nil
 }

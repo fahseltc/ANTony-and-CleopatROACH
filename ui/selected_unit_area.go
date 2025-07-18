@@ -22,17 +22,19 @@ type SelectedUnitArea struct {
 	rect        image.Rectangle
 	selectedIDs []string
 
-	workerIcon  *ebiten.Image
-	fighterIcon *ebiten.Image
-	hiveIcon    *ebiten.Image
+	workerIcon   *ebiten.Image
+	fighterIcon  *ebiten.Image
+	hiveIcon     *ebiten.Image
+	barracksIcon *ebiten.Image
 }
 
 func NewSelectedUnitArea() *SelectedUnitArea {
 	sua := &SelectedUnitArea{
-		rect:        image.Rectangle{Min: image.Pt(190, 510), Max: image.Pt(620, 600)},
-		workerIcon:  util.ScaleImage(util.LoadImage("ui/icon/ant.png"), float32(IconDimension), float32(IconDimension)),
-		fighterIcon: util.ScaleImage(util.LoadImage("ui/icon/fighter.png"), float32(IconDimension), float32(IconDimension)),
-		hiveIcon:    util.ScaleImage(util.LoadImage("ui/icon/hive.png"), float32(IconDimension), float32(IconDimension)),
+		rect:         image.Rectangle{Min: image.Pt(190, 510), Max: image.Pt(620, 600)},
+		workerIcon:   util.ScaleImage(util.LoadImage("ui/icon/ant.png"), float32(IconDimension), float32(IconDimension)),
+		fighterIcon:  util.ScaleImage(util.LoadImage("ui/icon/fighter.png"), float32(IconDimension), float32(IconDimension)),
+		hiveIcon:     util.ScaleImage(util.LoadImage("ui/icon/hive.png"), float32(IconDimension), float32(IconDimension)),
+		barracksIcon: util.ScaleImage(util.LoadImage("ui/icon/barracks.png"), float32(IconDimension), float32(IconDimension)),
 	}
 
 	return sua
@@ -69,6 +71,8 @@ func (s *SelectedUnitArea) Draw(screen *ebiten.Image, sprites map[string]*Sprite
 				screen.DrawImage(s.fighterIcon, opts)
 			case SpriteTypeHive:
 				screen.DrawImage(s.hiveIcon, opts)
+			case SpriteTypeBarracks:
+				screen.DrawImage(s.barracksIcon, opts)
 			default:
 				screen.DrawImage(s.workerIcon, opts)
 			}

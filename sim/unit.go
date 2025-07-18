@@ -58,6 +58,7 @@ type UnitStats struct {
 	ResourceTypeCarried types.Resource
 
 	ConstructionTime uint
+	ResourceCost     ResourceCost
 
 	VisionRange uint
 }
@@ -84,6 +85,9 @@ func NewFighterAnt() *Unit {
 	u := NewDefaultAnt()
 	u.Type = types.UnitTypeFighterAnt
 	u.Stats.Damage = 25
+	u.Stats.ResourceCost = ResourceCost{
+		Sucrose: 100,
+	}
 	size := 128 // match sprite
 	u.Rect.Min = image.Point{0, 0}
 	u.Rect.Max = image.Point{size, size}
@@ -115,6 +119,7 @@ func NewDefaultAnt() *Unit {
 			ResourceTypeCarried: types.ResourceTypeNone,
 
 			ConstructionTime: 60,
+			ResourceCost:     ResourceCost{Sucrose: 50},
 			VisionRange:      4,
 		},
 		Position: &vec2.T{},

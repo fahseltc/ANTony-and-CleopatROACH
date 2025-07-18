@@ -59,6 +59,7 @@ type BuildingInterface interface {
 
 	// needs to be implemented by inheriting building
 	AddItemToBuildQueue(*QueuedItem)
+	SetRallyPoint(rallypoint *image.Point)
 }
 
 func NewBuilding(x, y, width, height int, faction uint, bt types.Building) *Building {
@@ -178,6 +179,7 @@ func (b *Building) GetProgress() float64 {
 }
 func (b *Building) Update(_ *T)                       {} // Default no-op
 func (b *Building) AddItemToBuildQueue(_ *QueuedItem) {}
+func (b *Building) SetRallyPoint(_ *image.Point)      {}
 
 func (b *Building) GetVisionRange() uint {
 	return b.Stats.VisionRange
