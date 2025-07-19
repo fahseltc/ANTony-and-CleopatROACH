@@ -5,7 +5,6 @@ import (
 	"fmt"
 )
 
-// T represents a Config file for the Game
 type Config struct {
 	WindowTitle    string `json:"windowTitle"`
 	TargetFPS      uint   `json:"targetFPS"`

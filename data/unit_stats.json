@@ -1,0 +1,40 @@
+[
+    {
+        "Name":"worker",
+        "HPMax": 100,
+        "MoveSpeed": 10,
+
+        "Damage": 10,
+        "AttackRange":40,
+        "AttackFrames": 30,
+
+        "VisionRange":4,
+        "SizePx": 64,
+
+        "MaxCarryCapacity": 5,
+        "ConstructionTime":60,
+        "ResourceCost": {
+            "Sucrose": 50,
+            "Wood":0
+        }
+    },
+    {
+        "Name":"fighter",
+        "HPMax": 150,
+        "MoveSpeed": 10,
+
+        "Damage": 35,
+        "AttackRange":40,
+        "AttackFrames": 30,
+        
+        "VisionRange":4,
+        "SizePx": 128,
+
+        "MaxCarryCapacity": 5,
+        "ConstructionTime":60,
+        "ResourceCost": {
+            "Sucrose": 100,
+            "Wood":0
+        }
+    }
+]

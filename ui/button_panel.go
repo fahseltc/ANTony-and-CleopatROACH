@@ -143,7 +143,7 @@ func NewHiveButtonPanel(fonts *fonts.All, s *simulation.T) *ButtonPanel {
 		}),
 		WithImage(util.LoadImage("ui/btn/make-worker-btn.png"), util.LoadImage("ui/btn/make-worker-btn-pressed.png")),
 		WithKeyActivation(ebiten.KeyQ),
-		WithToolTip(NewTooltip(*fonts, image.Rectangle{}, LeftAlignment, fmt.Sprintf("Build a Worker unit for %v Sucrose", 50)))),
+		WithToolTip(NewTooltip(*fonts, image.Rectangle{}, LeftAlignment, fmt.Sprintf("Build a Worker unit for %v Sucrose", 50))),
 	)
 	btnPanel.btns = append(btnPanel.btns, workerBtn)
 

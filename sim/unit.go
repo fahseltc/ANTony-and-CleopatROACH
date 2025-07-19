@@ -44,9 +44,11 @@ type Unit struct {
 }
 
 type UnitStats struct {
+	Name      string
 	HPMax     uint
 	HPCur     uint
 	MoveSpeed uint
+	SizePx    uint
 
 	Damage          uint
 	AttackRange     uint
