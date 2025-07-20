@@ -7,6 +7,9 @@ import (
 	"log"
 
 	"github.com/hajimehoshi/ebiten/v2"
+
+	"net/http"
+	_ "net/http/pprof"
 )
 
 var Sound *audio.SoundManager
@@ -31,6 +34,11 @@ func init() {
 
 }
 func main() {
+
+	go func() {
+		log.Println(http.ListenAndServe("localhost:6060", nil))
+	}()
+
 	cfg, err := data.NewConfig()
 	if err != nil {
 		log.Fatal(err)

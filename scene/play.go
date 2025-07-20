@@ -15,6 +15,7 @@ import (
 	"image/color"
 	"math"
 	"slices"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/hajimehoshi/ebiten/v2"
@@ -46,8 +47,10 @@ type PlayScene struct {
 
 	fonts *fonts.All
 
-	Sprites         map[string]*ui.Sprite
-	selectedUnitIDs []string
+	Sprites           map[string]*ui.Sprite
+	sortedSprites     []*ui.Sprite
+	spritesNeedReSort bool
+	selectedUnitIDs   []string
 
 	// Cutscene stuff
 	cutsceneActions []CutsceneAction
@@ -490,6 +493,7 @@ func (s *PlayScene) createOrUpdateUnitSprites() {
 			unitSprite.CarryingWood = (unit.Stats.ResourceTypeCarried == types.ResourceTypeWood && unit.Stats.ResourcesCarried > 0)
 		}
 		s.Sprites[unit.ID.String()] = unitSprite
+		s.spritesNeedReSort = true
 	}
 }
 
@@ -515,6 +519,7 @@ func (s *PlayScene) createOrUpdateBuildingSprites() {
 		spriteBuilding.ProgressBar.SetProgress(building.GetProgress())
 		spriteBuilding.HealthBar.SetProgress(float64(building.GetStats().HPCur) / float64(building.GetStats().HPMax))
 		s.Sprites[building.GetID().String()] = spriteBuilding
+		s.spritesNeedReSort = true
 	}
 }
 
@@ -537,6 +542,7 @@ func (s *PlayScene) updateRemoveInactiveSprites() {
 				s.Sprites[bloodSprite.Id.String()] = bloodSprite
 			}
 			delete(s.Sprites, id) // then delete the old sprite
+			s.spritesNeedReSort = true
 			s.selectedUnitIDs = slices.DeleteFunc(s.selectedUnitIDs, func(id string) bool { return id == spr.Id.String() })
 		}
 	}
@@ -549,19 +555,21 @@ func (s *PlayScene) Draw(screen *ebiten.Image) {
 	opts.GeoM.Translate(float64(s.Ui.Camera.ViewPortX), float64(s.Ui.Camera.ViewPortY))
 	screen.DrawImage(s.Ui.TileMap.StaticBg, opts)
 
-	// Then Static Sprites
-	for _, sprite := range s.Sprites {
-		if sprite.Type == ui.SpriteTypeStatic {
-			sprite.Draw(screen, s.Ui.Camera)
+	// only sort sprites if needed
+	if s.spritesNeedReSort {
+		s.sortedSprites = make([]*ui.Sprite, 0, len(s.Sprites))
+		for _, spr := range s.Sprites {
+			s.sortedSprites = append(s.sortedSprites, spr)
 		}
+		slices.SortFunc(s.sortedSprites, sortSprites) // sorted by Id so we don't get flickering.
+		s.spritesNeedReSort = false
 	}
 
-	// Then Dynamic Sprites
-	for _, sprite := range s.Sprites {
-		if sprite.Type != ui.SpriteTypeStatic {
-			sprite.Draw(screen, s.Ui.Camera)
-		}
+	// Draw all sorted sprites
+	for _, sprite := range s.sortedSprites {
+		sprite.Draw(screen, s.Ui.Camera)
 	}
+
 	// Then fog of war
 	s.drawFogOfWar(screen)
 
@@ -593,6 +601,28 @@ func (s *PlayScene) Draw(screen *ebiten.Image) {
 		s.Pause.Draw(screen)
 		return
 	}
+}
+
+func sortSprites(a, b *ui.Sprite) int {
+	// First, compare by static vs non-static (static = 0, non-static = 1)
+	getTypeRank := func(s *ui.Sprite) int {
+		if s.Type == ui.SpriteTypeStatic {
+			return 0
+		}
+		return 1
+	}
+
+	aRank := getTypeRank(a)
+	bRank := getTypeRank(b)
+	if aRank != bRank {
+		if aRank < bRank {
+			return -1
+		}
+		return 1
+	}
+
+	// If same rank, sort by Id string
+	return strings.Compare(a.Id.String(), b.Id.String())
 }
 
 func (s *PlayScene) drawFogOfWar(screen *ebiten.Image) {

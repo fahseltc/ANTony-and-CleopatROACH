@@ -83,7 +83,8 @@ func (unit *Unit) MoveToDestination(sim *T) {
 	dyRot := float64(newCentered.Y - oldY)
 	if dxRot != 0 || dyRot != 0 { // update angle only if moved
 		unit.StuckFrames = 0
-		unit.MovingAngle = math.Atan2(dyRot, dxRot) + math.Pi/2 // adjust for sprite orientation
+		desiredAngle := math.Atan2(dyRot, dxRot) + math.Pi/2
+		unit.RotateToward(desiredAngle, 1) // radians per frame
 	}
 	arrived := unit.EdgeDistanceTo(dest) <= uint(ArrivalThreshold)
 
@@ -94,9 +95,8 @@ func (unit *Unit) MoveToDestination(sim *T) {
 		unit.StuckFrames++
 
 		if unit.StuckFrames%30 == 0 {
-			//unit.NavigateAround(sim)
-			unit.TrySidestep(sim)
-
+			unit.NavigateAround(sim)
+			//unit.TrySidestep(sim)
 		}
 
 		// if unit.StuckFrames > 2000 { //|| unit.StuckSidestepAttempts > 3
@@ -112,14 +112,34 @@ func (unit *Unit) MoveToDestination(sim *T) {
 		unit.Destinations.Dequeue()
 	}
 	// if arrived && len(unit.Destinations.Items) == 0 &&
-	// 	unit.Action != CollectingAction &&
-	// 	unit.Action != DeliveringAction &&
+	// 	(unit.CurrentState.Name() != "collecting" ||
+	// 		unit.CurrentState.Name() != "delivering") &&
 	// 	unit.Stats.ResourcesCarried != 0 {
 	// 	nearbyUnits := sim.GetAllNearbyFriendlyUnits(unit)
 	// 	for _, nearbyUnit := range nearbyUnits {
 	// 		nearbyUnit.SendMessage(sim, UnitMessageArrivedIdle)
 	// 	}
 	// }
+}
+
+func (unit *Unit) RotateToward(targetAngle float64, maxDelta float64) {
+	diff := targetAngle - unit.MovingAngle
+
+	// Normalize angle to [-π, π]
+	for diff > math.Pi {
+		diff -= 2 * math.Pi
+	}
+	for diff < -math.Pi {
+		diff += 2 * math.Pi
+	}
+
+	if math.Abs(diff) < maxDelta {
+		unit.MovingAngle = targetAngle
+	} else if diff > 0 {
+		unit.MovingAngle += maxDelta
+	} else {
+		unit.MovingAngle -= maxDelta
+	}
 }
 
 func (unit *Unit) isColliding(rect *image.Rectangle, sim *T) bool {

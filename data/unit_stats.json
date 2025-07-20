@@ -1,40 +1,34 @@
 [
     {
-        "Name":"worker",
+        "Name": "worker",
         "HPMax": 100,
         "MoveSpeed": 10,
-
-        "Damage": 10,
-        "AttackRange":40,
-        "AttackFrames": 30,
-
-        "VisionRange":4,
         "SizePx": 64,
-
+        "Damage": 10,
+        "AttackRange": 40,
+        "AttackFrames": 30,
         "MaxCarryCapacity": 5,
-        "ConstructionTime":60,
+        "ConstructionTime": 60,
         "ResourceCost": {
             "Sucrose": 50,
-            "Wood":0
-        }
+            "Wood": 0
+        },
+        "VisionRange": 4
     },
     {
-        "Name":"fighter",
+        "Name": "fighter",
         "HPMax": 150,
         "MoveSpeed": 10,
-
-        "Damage": 35,
-        "AttackRange":40,
-        "AttackFrames": 30,
-        
-        "VisionRange":4,
         "SizePx": 128,
-
+        "Damage": 35,
+        "AttackRange": 60,
+        "AttackFrames": 30,
         "MaxCarryCapacity": 5,
-        "ConstructionTime":60,
+        "ConstructionTime": 60,
         "ResourceCost": {
             "Sucrose": 100,
-            "Wood":0
-        }
+            "Wood": 0
+        },
+        "VisionRange": 5
     }
 ]

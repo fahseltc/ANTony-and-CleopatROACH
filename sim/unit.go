@@ -66,7 +66,7 @@ type UnitStats struct {
 }
 
 func NewRoyalRoach() *Unit {
-	u := NewDefaultAnt()
+	u := GetUnitInstance(types.UnitTypeRoyalRoach, uint(PlayerFaction))
 	u.Type = types.UnitTypeRoyalRoach
 	size := 128 // match sprite
 	u.Rect.Min = image.Point{0, 0}
@@ -75,7 +75,7 @@ func NewRoyalRoach() *Unit {
 }
 
 func NewRoyalAnt() *Unit {
-	u := NewDefaultAnt()
+	u := GetUnitInstance(types.UnitTypeRoyalAnt, uint(PlayerFaction))
 	u.Type = types.UnitTypeRoyalAnt
 	size := 128 // match sprite
 	u.Rect.Min = image.Point{0, 0}
@@ -84,54 +84,18 @@ func NewRoyalAnt() *Unit {
 }
 
 func NewFighterAnt() *Unit {
-	u := NewDefaultAnt()
-	u.Type = types.UnitTypeFighterAnt
-	u.Stats.Damage = 25
-	u.Stats.ResourceCost = ResourceCost{
-		Sucrose: 100,
-	}
-	size := 128 // match sprite
-	u.Rect.Min = image.Point{0, 0}
-	u.Rect.Max = image.Point{size, size}
+	u := GetUnitInstance(types.UnitTypeFighterAnt, uint(PlayerFaction))
 	return u
 }
 
 func NewDefaultRoach() *Unit {
-	u := NewDefaultAnt()
+	u := GetUnitInstance(types.UnitTypeDefaultRoach, uint(PlayerFaction))
 	u.Type = types.UnitTypeDefaultRoach
 	return u
 }
 
 func NewDefaultAnt() *Unit {
-	return &Unit{
-		ID:           uuid.New(),
-		Type:         types.UnitTypeDefaultAnt,
-		CurrentState: nil,
-		Stats: &UnitStats{
-			HPMax:     100,
-			HPCur:     100,
-			MoveSpeed: 10,
-
-			Damage:       10,
-			AttackRange:  40,
-			AttackFrames: 30,
-
-			MaxCarryCapacity:    5,
-			ResourcesCarried:    0,
-			ResourceTypeCarried: types.ResourceTypeNone,
-
-			ConstructionTime: 60,
-			ResourceCost:     ResourceCost{Sucrose: 50},
-			VisionRange:      4,
-		},
-		Position: &vec2.T{},
-		Rect: &image.Rectangle{
-			Min: image.Point{0, 0},
-			Max: image.Point{int(HalfTileSize), int(HalfTileSize)},
-		},
-		Destinations: util.NewQueue[*vec2.T](),
-		Faction:      uint(PlayerFaction),
-	}
+	return GetUnitInstance(types.UnitTypeDefaultAnt, uint(PlayerFaction))
 }
 
 func (unit *Unit) findNearestEnemy(sim *T) *Unit {
