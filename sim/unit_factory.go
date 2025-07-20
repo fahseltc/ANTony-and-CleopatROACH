@@ -18,11 +18,29 @@ type UnitFactory struct {
 
 var (
 	unitConfigInstance *UnitFactory
-	once               sync.Once
+	unitOnce           sync.Once
 )
 
+type rawUnitStat struct {
+	Name      string
+	HPMax     uint
+	MoveSpeed uint
+
+	Damage       uint
+	AttackRange  uint
+	AttackFrames uint
+
+	MaxCarryCapacity uint
+
+	ResourceCost     ResourceCost
+	ConstructionTime uint
+
+	VisionRange uint
+	SizePx      uint
+}
+
 func getUnitFactory() *UnitFactory {
-	once.Do(func() {
+	unitOnce.Do(func() {
 		unitConfigInstance = loadUnitConfig()
 	})
 	return unitConfigInstance
@@ -51,29 +69,15 @@ func GetUnitInstance(unitType types.Unit, faction uint) *Unit {
 	return u
 }
 
-type rawUnitStat struct {
-	Name             string
-	HPMax            uint
-	MoveSpeed        uint
-	Damage           uint
-	AttackRange      uint
-	AttackFrames     uint
-	VisionRange      uint
-	SizePx           uint
-	MaxCarryCapacity uint
-	ConstructionTime uint
-	ResourceCost     ResourceCost
-}
-
 func loadUnitConfig() *UnitFactory {
 	var rawUnits []rawUnitStat
 	jsonFile, err := data.Files.ReadFile("unit_stats.json")
 	if err != nil {
-		panic("failed to read unit_config.json: " + err.Error())
+		panic("failed to read unit_stats.json: " + err.Error())
 	}
 
 	if err := json.Unmarshal(jsonFile, &rawUnits); err != nil {
-		panic("failed to parse unit_config.json: " + err.Error())
+		panic("failed to parse unit_stats.json: " + err.Error())
 	}
 
 	fact := &UnitFactory{

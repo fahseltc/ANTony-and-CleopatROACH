@@ -25,15 +25,18 @@ type Building struct {
 }
 
 type BuildingStats struct {
+	Name  string
 	HPMax uint
 	HPCur uint
 
-	Cost ResourceCost
+	ResourceCost     ResourceCost
+	ConstructionTime uint
+
+	VisionRange uint
+	SizePx      uint
 
 	ProgressMax     uint
 	ProgressCurrent uint
-
-	VisionRange uint
 }
 
 type BuildingInterface interface {
@@ -74,7 +77,7 @@ func NewBuilding(x, y, width, height int, faction uint, bt types.Building) *Buil
 			HPMax: 100,
 			HPCur: 100,
 
-			Cost: ResourceCost{},
+			ResourceCost: ResourceCost{},
 
 			ProgressMax:     0,
 			ProgressCurrent: 0,

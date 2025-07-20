@@ -489,7 +489,7 @@ func (s *T) GetAllBuildings() []BuildingInterface {
 
 func (s *T) DetermineUnitOrHiveById(id string) string { // TODO use building.GetType()
 	b, err := s.GetBuildingByID(id)
-	if err == nil && b.GetType() == types.BuildingTypeHive {
+	if err == nil && b.GetType() == types.BuildingTypeAntHive {
 		return "hive"
 	}
 	_, err2 := s.GetUnitByID(id)
@@ -548,11 +548,11 @@ func (s *T) ConstructBuilding(tileCoords image.Point, builderID string, building
 	//targetCenter := vec2.T{X: float64(target.Min.X + (target.Dx() / 2)), Y: float64(target.Min.Y + (target.Dy() / 2))}
 
 	//if unit.DistanceTo(&targetCenter) > BuilderMaxDistance {
-	if !building.GetStats().Cost.CanAfford(*s.playerState) {
+	if !building.GetStats().ResourceCost.CanAfford(*s.playerState) {
 		return false
 	} else {
 		// actually build the thing
-		bought := building.GetStats().Cost.Purchase(s.playerState)
+		bought := building.GetStats().ResourceCost.Purchase(s.playerState)
 		if bought {
 			inConstructionBuilding := NewInConstructionBuilding(tileCoords.X*TileDimensions, tileCoords.Y*TileDimensions, buildingType)
 			s.buildingMap[int(unit.Faction)] = append(s.buildingMap[int(unit.Faction)], inConstructionBuilding)

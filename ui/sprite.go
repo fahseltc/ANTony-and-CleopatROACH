@@ -122,7 +122,7 @@ func NewDefaultRoachSprite(uuid uuid.UUID) *Sprite {
 }
 
 // Buildings
-func NewHiveSprite(uuid uuid.UUID) *Sprite {
+func NewAntHiveSprite(uuid uuid.UUID) *Sprite {
 	return NewSprite(uuid, image.Rect(0, 0, TileDimensions*2, TileDimensions*2), "buildings/ant-hill.png", SpriteTypeHive)
 }
 func NewRoachHiveSprite(uuid uuid.UUID) *Sprite {

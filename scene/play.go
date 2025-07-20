@@ -504,8 +504,8 @@ func (s *PlayScene) createOrUpdateBuildingSprites() {
 			switch building.GetType() {
 			case types.BuildingTypeBridge:
 				spriteBuilding = ui.NewBridgeSprite(building.GetID())
-			case types.BuildingTypeHive:
-				spriteBuilding = ui.NewHiveSprite(building.GetID())
+			case types.BuildingTypeAntHive:
+				spriteBuilding = ui.NewAntHiveSprite(building.GetID())
 			case types.BuildingTypeBarracks:
 				spriteBuilding = ui.NewBarracksSprite(building.GetID())
 			case types.BuildingTypeRoachHive:

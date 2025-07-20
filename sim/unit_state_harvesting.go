@@ -80,7 +80,7 @@ func (s *HarvestingState) determineNearestHive(unit *Unit, sim *T) BuildingInter
 	var nearest BuildingInterface
 	minDist := uint(math.MaxUint32)
 	for _, building := range sim.GetAllBuildings() {
-		if building.GetFaction() == unit.Faction && (building.GetType() == types.BuildingTypeHive || building.GetType() == types.BuildingTypeRoachHive) {
+		if building.GetFaction() == unit.Faction && (building.GetType() == types.BuildingTypeAntHive || building.GetType() == types.BuildingTypeRoachHive) {
 			dist := unit.DistanceTo(building.GetCenteredPosition())
 			if nearest == nil || dist < minDist {
 				nearest = building

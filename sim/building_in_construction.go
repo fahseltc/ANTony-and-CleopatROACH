@@ -9,7 +9,7 @@ var BridgeBuildTime = 160
 
 type InConstructionBuilding struct {
 	*Building
-	targetBuilding types.Building
+	TargetBuilding types.Building
 }
 
 func NewInConstructionBuilding(x, y int, targetBuilding types.Building) *InConstructionBuilding {
@@ -17,7 +17,7 @@ func NewInConstructionBuilding(x, y int, targetBuilding types.Building) *InConst
 
 	icb := &InConstructionBuilding{
 		Building:       building,
-		targetBuilding: targetBuilding,
+		TargetBuilding: targetBuilding,
 	}
 	b := UtilBuildingTypeToBuilding(targetBuilding)
 	icb.Stats.ProgressMax = b.GetStats().ProgressMax
@@ -36,11 +36,12 @@ func (icb *InConstructionBuilding) Update(sim *T) {
 	sim.RemoveBuilding(icb)
 	sim.world.TileMap.RemoveCollisionRect(icb.Rect)
 
-	switch icb.targetBuilding {
+	switch icb.TargetBuilding {
 	case types.BuildingTypeInConstruction: // shouldnt ever happen
-	case types.BuildingTypeHive:
+	case types.BuildingTypeAntHive:
 	case types.BuildingTypeBarracks:
-		bb := NewBarracksBuilding(int(icb.Position.X), int(icb.Position.Y))
+		bb := GetBuildingInstance(types.BuildingTypeBarracks, uint(PlayerFaction))
+		bb.SetTilePosition(int(icb.Position.X/TileSize), int(icb.Position.Y/TileSize))
 		sim.AddBuilding(bb)
 		state := sim.GetPlayerState()
 		state.TechTree.Unlock(TechBuildFighterUnit, sim.GetPlayerState())
@@ -57,4 +58,10 @@ func (icb *InConstructionBuilding) Update(sim *T) {
 		//sim.world.TileMap.AddCollisionRect()
 	}
 
+}
+
+func (icb *InConstructionBuilding) SetTargetBuilding(targetBuilding types.Building) {
+	bi := UtilBuildingTypeToBuilding(targetBuilding)
+	icb.Stats.ProgressMax = bi.GetStats().ConstructionTime
+	icb.TargetBuilding = bi.GetType()
 }

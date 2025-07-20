@@ -15,8 +15,8 @@ type Hive struct {
 	rallyPoint *image.Point
 }
 
-func NewHive() BuildingInterface {
-	building := NewBuilding(0, 0, TileDimensions*2, TileDimensions*2, 0, types.BuildingTypeHive)
+func NewAntHive() BuildingInterface {
+	building := NewBuilding(0, 0, TileDimensions*2, TileDimensions*2, 0, types.BuildingTypeAntHive)
 	h := &Hive{
 		Building:   building,
 		buildQueue: util.NewQueue[*QueuedItem](),

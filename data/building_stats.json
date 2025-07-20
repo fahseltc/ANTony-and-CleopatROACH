@@ -1,0 +1,68 @@
+[
+    {
+        "Name": "none",
+        "HPMax": 1,
+        "ResourceCost": {
+            "Sucrose": 0,
+            "Wood": 0
+        },
+        "ConstructionTime": 0,
+        "VisionRange": 0,
+        "SizePx": 128
+    },
+    {
+        "Name": "in_construction",
+        "HPMax": 150,
+        "ResourceCost": {
+            "Sucrose": 0,
+            "Wood": 0
+        },
+        "ConstructionTime": 0,
+        "VisionRange": 3,
+        "SizePx": 128
+    },
+    {
+        "Name": "ant_hive",
+        "HPMax": 300,
+        "ResourceCost": {
+            "Sucrose": 200,
+            "Wood": 200
+        },
+        "ConstructionTime": 600,
+        "VisionRange": 9,
+        "SizePx": 256
+    },
+    {
+        "Name": "roach_hive",
+        "HPMax": 300,
+        "ResourceCost": {
+            "Sucrose": 200,
+            "Wood": 200
+        },
+        "ConstructionTime": 600,
+        "VisionRange": 9,
+        "SizePx": 256
+    },
+    {
+        "Name": "barracks",
+        "HPMax": 200,
+        "ResourceCost": {
+            "Sucrose": 100,
+            "Wood": 100
+        },
+        "ConstructionTime": 300,
+        "VisionRange": 6,
+        "SizePx": 128
+    },
+    {
+        "Name": "bridge",
+        "HPMax": 200,
+        "ResourceCost": {
+            "Sucrose": 0,
+            "Wood": 100
+        },
+        "ConstructionTime": 120,
+        "VisionRange": 3,
+        "SizePx": 128
+    }
+]
