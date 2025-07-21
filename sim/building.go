@@ -47,6 +47,7 @@ type BuildingInterface interface {
 	GetID() uuid.UUID
 	GetType() types.Building
 	GetPosition() *vec2.T
+	SetPosition(*vec2.T)
 	GetCenteredPosition() *vec2.T
 	GetClosestPosition(*vec2.T) *vec2.T
 	GetRect() *image.Rectangle
@@ -63,6 +64,7 @@ type BuildingInterface interface {
 	// needs to be implemented by inheriting building
 	AddItemToBuildQueue(*QueuedItem)
 	SetRallyPoint(rallypoint *image.Point)
+	SetTargetBuilding(targetBuilding types.Building) // only for InConstructionBuilding
 }
 
 func NewBuilding(x, y, width, height int, faction uint, bt types.Building) *Building {
@@ -90,10 +92,11 @@ func NewBuilding(x, y, width, height int, faction uint, bt types.Building) *Buil
 	}
 }
 
+// Sets Tile Coordinates of the building
 func (b *Building) SetTilePosition(x, y int) {
 	b.Position = &vec2.T{X: float64(x * TileDimensions), Y: float64(y * TileDimensions)}
-	b.Rect.Min = image.Point{X: x * TileDimensions, Y: y * TileDimensions}
-	b.Rect.Max = image.Point{X: int(b.Position.X) + TileDimensions*2, Y: int(b.Position.Y) + TileDimensions*2}
+	b.Rect.Min = image.Point{X: int(b.Position.X), Y: int(b.Position.Y)}
+	b.Rect.Max = image.Point{X: int(b.Position.X) + int(b.GetStats().SizePx), Y: int(b.Position.Y) + int(b.GetStats().SizePx)}
 }
 
 func (b *Building) GetTilePosition() *vec2.T {
@@ -139,6 +142,10 @@ func (b *Building) GetAdjacentCoordinates() []*vec2.T {
 func (b *Building) GetID() uuid.UUID        { return b.ID }
 func (b *Building) GetType() types.Building { return b.Type }
 func (b *Building) GetPosition() *vec2.T    { return b.Position }
+func (b *Building) SetPosition(pos *vec2.T) {
+	b.Position = pos.RoundToGrid()
+	b.SetTilePosition(b.Position.ToPoint().X, b.Position.ToPoint().Y)
+}
 func (b *Building) GetCenteredPosition() *vec2.T {
 	if b.Rect == nil {
 		return b.Position
@@ -180,9 +187,10 @@ func (b *Building) GetProgress() float64 {
 	}
 	return float64(b.Stats.ProgressCurrent) / float64(b.Stats.ProgressMax)
 }
-func (b *Building) Update(_ *T)                       {} // Default no-op
-func (b *Building) AddItemToBuildQueue(_ *QueuedItem) {}
-func (b *Building) SetRallyPoint(_ *image.Point)      {}
+func (b *Building) Update(_ *T)                                     {} // Default no-op's
+func (b *Building) AddItemToBuildQueue(_ *QueuedItem)               {} // Default no-op's
+func (b *Building) SetRallyPoint(_ *image.Point)                    {} // Default no-op's
+func (b *Building) SetTargetBuilding(targetBuilding types.Building) {} // Default no-op's
 
 func (b *Building) GetVisionRange() uint {
 	return b.Stats.VisionRange

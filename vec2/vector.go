@@ -29,6 +29,8 @@ func (a T) Normalize() T {
 func (a T) ToPoint() image.Point {
 	return image.Point{X: int(a.X), Y: int(a.Y)}
 }
+
+// Used on a vec2.T that repesents pixel location, rounds to the nearest (floor) tile coordinates (still in world pixels, not coords)
 func (a T) RoundToGrid() *T {
 	return &T{
 		X: math.Floor(a.X/TileSize) * TileSize,

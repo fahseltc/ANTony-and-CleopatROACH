@@ -156,9 +156,9 @@ func NewHiveButtonPanel(fonts *fonts.All, s *simulation.T) *ButtonPanel {
 			btnPanel.log.Info("fighterbtnclicked")
 			if fighterBtn.GreyedOut {
 				s.EventBus.Publish(eventing.Event{
-					Type: "UnitNotUnlockedEvent",
-					Data: eventing.UnitNotUnlockedEvent{
-						UnitName: "Fighter",
+					Type: "NotificationEvent",
+					Data: eventing.NotificationEvent{
+						Message: "Fighter unit is not unlocked yet and cannot be built!",
 					},
 				})
 			} else {
@@ -208,12 +208,19 @@ func NewHiveButtonPanel(fonts *fonts.All, s *simulation.T) *ButtonPanel {
 			if playerState.TechTree.CanResearch(sim.TechFasterGathering) {
 				playerState.TechTree.Unlock(sim.TechFasterGathering, playerState)
 				upgradeBtn.Hidden = true
-				// s.EventBus.Publish(eventing.Event{
-				// 	Type: "NotificationEvent",
-				// 	Data: eventing.NotificationEvent{
-				// 		Message: playerState.TechTree.GetDescription(sim.TechFasterGathering),
-				// 	},
-				// })
+				s.EventBus.Publish(eventing.Event{
+					Type: "ResearchButtonClickedEvent",
+					Data: eventing.ResearchButtonClickedEvent{
+						TechID: string(sim.TechFasterGathering),
+					},
+				})
+			} else {
+				s.EventBus.Publish(eventing.Event{
+					Type: "NotificationEvent",
+					Data: eventing.NotificationEvent{
+						Message: "Not Enough Resources!",
+					},
+				})
 			}
 		}),
 		WithImage(util.LoadImage("ui/btn/upgrade-btn.png"), util.LoadImage("ui/btn/upgrade-btn-pressed.png")),

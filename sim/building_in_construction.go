@@ -12,18 +12,18 @@ type InConstructionBuilding struct {
 	TargetBuilding types.Building
 }
 
-func NewInConstructionBuilding(x, y int, targetBuilding types.Building) *InConstructionBuilding {
-	building := NewBuilding(x, y, TileDimensions, TileDimensions, uint(PlayerFaction), types.BuildingTypeInConstruction)
+// func NewInConstructionBuilding(x, y int, targetBuilding types.Building) *InConstructionBuilding {
+// 	building := NewBuilding(x, y, TileDimensions, TileDimensions, uint(PlayerFaction), types.BuildingTypeInConstruction)
 
-	icb := &InConstructionBuilding{
-		Building:       building,
-		TargetBuilding: targetBuilding,
-	}
-	b := UtilBuildingTypeToBuilding(targetBuilding)
-	icb.Stats.ProgressMax = b.GetStats().ProgressMax
+// 	icb := &InConstructionBuilding{
+// 		Building:       building,
+// 		TargetBuilding: targetBuilding,
+// 	}
+// 	b := UtilBuildingTypeToBuilding(targetBuilding)
+// 	icb.Stats.ProgressMax = b.GetStats().ProgressMax
 
-	return icb
-}
+// 	return icb
+// }
 
 func (icb *InConstructionBuilding) Update(sim *T) {
 	// check if there are ants around?
@@ -40,7 +40,7 @@ func (icb *InConstructionBuilding) Update(sim *T) {
 	case types.BuildingTypeInConstruction: // shouldnt ever happen
 	case types.BuildingTypeAntHive:
 	case types.BuildingTypeBarracks:
-		bb := GetBuildingInstance(types.BuildingTypeBarracks, uint(PlayerFaction))
+		bb := GetBuildingInstance(types.BuildingTypeBarracks, icb.Faction)
 		bb.SetTilePosition(int(icb.Position.X/TileSize), int(icb.Position.Y/TileSize))
 		sim.AddBuilding(bb)
 		state := sim.GetPlayerState()
@@ -53,9 +53,9 @@ func (icb *InConstructionBuilding) Update(sim *T) {
 			},
 		})
 	case types.BuildingTypeBridge:
-		bb := NewBridgeBuilding(int(icb.Position.X), int(icb.Position.Y))
+		bb := GetBuildingInstance(icb.TargetBuilding, icb.Faction)
+		bb.SetPosition(icb.Position)
 		sim.AddBuilding(bb)
-		//sim.world.TileMap.AddCollisionRect()
 	}
 
 }

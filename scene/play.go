@@ -37,9 +37,10 @@ type PlayScene struct {
 	QueenID string
 	KingID  string
 
-	eventBus *eventing.EventBus
-	sim      *sim.T
-	Ui       *ui.Ui
+	eventBus            *eventing.EventBus
+	eventHandlerManager *EventHandlerManager
+	sim                 *sim.T
+	Ui                  *ui.Ui
 
 	tileMap           *tilemap.Tilemap
 	drag              *ui.Drag
@@ -96,14 +97,7 @@ func NewPlayScene(fonts *fonts.All, sound *audio.SoundManager, levelData LevelDa
 		Pause:             ui.NewPause(sound, fonts),
 		UnitGroupManager:  ui.NewUnitGroupManager(fonts),
 	}
-	scene.eventBus.Subscribe("MakeAntButtonClickedEvent", scene.HandleMakeAntButtonClickedEvent)
-	scene.eventBus.Subscribe("BuildingButtonClickedEvent", scene.HandleBuildingButtonClickedEvent)
-	scene.eventBus.Subscribe("BuildClickedEvent", scene.HandleBuildClickedEvent)
-	scene.eventBus.Subscribe("NotEnoughResourcesEvent", scene.NotEnoughResourcesEvent)
-	scene.eventBus.Subscribe("UnitNotUnlockedEvent", scene.UnitNotUnlockedEvent)
-	scene.eventBus.Subscribe("NotificationEvent", scene.NotificationEvent)
-
-	scene.eventBus.Subscribe("SetRallyPointEvent", scene.SetRallyPointEvent)
+	scene.eventHandlerManager = NewEventHandlerManager(simulation.EventBus, scene)
 
 	scene.QueenID, scene.KingID = levelData.SetupFunc(scene)
 
@@ -121,92 +115,9 @@ func NewPlayScene(fonts *fonts.All, sound *audio.SoundManager, levelData LevelDa
 	return scene
 }
 
-func (s *PlayScene) NotificationEvent(event eventing.Event) {
-	s.CurrentNotification = ui.NewNotification(&s.fonts.Med, event.Data.(eventing.NotificationEvent).Message)
-}
-
-func (s *PlayScene) SetRallyPointEvent(event eventing.Event) {
-	hiveID := s.selectedUnitIDs[0]
-	unitOrHiveString := s.sim.DetermineUnitOrHiveById(hiveID)
-	if unitOrHiveString == "hive" {
-		hive, err := s.sim.GetBuildingByID(hiveID)
-		if err == nil {
-			mouseWorldX, mouseWorldY := s.Ui.Camera.MousePosToMapPos()
-			pt := &image.Point{X: mouseWorldX, Y: mouseWorldY}
-			s.ActionIssuedLocation = pt
-			hive.SetRallyPoint(pt)
-		}
-	}
-}
-func (s *PlayScene) NotEnoughResourcesEvent(event eventing.Event) {
-	resName := event.Data.(eventing.NotEnoughResourcesEvent).ResourceName
-	target := event.Data.(eventing.NotEnoughResourcesEvent).UnitBeingBuilt
-
-	var str string
-	if target == "Bridge" {
-		str = fmt.Sprintf("Not enough %v to build %v\nOr builder is not close enough!", resName, target)
-	} else {
-		str = fmt.Sprintf("Not enough %v to build %v", resName, target)
-	}
-
-	s.CurrentNotification = ui.NewNotification(&s.fonts.Med, str)
-}
-func (s *PlayScene) UnitNotUnlockedEvent(event eventing.Event) {
-	unitName := event.Data.(eventing.UnitNotUnlockedEvent).UnitName
-
-	s.CurrentNotification = ui.NewNotification(&s.fonts.Med, fmt.Sprintf("%v Unit not unlocked yet!", unitName))
-}
-
 func (s *PlayScene) setupSFX() {
 	s.eventBus.Subscribe("PlayIssueActionSFX", s.sound.PlayIssueActionSFX)
 	s.eventBus.Subscribe("PlaySelectHiveSFX", s.sound.PlaySelectHiveSFX)
-}
-func (s *PlayScene) HandleMakeAntButtonClickedEvent(event eventing.Event) {
-	if len(s.selectedUnitIDs) == 1 {
-		hiveID := s.selectedUnitIDs[0]
-		unitOrHiveString := s.sim.DetermineUnitOrHiveById(hiveID)
-		innerEvent := event.Data.(*eventing.MakeAntButtonClickedEvent)
-		unitType := innerEvent.UnitType
-		if unitOrHiveString == "hive" {
-			s.eventBus.Publish(eventing.Event{
-				Type: "ConstructUnitEvent",
-				Data: eventing.ConstructUnitEvent{
-					HiveID:   hiveID,
-					UnitType: unitType,
-				},
-			})
-		}
-	}
-}
-
-func (s *PlayScene) HandleBuildingButtonClickedEvent(event eventing.Event) {
-	if len(s.selectedUnitIDs) >= 1 {
-		innerEvent := event.Data.(eventing.BuildClickedEvent)
-		unitID := s.selectedUnitIDs[0]
-		unitOrHiveString := s.sim.DetermineUnitOrHiveById(unitID)
-		if unitOrHiveString == "unit" {
-			s.constructionMouse.Enabled = true
-			s.constructionMouse.SetSprite(innerEvent.BuildingType)
-			s.drag.Enabled = false
-		}
-	}
-}
-func (s *PlayScene) HandleBuildClickedEvent(event eventing.Event) {
-	innerEvent := event.Data.(eventing.BuildClickedEvent)
-	if len(s.selectedUnitIDs) >= 1 {
-		success := s.sim.ConstructBuilding(innerEvent.TargetCoordinates, s.selectedUnitIDs[0], innerEvent.BuildingType)
-		if !success {
-			s.eventBus.Publish(eventing.Event{
-				Type: "NotEnoughResourcesEvent",
-				Data: eventing.NotEnoughResourcesEvent{ // todo: add reason why, for example "unit not close enough" etc
-					ResourceName:   "Wood",
-					UnitBeingBuilt: "Bridge",
-				},
-			})
-		}
-	}
-	s.drag.Enabled = true
-	s.constructionMouse.Enabled = false
 }
 
 func (s *PlayScene) Update() error {

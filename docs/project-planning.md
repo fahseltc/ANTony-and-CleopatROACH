@@ -34,13 +34,15 @@ Game is Currently in 1.0
   worker unit: Toilerbee / grubscribe /
   fighter: Antagonist / Mandibrawler
 
-- Rally Points for buildings
+- [x] Rally Points for buildings 7/19?
 - Roach / Ant base building mechanics?
 - Cutscene to hide UI and fade it back in.
 
 - Local unit avoidance
 
-- Different unit types/sizes - workers, fighters, ranged, royalty, etc
+- [x] Different unit types/sizes - workers, fighters, ranged, royalty, etc 7/20
+- [x] Buildings abstracted
+- [x] building constructions abstracted
 - Attack Move action
 - Overal code refactor to prevent all magic numbers
 

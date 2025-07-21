@@ -16,7 +16,7 @@ func (qi *QueuedItem) OnComplete(s *T, constructingBuilding BuildingInterface) *
 	switch qi.Type {
 	case types.QueuedItemTypeTech:
 		unlocked := s.GetPlayerState().TechTree.Unlock(qi.TechID, s.GetPlayerState())
-		if unlocked {
+		if !unlocked {
 			s.EventBus.Publish(eventing.Event{
 				Type: "NotificationEvent",
 				Data: eventing.NotificationEvent{

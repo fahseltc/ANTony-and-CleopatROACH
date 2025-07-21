@@ -33,7 +33,7 @@ type rawBuildingStat struct {
 }
 
 func getBuildingFactory() *BuildingFactory {
-	unitOnce.Do(func() {
+	buildingOnce.Do(func() {
 		buildingConfigInstance = loadBuildingConfig()
 	})
 	return buildingConfigInstance
@@ -86,6 +86,13 @@ func GetBuildingInstance(buildingType types.Building, faction uint) BuildingInte
 			buildQueue: util.NewQueue[*QueuedItem](),
 		}
 	}
+}
+
+// Returns an instance of InConstructionBuilding with the target building set to the incoming parameter
+func GetInConstructionBuildingInstance(targetBuilding types.Building, faction uint) BuildingInterface {
+	bld := GetBuildingInstance(types.BuildingTypeInConstruction, faction)
+	bld.SetTargetBuilding(targetBuilding)
+	return bld
 }
 
 func loadBuildingConfig() *BuildingFactory {

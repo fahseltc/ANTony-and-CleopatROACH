@@ -63,7 +63,7 @@ func NewLevelCollection() *LevelCollection {
 			scene.Ui.Camera.SetPosition(10, 160)
 			scene.Ui.Camera.FadeAlpha = 255
 
-			h := sim.NewAntHive()
+			h := sim.GetBuildingInstance(types.BuildingTypeAntHive, uint(PlayerFaction))
 			h.SetTilePosition(8, 8)
 			scene.sim.AddBuilding(h)
 
@@ -315,11 +315,11 @@ func NewLevelCollection() *LevelCollection {
 	And amid wood chips and whispers, history must crawl forward.`,
 		SetupFunc: func(s *PlayScene) (string, string) {
 			// hives
-			h := sim.NewAntHive()
+			h := sim.GetBuildingInstance(types.BuildingTypeAntHive, uint(PlayerFaction))
 			h.SetTilePosition(6, 8)
 			s.sim.AddBuilding(h)
 
-			rh := sim.NewRoachHive()
+			rh := sim.GetBuildingInstance(types.BuildingTypeRoachHive, uint(PlayerFaction))
 			rh.SetTilePosition(40, 12)
 			s.sim.AddBuilding(rh)
 
@@ -573,7 +573,7 @@ func NewLevelCollection() *LevelCollection {
 			s.Ui.Camera.SetPosition(0, 0)
 			s.Ui.Camera.FadeAlpha = 255
 
-			h := sim.NewAntHive()
+			h := sim.GetBuildingInstance(types.BuildingTypeAntHive, uint(PlayerFaction))
 			h.SetTilePosition(6, 7)
 			s.sim.AddBuilding(h)
 

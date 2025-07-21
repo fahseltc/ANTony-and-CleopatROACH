@@ -15,23 +15,23 @@ type Hive struct {
 	rallyPoint *image.Point
 }
 
-func NewAntHive() BuildingInterface {
-	building := NewBuilding(0, 0, TileDimensions*2, TileDimensions*2, 0, types.BuildingTypeAntHive)
-	h := &Hive{
-		Building:   building,
-		buildQueue: util.NewQueue[*QueuedItem](),
-	}
-	return h
-}
+// func NewAntHive() BuildingInterface {
+// 	building := NewBuilding(0, 0, TileDimensions*2, TileDimensions*2, 0, types.BuildingTypeAntHive)
+// 	h := &Hive{
+// 		Building:   building,
+// 		buildQueue: util.NewQueue[*QueuedItem](),
+// 	}
+// 	return h
+// }
 
-func NewRoachHive() BuildingInterface {
-	building := NewBuilding(0, 0, TileDimensions*2, TileDimensions*2, 0, types.BuildingTypeRoachHive)
-	h := &Hive{
-		Building:   building,
-		buildQueue: util.NewQueue[*QueuedItem](),
-	}
-	return h
-}
+// func NewRoachHive() BuildingInterface {
+// 	building := NewBuilding(0, 0, TileDimensions*2, TileDimensions*2, 0, types.BuildingTypeRoachHive)
+// 	h := &Hive{
+// 		Building:   building,
+// 		buildQueue: util.NewQueue[*QueuedItem](),
+// 	}
+// 	return h
+// }
 
 func (h *Hive) Update(sim *T) {
 	if !h.buildQueue.IsEmpty() {

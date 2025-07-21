@@ -50,6 +50,10 @@ type MakeAntButtonClickedEvent struct {
 	UnitType string
 }
 
+type ResearchButtonClickedEvent struct {
+	TechID string
+}
+
 type ToggleRightSideHUDEvent struct {
 	Show bool
 }

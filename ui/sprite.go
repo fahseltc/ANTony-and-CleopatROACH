@@ -72,13 +72,6 @@ func NewFighterAntSprite(uuid uuid.UUID) *Sprite {
 	size := 192
 	spr := NewSprite(uuid, image.Rect(0, 0, size, size), "units/ants/warrior-ant.png", SpriteTypeFighter)
 	spr.ProgressBar = nil
-	//spr.carryingSucroseSS = util.LoadImage("units/ants/ant-royal-carrying-sucrose.png")
-	//spr.carryingWoodSS = util.LoadImage("units/ants/ant-royal-carrying-wood.png")
-	//spr.defaultSS = util.LoadImage("units/ants/ant-royal-walk.png")
-	// spr.Animation = NewSpriteAnimation(
-	// 	spr.defaultSS,
-	// 	192, 192, 4, 4, true,
-	// )
 	return spr
 }
 

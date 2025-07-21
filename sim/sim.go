@@ -554,8 +554,9 @@ func (s *T) ConstructBuilding(tileCoords image.Point, builderID string, building
 		// actually build the thing
 		bought := building.GetStats().ResourceCost.Purchase(s.playerState)
 		if bought {
-			inConstructionBuilding := NewInConstructionBuilding(tileCoords.X*TileDimensions, tileCoords.Y*TileDimensions, buildingType)
-			s.buildingMap[int(unit.Faction)] = append(s.buildingMap[int(unit.Faction)], inConstructionBuilding)
+			icb := GetInConstructionBuildingInstance(buildingType, uint(PlayerFaction))
+			icb.SetTilePosition(tileCoords.X, tileCoords.Y)
+			s.buildingMap[int(unit.Faction)] = append(s.buildingMap[int(unit.Faction)], icb)
 			return true
 		} else {
 			return false
