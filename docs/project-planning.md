@@ -26,6 +26,8 @@ Game is Currently in 1.0
 - [x] building constructions abstracted
 - [x] Rally Points for buildings 7/19?
 - [x] Overal code refactor to prevent all magic numbers
+- [x] Attack Move action 7/21
+- [x] Stop Move action 7/21
 
 - Attack Animation
 - Unit limits/food stat + building to increase it (slowly generating larvae?)
@@ -34,7 +36,8 @@ Game is Currently in 1.0
 - Roach / Ant base building mechanics?
 - Cutscene to hide UI and fade it back in.
 - Local unit avoidance
-- Attack Move action
+
+- Attack move visual indicator
 - Other unit action keys (patrol, hold position, stop, etc...)
 - Single unit/hive selected UI - should show units in construction queue, unit stats, etc.
 
