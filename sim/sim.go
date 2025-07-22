@@ -217,8 +217,7 @@ func (s *T) issueSingleAction(id string, point *image.Point) error {
 	// }
 	switch unit.DestinationType {
 	case types.DestinationTypeEnemy:
-
-		//unit.Action = AttackMovingAction
+		unit.ChangeState(&AttackMoveState{})
 	case types.DestinationTypeResource:
 		unit.LastResourcePos = &vec2.T{
 			X: float64(clickedTile.Coordinates.X*int(TileSize) + int(HalfTileSize)),
@@ -226,7 +225,11 @@ func (s *T) issueSingleAction(id string, point *image.Point) error {
 		}
 		unit.ChangeState(&HarvestingState{})
 	case types.DestinationTypeTile:
-		unit.ChangeState(&MovingState{})
+		if s.ActionKeyPressed == AttackKeyPressed {
+			unit.ChangeState(&AttackMoveState{})
+		} else {
+			unit.ChangeState(&MovingState{})
+		}
 	}
 
 	start := unit.GetTileCoordinates()

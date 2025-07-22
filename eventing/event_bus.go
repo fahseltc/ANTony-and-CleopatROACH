@@ -23,14 +23,10 @@ type NotEnoughResourcesEvent struct {
 	UnitBeingBuilt string
 }
 
-type UnitNotUnlockedEvent struct {
-	UnitName string
-}
-
-type SceneCompletionEvent struct {
-	RoyalAntID   string
-	RoyalRoachID string
-}
+// type SceneCompletionEvent struct {
+// 	RoyalAntID   string
+// 	RoyalRoachID string
+// }
 
 type BuildClickedEvent struct {
 	TargetCoordinates image.Point
@@ -54,9 +50,9 @@ type ResearchButtonClickedEvent struct {
 	TechID string
 }
 
-type ToggleRightSideHUDEvent struct {
-	Show bool
-}
+// type ToggleRightSideHUDEvent struct {
+// 	Show bool
+// }
 
 type EventBus struct {
 	subscribers map[string][]func(event Event)

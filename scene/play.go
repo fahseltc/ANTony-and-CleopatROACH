@@ -646,7 +646,7 @@ func (s *PlayScene) DebugDraw(screen *ebiten.Image) {
 		// Draw unit state
 		cx, cy := s.Ui.Camera.MapPosToScreenPos(unit.Position.ToPoint().X, unit.Position.ToPoint().Y)
 		if unit.CurrentState != nil {
-			ebitenutil.DebugPrintAt(screen, unit.CurrentState.Name(), cx, cy)
+			ebitenutil.DebugPrintAt(screen, unit.CurrentState.GetName(), cx, cy)
 		}
 	}
 	ebitenutil.DebugPrintAt(screen, fmt.Sprintf("camera:%v,%v", s.Ui.Camera.ViewPortX, s.Ui.Camera.ViewPortY), 1, 1)

@@ -4,19 +4,38 @@ type UnitStateInterface interface {
 	Enter(unit *Unit)
 	Update(unit *Unit, sim *T)
 	Exit(unit *Unit)
-	Name() string
+	GetName() string
 }
 
-// Unit States:
-// AttackingState
-// IdleState
-// MovingState
-//
-// HarvestingState
-// DeliveringState
+type UnitState uint
 
-// type ExampleState struct{}
-// func (s *ExampleState) Enter(unit *Unit) {}
-// func (s *ExampleState) Update(unit *Unit, sim *T) {}
-// func (s *ExampleState) Exit(unit *Unit) {}
-// func (s *ExampleState) Name() string    { return "example" }
+const (
+	UnitStateAttacking UnitState = iota
+	UnitStateIdle
+	UnitStateMoving
+	UnitStateAttackMove
+	UnitStateHarvesting
+	UnitStateDelivering
+	UnitStateConstructing
+)
+
+func (us UnitState) ToString() string {
+	switch us {
+	case UnitStateAttacking:
+		return "attacking"
+	case UnitStateIdle:
+		return "idle"
+	case UnitStateMoving:
+		return "moving"
+	case UnitStateAttackMove:
+		return "attackmove"
+	case UnitStateHarvesting:
+		return "harvesting"
+	case UnitStateDelivering:
+		return "delivering"
+	case UnitStateConstructing:
+		return "constructing"
+	default:
+		return "idle"
+	}
+}

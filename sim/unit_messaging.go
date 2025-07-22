@@ -16,7 +16,7 @@ func (unit *Unit) SendMessage(sim *T, msg UnitMessage) {
 		unit.ChangeState(&IdleState{})
 		nearbyUnits := sim.GetAllNearbyFriendlyUnits(unit)
 		for _, nearbyUnit := range nearbyUnits {
-			if nearbyUnit.CurrentState.Name() != "idle" {
+			if nearbyUnit.CurrentState.GetName() != UnitStateIdle.ToString() {
 				nearbyUnit.SendMessage(sim, UnitMessageArrivedIdle)
 			}
 		}

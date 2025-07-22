@@ -65,7 +65,7 @@ func (s *HarvestingState) Update(unit *Unit, sim *T) {
 
 }
 func (s *HarvestingState) Exit(unit *Unit) {}
-func (s *HarvestingState) Name() string    { return "harvesting" }
+func (s *HarvestingState) GetName() string { return UnitStateHarvesting.ToString() }
 
 // internal helper methods for harvesting
 func (s *HarvestingState) determineResourceHarvested(unit *Unit, sim *T) types.Resource {

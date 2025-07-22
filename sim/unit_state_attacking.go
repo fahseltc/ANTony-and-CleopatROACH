@@ -59,7 +59,7 @@ func (unit *Unit) IsTargetInFrontalCone(target *Unit, coneAngle float64) bool {
 }
 
 func (s *AttackingState) Exit(unit *Unit) {}
-func (s *AttackingState) Name() string    { return "attacking" }
+func (s *AttackingState) GetName() string { return UnitStateAttacking.ToString() }
 
 // 	if unit.NearestEnemy != nil && unit.NearestEnemy.IsAlive() && unit.TargetInRange(unit.NearestEnemy.GetCenteredPosition()) {
 // 		if unit.IsInAttackZone(unit.NearestEnemy) {

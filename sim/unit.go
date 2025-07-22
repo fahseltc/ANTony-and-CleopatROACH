@@ -6,12 +6,12 @@ import (
 	"gamejam/vec2"
 	"image"
 	"math"
-	"math/rand/v2"
 
 	"github.com/google/uuid"
 )
 
 var ArrivalThreshold = 80
+var UnitAttackRangeBuffer = 10
 
 var PlayerFaction = 0
 
@@ -33,12 +33,12 @@ type Unit struct {
 
 	CurrentState UnitStateInterface
 
-	NearestEnemy          *Unit
-	NearestHome           BuildingInterface
-	LastResourcePos       *vec2.T
-	CurrentAnim           string
-	StuckFrames           int
-	StuckSidestepAttempts int
+	NearestEnemy    *Unit
+	NearestHome     BuildingInterface
+	LastResourcePos *vec2.T
+	CurrentAnim     string
+	StuckFrames     int
+	StuckAttempts   int
 
 	Faction uint
 }
@@ -187,7 +187,7 @@ func (unit *Unit) TargetInAttackRange(point *vec2.T) bool {
 		return false
 	}
 
-	return val <= unit.Stats.AttackRange
+	return val <= unit.Stats.AttackRange+uint(UnitAttackRangeBuffer)
 }
 
 func (unit *Unit) SetPosition(pos *vec2.T) {
@@ -214,38 +214,6 @@ func (unit *Unit) GetTileCoordinates() *vec2.T {
 		Y: math.Round(unit.Position.Y / TileSize),
 	}
 }
-func (unit *Unit) computeRepulsion(sim *T) *vec2.T {
-	repulsion := vec2.T{}
-	myCenter := unit.GetCenteredPosition()
-
-	for _, other := range sim.GetAllUnits() {
-		if other.ID == unit.ID {
-			continue
-		}
-		otherCenter := other.GetCenteredPosition()
-		dir := myCenter.Sub(*otherCenter)
-		dist := dir.Length()
-
-		if dist < 160 && dist > 0.1 {
-			// Normalize direction and scale force
-			push := dir.Normalize().Scale((160 - dist) / 160)
-
-			// Apply sideways deflection if mostly head-on
-			if math.Abs(push.X) < 0.2 && math.Abs(push.Y) > 0.5 {
-				// Deflect left or right
-				deflect := vec2.T{X: 1, Y: 0}
-				if rand.IntN(2) == 0 {
-					deflect.X = -1
-				}
-				push = push.Add(deflect.Scale(1.5))
-			}
-
-			repulsion = repulsion.Add(push)
-		}
-	}
-
-	return &repulsion
-}
 
 func (unit *Unit) GetCenteredPosition() *vec2.T {
 	return &vec2.T{
@@ -270,4 +238,18 @@ func (unit *Unit) ChangeState(newState UnitStateInterface) {
 	if unit.CurrentState != nil {
 		unit.CurrentState.Enter(unit)
 	}
+}
+
+func (unit *Unit) isDestinationBlocked(sim *T) bool {
+	dest, err := unit.Destinations.Peek()
+	if err != nil || dest == nil {
+		return false
+	}
+
+	destRect := &image.Rectangle{
+		Min: image.Point{X: int(dest.X), Y: int(dest.Y)},
+		Max: image.Point{X: int(dest.X) + unit.Rect.Dx(), Y: int(dest.Y) + unit.Rect.Dy()},
+	}
+
+	return unit.isColliding(destRect, sim)
 }

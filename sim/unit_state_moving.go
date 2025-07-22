@@ -7,6 +7,9 @@ import (
 	"math/rand/v2"
 )
 
+var UnitRepulsionWeight = 2.0
+var UnitMaxStuckFrames = 120
+
 type MovingState struct {
 	NextState UnitStateInterface
 }
@@ -21,9 +24,10 @@ func (s *MovingState) Update(unit *Unit, sim *T) {
 			unit.ChangeState(&IdleState{})
 		}
 	}
+
 }
 func (s *MovingState) Exit(unit *Unit) {}
-func (s *MovingState) Name() string    { return "moving" }
+func (s *MovingState) GetName() string { return UnitStateMoving.ToString() }
 
 func (unit *Unit) MoveToDestination(sim *T) {
 	dest, err := unit.Destinations.Peek()
@@ -45,8 +49,14 @@ func (unit *Unit) MoveToDestination(sim *T) {
 	if toTarget.Length() > 0 {
 		toTarget = toTarget.Normalize()
 	}
-	repulsionWeight := 2.0
-	moveVec := toTarget.Add(repulsion.Scale(repulsionWeight)).Normalize().Scale(speed)
+
+	arrived := unit.EdgeDistanceTo(dest) <= uint(ArrivalThreshold)
+	// Reduce or ignore repulsion when very close
+	if arrived {
+		repulsion = &vec2.T{} // disable repulsion
+	}
+
+	moveVec := toTarget.Add(repulsion.Scale(UnitRepulsionWeight)).Normalize().Scale(speed)
 
 	moveX := math.Copysign(math.Min(math.Abs(moveVec.X), speed), moveVec.X)
 	moveY := math.Copysign(math.Min(math.Abs(moveVec.Y), speed), moveVec.Y)
@@ -86,7 +96,7 @@ func (unit *Unit) MoveToDestination(sim *T) {
 		desiredAngle := math.Atan2(dyRot, dxRot) + math.Pi/2
 		unit.RotateToward(desiredAngle, 1) // radians per frame
 	}
-	arrived := unit.EdgeDistanceTo(dest) <= uint(ArrivalThreshold)
+	arrived = unit.EdgeDistanceTo(dest) <= uint(ArrivalThreshold)
 
 	const stuckEpsilon = 1.5
 	moved := math.Abs(dxRot) > stuckEpsilon || math.Abs(dyRot) > stuckEpsilon
@@ -99,27 +109,23 @@ func (unit *Unit) MoveToDestination(sim *T) {
 			//unit.TrySidestep(sim)
 		}
 
-		// if unit.StuckFrames > 2000 { //|| unit.StuckSidestepAttempts > 3
-		// 	//Only sidestep if the destination itself isn't clearly blocked
-		// 	if unit.isDestinationBlocked(sim) {
-		// 		unit.Action = IdleAction
-		// 		unit.StuckFrames = 0
-		// 		return
-		// 	}
-		// }
+		if unit.StuckFrames > UnitMaxStuckFrames {
+			unit.StuckAttempts++
+			if unit.StuckAttempts >= 3 {
+				unit.ChangeState(&IdleState{})
+				unit.Destinations.Clear()
+				unit.StuckFrames = 0
+				unit.StuckAttempts = 0
+				return
+			}
+			unit.NavigateAround(sim)
+			unit.StuckFrames = 0
+		}
+
 	}
 	if arrived && len(unit.Destinations.Items) >= 1 {
 		unit.Destinations.Dequeue()
 	}
-	// if arrived && len(unit.Destinations.Items) == 0 &&
-	// 	(unit.CurrentState.Name() != "collecting" ||
-	// 		unit.CurrentState.Name() != "delivering") &&
-	// 	unit.Stats.ResourcesCarried != 0 {
-	// 	nearbyUnits := sim.GetAllNearbyFriendlyUnits(unit)
-	// 	for _, nearbyUnit := range nearbyUnits {
-	// 		nearbyUnit.SendMessage(sim, UnitMessageArrivedIdle)
-	// 	}
-	// }
 }
 
 func (unit *Unit) RotateToward(targetAngle float64, maxDelta float64) {
@@ -156,7 +162,7 @@ func (unit *Unit) isColliding(rect *image.Rectangle, sim *T) bool {
 		collidingUnit, _ := sim.GetUnitByID(collider.OwnerID)
 
 		// Skip unit-unit collision for workers that are not idle
-		if unit.IsWorker() && unit.CurrentState.Name() != "idle" && collidingUnit != nil && collidingUnit.IsWorker() {
+		if unit.IsWorker() && unit.CurrentState.GetName() != UnitStateIdle.ToString() && collidingUnit != nil && collidingUnit.IsWorker() {
 			continue
 		}
 		if collider.Radius > 0 && collider.Center != (image.Point{}) {
@@ -240,4 +246,44 @@ func (unit *Unit) NavigateAround(sim *T) {
 		X: backDest.X,
 		Y: backDest.Y,
 	})
+}
+func (unit *Unit) computeRepulsion(sim *T) *vec2.T {
+	repulsion := vec2.T{}
+	myCenter := unit.GetCenteredPosition()
+	maxPush := 3.0 // cap max influence of any one unit
+
+	for _, other := range sim.GetAllUnits() {
+		if other.ID == unit.ID {
+			continue
+		}
+
+		otherCenter := other.GetCenteredPosition()
+		dir := myCenter.Sub(*otherCenter)
+		dist := dir.Length()
+
+		if dist < 160 && dist > 0.1 {
+			strength := (160 - dist) / 160
+			falloff := math.Pow(strength, 2) // aggressive falloff
+			push := dir.Normalize().Scale(math.Min(falloff*5, maxPush))
+
+			// Optional: Apply sideways deflection to break deadlocks
+			// But reduce strength at very low distances to avoid chaos
+			if falloff > 0.3 && math.Abs(push.X) < 0.2 && math.Abs(push.Y) > 0.5 {
+				deflect := vec2.T{X: 1, Y: 0}
+				if rand.IntN(2) == 0 {
+					deflect.X = -1
+				}
+				push = push.Add(deflect.Scale(0.5)) // reduced from 1.5 to 0.5
+			}
+
+			repulsion = repulsion.Add(push)
+		}
+	}
+
+	// Final clamp on total repulsion to avoid extreme jittering
+	if repulsion.Length() > maxPush {
+		repulsion = repulsion.Normalize().Scale(maxPush)
+	}
+
+	return &repulsion
 }

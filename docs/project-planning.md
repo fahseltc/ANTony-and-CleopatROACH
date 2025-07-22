@@ -21,30 +21,22 @@ Game is Currently in 1.0
 - [x] Selected Unit UI - started 7/11-13
 - [x] Unit Grouping UI - 7/13
 - [x] health bars on selected unit area - 7/14
+- [x] Different unit types/sizes - workers, fighters, ranged, royalty, etc 7/20
+- [x] Buildings abstracted
+- [x] building constructions abstracted
+- [x] Rally Points for buildings 7/19?
+- [x] Overal code refactor to prevent all magic numbers
+
 - Attack Animation
 - Unit limits/food stat + building to increase it (slowly generating larvae?)
 - Hold shift + click more units adds them to the selected group of units
 
-  food ideas from nerds
-  tunnels to other hives
-  other hives create other units
-  swarmament / the fight hive / Mandibarracks
-  The Antagonist
-  The Antnex / Myrmicastle
-  worker unit: Toilerbee / grubscribe /
-  fighter: Antagonist / Mandibrawler
-
-- [x] Rally Points for buildings 7/19?
 - Roach / Ant base building mechanics?
 - Cutscene to hide UI and fade it back in.
-
 - Local unit avoidance
-
-- [x] Different unit types/sizes - workers, fighters, ranged, royalty, etc 7/20
-- [x] Buildings abstracted
-- [x] building constructions abstracted
 - Attack Move action
-- Overal code refactor to prevent all magic numbers
+- Other unit action keys (patrol, hold position, stop, etc...)
+- Single unit/hive selected UI - should show units in construction queue, unit stats, etc.
 
 - Camera location hotkeys
 - Fix issue with construction not being local to a unit
@@ -69,3 +61,14 @@ Un-prioritized
 - additional SFX (construction started, finished)
 - Ant Boats
 - Factions (roaches / ants / mantis? / )
+
+Food / Unit Name ideas
+
+food ideas from nerds
+tunnels to other hives
+other hives create other units
+swarmament / the fight hive / Mandibarracks
+The Antagonist
+The Antnex / Myrmicastle
+worker unit: Toilerbee / grubscribe /
+fighter: Antagonist / Mandibrawler

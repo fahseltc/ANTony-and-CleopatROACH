@@ -25,4 +25,4 @@ func (s *IdleState) Update(unit *Unit, sim *T) {
 }
 
 func (s *IdleState) Exit(unit *Unit) {}
-func (s *IdleState) Name() string    { return "idle" }
+func (s *IdleState) GetName() string { return UnitStateIdle.ToString() }

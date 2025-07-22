@@ -50,4 +50,4 @@ func (s *DeliveringState) Update(unit *Unit, sim *T) {
 }
 
 func (s *DeliveringState) Exit(unit *Unit) {}
-func (s *DeliveringState) Name() string    { return "delivering" }
+func (s *DeliveringState) GetName() string { return UnitStateDelivering.ToString() }
