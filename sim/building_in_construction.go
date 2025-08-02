@@ -54,7 +54,7 @@ func (icb *InConstructionBuilding) Update(sim *T) {
 		})
 	case types.BuildingTypeBridge:
 		bb := GetBuildingInstance(icb.TargetBuilding, icb.Faction)
-		bb.SetPosition(icb.Position)
+		bb.SetTilePosition(int(icb.Position.X/TileSize), int(icb.Position.Y/TileSize))
 		sim.AddBuilding(bb)
 	}
 

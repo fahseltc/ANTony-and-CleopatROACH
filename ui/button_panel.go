@@ -1,7 +1,6 @@
 package ui
 
 import (
-	"fmt"
 	"gamejam/eventing"
 	"gamejam/fonts"
 	"gamejam/log"
@@ -69,18 +68,19 @@ func NewUnitButtonPanel(fonts *fonts.All, s *simulation.T) *ButtonPanel {
 	btnPanel.btns = append(btnPanel.btns, atkBtn)
 	btnY += BtnDimension + BtnPad
 
-	moveBtn := NewButton(fonts,
-		WithRect(image.Rectangle{Min: image.Pt(btnX, btnY), Max: image.Pt(btnX+BtnDimension, btnY+BtnDimension)}),
-		WithImage(util.LoadImage("ui/btn/move-btn.png"), util.LoadImage("ui/btn/move-btn-pressed.png")),
-		WithClickFunc(func() {
-			btnPanel.log.Info("movebtnclicked")
-			s.SetActionKeyPressed(sim.MoveKeyPressed)
-		}),
-		WithKeyActivation(ebiten.KeyZ),
-		WithToolTip(NewTooltip(*fonts, image.Rectangle{}, LeftAlignment, "")),
-	)
-	btnPanel.btns = append(btnPanel.btns, moveBtn)
-	btnX += BtnDimension + BtnPad
+	// Move button is the same as right click so its been removed.
+	// moveBtn := NewButton(fonts,
+	// 	WithRect(image.Rectangle{Min: image.Pt(btnX, btnY), Max: image.Pt(btnX+BtnDimension, btnY+BtnDimension)}),
+	// 	WithImage(util.LoadImage("ui/btn/move-btn.png"), util.LoadImage("ui/btn/move-btn-pressed.png")),
+	// 	WithClickFunc(func() {
+	// 		btnPanel.log.Info("movebtnclicked")
+	// 		s.SetActionKeyPressed(sim.MoveKeyPressed)
+	// 	}),
+	// 	WithKeyActivation(ebiten.KeyZ),
+	// 	WithToolTip(NewTooltip(*fonts, image.Rectangle{}, LeftAlignment, "")),
+	// )
+	// btnPanel.btns = append(btnPanel.btns, moveBtn)
+	// btnX += BtnDimension + BtnPad
 
 	stopBtn := NewButton(fonts,
 		WithRect(image.Rectangle{Min: image.Pt(btnX, btnY), Max: image.Pt(btnX+BtnDimension, btnY+BtnDimension)}),
@@ -88,7 +88,7 @@ func NewUnitButtonPanel(fonts *fonts.All, s *simulation.T) *ButtonPanel {
 		WithClickFunc(func() {
 			s.SetActionKeyPressed(sim.StopKeyPressed)
 		}),
-		WithKeyActivation(ebiten.KeyX),
+		WithKeyActivation(ebiten.KeyZ),
 		WithToolTip(NewTooltip(*fonts, image.Rectangle{}, LeftAlignment, "")),
 	)
 	btnPanel.btns = append(btnPanel.btns, stopBtn)
@@ -101,7 +101,7 @@ func NewUnitButtonPanel(fonts *fonts.All, s *simulation.T) *ButtonPanel {
 			btnPanel.log.Info("holdbtnclicked")
 			s.SetActionKeyPressed(sim.HoldPositionKeyPressed)
 		}),
-		WithKeyActivation(ebiten.KeyC),
+		WithKeyActivation(ebiten.KeyX),
 		WithToolTip(NewTooltip(*fonts, image.Rectangle{}, LeftAlignment, "")),
 	)
 	btnPanel.btns = append(btnPanel.btns, holdBtn)
@@ -143,7 +143,9 @@ func NewHiveButtonPanel(fonts *fonts.All, s *simulation.T) *ButtonPanel {
 		}),
 		WithImage(util.LoadImage("ui/btn/make-worker-btn.png"), util.LoadImage("ui/btn/make-worker-btn-pressed.png")),
 		WithKeyActivation(ebiten.KeyQ),
-		WithToolTip(NewTooltip(*fonts, image.Rectangle{}, LeftAlignment, fmt.Sprintf("Build a Worker unit for %v Sucrose", 50))),
+		WithToolTip(
+			NewUnitCostToolTip(*fonts, types.UnitTypeDefaultAnt, image.Rectangle{}, LeftAlignment),
+		),
 	)
 	btnPanel.btns = append(btnPanel.btns, workerBtn)
 
@@ -173,7 +175,9 @@ func NewHiveButtonPanel(fonts *fonts.All, s *simulation.T) *ButtonPanel {
 		}),
 		WithImage(util.LoadImage("ui/btn/make-fighter-btn.png"), util.LoadImage("ui/btn/make-fighter-btn-pressed.png")),
 		WithKeyActivation(ebiten.KeyE),
-		WithToolTip(NewTooltip(*fonts, image.Rectangle{}, TopAlignment, fmt.Sprintf("Build a Fighter unit for %v Sucrose", 100))), // Todo load this info dynamically
+		WithToolTip(
+			NewUnitCostToolTip(*fonts, types.UnitTypeFighterAnt, image.Rectangle{}, LeftAlignment),
+		),
 	)
 	fighterBtn.GreyedOut = true
 	fighterBtn.description = "fighter_btn"

@@ -31,10 +31,10 @@ type SelectedUnitArea struct {
 func NewSelectedUnitArea() *SelectedUnitArea {
 	sua := &SelectedUnitArea{
 		rect:         image.Rectangle{Min: image.Pt(190, 510), Max: image.Pt(620, 600)},
-		workerIcon:   util.ScaleImage(util.LoadImage("ui/icon/ant.png"), float32(IconDimension), float32(IconDimension)),
-		fighterIcon:  util.ScaleImage(util.LoadImage("ui/icon/fighter.png"), float32(IconDimension), float32(IconDimension)),
-		hiveIcon:     util.ScaleImage(util.LoadImage("ui/icon/hive.png"), float32(IconDimension), float32(IconDimension)),
-		barracksIcon: util.ScaleImage(util.LoadImage("ui/icon/barracks.png"), float32(IconDimension), float32(IconDimension)),
+		workerIcon:   util.ScaleImage(util.LoadImage("ui/icons/ant.png"), float32(IconDimension), float32(IconDimension)),
+		fighterIcon:  util.ScaleImage(util.LoadImage("ui/icons/fighter.png"), float32(IconDimension), float32(IconDimension)),
+		hiveIcon:     util.ScaleImage(util.LoadImage("ui/icons/hive.png"), float32(IconDimension), float32(IconDimension)),
+		barracksIcon: util.ScaleImage(util.LoadImage("ui/icons/barracks.png"), float32(IconDimension), float32(IconDimension)),
 	}
 
 	return sua

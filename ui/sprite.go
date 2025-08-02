@@ -164,6 +164,7 @@ func (spr *Sprite) SetPosition(pos *vec2.T) {
 		},
 	}
 }
+
 func (spr *Sprite) SetCenteredPosition(pos *vec2.T) {
 	if spr.Rect == nil {
 		return

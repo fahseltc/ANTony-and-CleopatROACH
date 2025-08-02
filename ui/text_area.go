@@ -10,8 +10,9 @@ import (
 	"github.com/hajimehoshi/ebiten/v2/text/v2"
 )
 
-var LineSpacingPx = 15.0
+var LineSpacingPx = 8.0
 var LineLeftPadding = 25.0
+var TextAreaTopPadding = 32
 
 type TextArea struct {
 	bg          *ebiten.Image
@@ -27,11 +28,15 @@ type TextArea struct {
 }
 
 func NewPlainTextArea(font text.Face, text string, rect *image.Rectangle) *TextArea {
+	newRect := &image.Rectangle{
+		Min: image.Pt(rect.Min.X, rect.Min.Y+TextAreaTopPadding),
+		Max: image.Pt(rect.Min.X+rect.Dx(), rect.Min.Y+rect.Dy()),
+	}
 	ta := &TextArea{
 		bg:            nil,
 		currentFont:   font,
 		bgRect:        nil,
-		textRect:      rect,
+		textRect:      newRect,
 		text:          text,
 		TextOverflows: false,
 	}

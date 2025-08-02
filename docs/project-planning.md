@@ -29,21 +29,33 @@ Game is Currently in 1.0
 - [x] Attack Move action 7/21
 - [x] Stop Move action 7/21
 
-- Attack Animation
-- Unit limits/food stat + building to increase it (slowly generating larvae?)
+# THINGS LEFT FOR 1.1!!
+
+Art + Animation
+
+- [] Possible new art for workers to match fighter style.
+- [] Attack Animation for workers + fighters
+- [] Walk Animation for fighters
+
+Unit Group + Hotkey improvements
+
 - Hold shift + click more units adds them to the selected group of units
+- Hold shift + click selected unit to remove from group.
+- Camera location hotkeys
 
-- Roach / Ant base building mechanics?
+- When clicking a building, show some indicator of what its rally point is
+
+- Add base mechanics to roaches
 - Cutscene to hide UI and fade it back in.
-- Local unit avoidance
 
-- Attack move visual indicator
+- Attack move visual indicator when clicked
 - Other unit action keys (patrol, hold position, stop, etc...)
 - Single unit/hive selected UI - should show units in construction queue, unit stats, etc.
 
-- Camera location hotkeys
 - Fix issue with construction not being local to a unit
-- UI Tooltips for unit costs
+- Clean up unit UI tooltips and make costs reflect the JSON
+
+- Unit limits/food stat + building to increase it (slowly generating larvae?)
 
   1.2
 

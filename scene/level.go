@@ -547,18 +547,21 @@ func NewLevelCollection() *LevelCollection {
 		TileMapPath:    "tilemap/test-map.tmx",
 		LevelIntroText: "",
 		SetupFunc: func(s *PlayScene) (string, string) {
+			u := sim.NewDefaultAnt()
+			u.SetTilePosition(9, 0)
+			s.sim.AddUnit(u)
 
-			for i := 0; i < 5; i++ {
-				u := sim.NewDefaultAnt()
-				u.SetTilePosition(9, i)
-				s.sim.AddUnit(u)
-			}
+			// for i := 0; i < 5; i++ {
+			// 	u := sim.NewDefaultAnt()
+			// 	u.SetTilePosition(9, i)
+			// 	s.sim.AddUnit(u)
+			// }
 
-			for i := 0; i < 5; i++ {
-				u := sim.NewDefaultAnt()
-				u.SetTilePosition(5, i)
-				s.sim.AddUnit(u)
-			}
+			// for i := 0; i < 5; i++ {
+			// 	u := sim.NewDefaultAnt()
+			// 	u.SetTilePosition(5, i)
+			// 	s.sim.AddUnit(u)
+			// }
 
 			// king := sim.NewRoyalAnt()
 			// king.SetTilePosition(12, 11)
@@ -577,13 +580,13 @@ func NewLevelCollection() *LevelCollection {
 			h.SetTilePosition(6, 7)
 			s.sim.AddBuilding(h)
 
-			//bad guys
-			for i := 0; i < 5; i++ {
-				u := sim.NewDefaultAnt()
-				u.Faction = 1
-				u.SetTilePosition(21, 14+i)
-				s.sim.AddUnit(u)
-			}
+			// //bad guys
+			// for i := 0; i < 5; i++ {
+			// 	u := sim.NewDefaultAnt()
+			// 	u.Faction = 1
+			// 	u.SetTilePosition(21, 14+i)
+			// 	s.sim.AddUnit(u)
+			// }
 			// for i := 0; i < 15; i++ {
 			// 	u := sim.NewDefaultAnt()
 			// 	u.Faction = 1

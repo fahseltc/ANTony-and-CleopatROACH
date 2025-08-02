@@ -1,6 +1,7 @@
 [
     {
         "Name": "worker",
+        "ToolTip": "A worker unit that can gather resources and construct buildings.",
         "HPMax": 100,
         "MoveSpeed": 10,
         "SizePx": 64,
@@ -17,6 +18,7 @@
     },
     {
         "Name": "fighter",
+        "ToolTip": "A combat unit that excels at fighting.",
         "HPMax": 150,
         "MoveSpeed": 10,
         "SizePx": 128,

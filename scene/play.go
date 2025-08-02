@@ -425,6 +425,8 @@ func (s *PlayScene) createOrUpdateBuildingSprites() {
 				spriteBuilding = ui.NewInConstructionSprite(building.GetID())
 			}
 			spriteBuilding.SetPosition(building.GetPosition())
+			// originalBuildingPos := building.GetPosition()
+			// spriteBuilding.SetPosition(&vec2.T{X: originalBuildingPos.X / 128.0, Y: originalBuildingPos.Y / 128.0})
 
 		}
 		spriteBuilding.ProgressBar.SetProgress(building.GetProgress())

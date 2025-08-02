@@ -2,6 +2,8 @@ package ui
 
 import (
 	"gamejam/fonts"
+	"gamejam/sim"
+	"gamejam/types"
 	"gamejam/util"
 	"image"
 
@@ -38,6 +40,10 @@ func NewTooltip(fonts fonts.All, rect image.Rectangle, alignment Alignment, text
 	}
 	textArea := NewPlainTextArea(fonts.XSmall, text, &ttRect)
 	scaledBg := util.ScaleImage(util.LoadImage("ui/tooltip/tooltip-bg.png"), float32(TooltipWidth), float32(TooltipHeight))
+
+	// cl := NewCostLabel(types.ResourceTypeSucrose, 100, fonts)
+	// scaledBg.DrawImage(cl.Image(), nil)
+
 	tt := &Tooltip{
 		rect:      ttRect,
 		bg:        scaledBg,
@@ -48,6 +54,40 @@ func NewTooltip(fonts fonts.All, rect image.Rectangle, alignment Alignment, text
 	}
 
 	return tt
+}
+
+func NewUnitCostToolTip(fonts fonts.All, unitType types.Unit, rect image.Rectangle, alignment Alignment) *Tooltip {
+	ttRect := image.Rectangle{
+		Min: image.Pt(rect.Min.X, rect.Min.Y),
+		Max: image.Pt(rect.Min.X+TooltipWidth, rect.Min.Y+TooltipHeight),
+	}
+	scaledBg := util.ScaleImage(util.LoadImage("ui/tooltip/tooltip-bg.png"), float32(TooltipWidth), float32(TooltipHeight))
+
+	unit := sim.GetUnitInstance(unitType, 0)
+
+	// Sucrose Cost Label
+	scl := NewCostLabel(types.ResourceTypeSucrose, int(unit.Stats.ResourceCost.Sucrose), fonts)
+	opts := &ebiten.DrawImageOptions{}
+	opts.GeoM.Translate(10, 5)
+	scaledBg.DrawImage(scl.Image(), opts)
+
+	// Wood Cost Label
+	wcl := NewCostLabel(types.ResourceTypeWood, int(unit.Stats.ResourceCost.Wood), fonts)
+	opts = &ebiten.DrawImageOptions{}
+	opts.GeoM.Translate(72, 5)
+	scaledBg.DrawImage(wcl.Image(), opts)
+
+	textArea := NewPlainTextArea(fonts.XSmall, unit.Stats.ToolTipString, &ttRect)
+
+	tt := &Tooltip{
+		rect:      ttRect,
+		bg:        scaledBg,
+		fonts:     fonts,
+		alignment: alignment,
+		ta:        textArea,
+	}
+	return tt
+
 }
 
 func (tt *Tooltip) OnHover(screen *ebiten.Image) {

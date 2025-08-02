@@ -23,6 +23,7 @@ var (
 
 type rawUnitStat struct {
 	Name      string
+	ToolTip   string
 	HPMax     uint
 	MoveSpeed uint
 
@@ -88,6 +89,7 @@ func loadUnitConfig() *UnitFactory {
 		unitType := types.UtilUnitTypeFromString(raw.Name)
 		fact.Units[unitType] = UnitStats{
 			Name:                raw.Name,
+			ToolTipString:       raw.ToolTip,
 			HPMax:               raw.HPMax,
 			HPCur:               raw.HPMax,
 			MoveSpeed:           raw.MoveSpeed,
