@@ -103,6 +103,7 @@ func (tt *Tooltip) ReAlign(sprite *Sprite) {
 	if tt.ta.bgRect != nil {
 		tt.alignment.Align(*sprite.Rect, tt.ta.bgRect)
 	}
+	tt.clampOnScreen()
 }
 
 func (tt *Tooltip) ReAlignToRect(rect *image.Rectangle) {
@@ -110,6 +111,39 @@ func (tt *Tooltip) ReAlignToRect(rect *image.Rectangle) {
 	tt.alignment.Align(*rect, tt.ta.textRect)
 	if tt.ta.bgRect != nil {
 		tt.alignment.Align(*rect, tt.ta.bgRect)
+	}
+	tt.clampOnScreen()
+}
+
+// clampOnScreen shifts the whole tooltip back onto the screen if alignment
+// placed it partially or fully offscreen (e.g. a LeftAlignment tooltip on a
+// button near the left edge). The offset is computed from the background rect
+// (tt.rect) and applied uniformly to every sub-rect so the text and background
+// stay locked together.
+func (tt *Tooltip) clampOnScreen() {
+	var dx, dy int
+
+	if tt.rect.Min.X < 0 {
+		dx = -tt.rect.Min.X
+	} else if tt.rect.Max.X > GameResolutionW {
+		dx = GameResolutionW - tt.rect.Max.X
+	}
+
+	if tt.rect.Min.Y < 0 {
+		dy = -tt.rect.Min.Y
+	} else if tt.rect.Max.Y > GameResolutionH {
+		dy = GameResolutionH - tt.rect.Max.Y
+	}
+
+	if dx == 0 && dy == 0 {
+		return
+	}
+
+	offset := image.Pt(dx, dy)
+	tt.rect = tt.rect.Add(offset)
+	*tt.ta.textRect = tt.ta.textRect.Add(offset)
+	if tt.ta.bgRect != nil {
+		*tt.ta.bgRect = tt.ta.bgRect.Add(offset)
 	}
 }
 

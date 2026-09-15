@@ -19,11 +19,16 @@ func (s *HarvestingState) Enter(unit *Unit) {
 	unit.Destinations.Clear()
 }
 func (s *HarvestingState) Update(unit *Unit, sim *T) {
+	// Distance is measured to the resource center itself so any worker standing
+	// within harvest range of the node can gather, regardless of which slot on
+	// the ring it settled into. This lets many workers harvest the same resource
+	// concurrently instead of fighting for one exact pixel.
 	dist := unit.EdgeDistanceTo(unit.LastResourcePos)
 	if dist > UnitHarvestDistance {
-		// Move back to the resource
+		// Move back toward the resource, aiming at this worker's own spread-out
+		// approach slot rather than the shared tile center.
 		unit.Destinations.Clear()
-		unit.Destinations.Enqueue(unit.LastResourcePos)
+		unit.Destinations.Enqueue(unit.HarvestApproachPos(unit.LastResourcePos))
 		unit.ChangeState(&MovingState{NextState: &HarvestingState{}})
 		return
 	}

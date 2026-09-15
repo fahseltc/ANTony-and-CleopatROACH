@@ -47,8 +47,8 @@ func NewUi(fonts *fonts.All, tileMap *tilemap.Tilemap, sim *sim.T) *Ui {
 	}
 }
 
-func (ui *Ui) Update(sim *sim.T, selectedUnitIDs []string) {
-	ui.HUD.Update(selectedUnitIDs)
+func (ui *Ui) Update(sim *sim.T, selectedUnitIDs []string, keyboardEnabled bool) {
+	ui.HUD.Update(selectedUnitIDs, keyboardEnabled)
 	ui.Camera.Update()
 
 	if ui.frameCounter%20 == 0 {

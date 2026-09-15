@@ -80,8 +80,8 @@ func New(tps int, tileMap *tilemap.Tilemap) *T {
 
 		// TODO Spawn Points
 		playerState: &PlayerState{
-			Sucrose:  9000,
-			Wood:     100,
+			Sucrose:  0, //9000,
+			Wood:     0, //100,
 			TechTree: NewTechTree(),
 		},
 		// playerUnits: make([]*Unit, 0, 10),
@@ -97,11 +97,18 @@ func (s *T) HandleConstructUnitEvent(event eventing.Event) {
 	unitType := types.UtilUnitTypeFromString(event.Data.(eventing.ConstructUnitEvent).UnitType)
 	success := s.ConstructUnit(hiveID, unitType)
 	if !success {
+		// Report the resource the player is actually short on, rather than
+		// always blaming sucrose.
+		cost := UtilUnitTypeToUnit(unitType).Stats.ResourceCost
+		resName := "Sucrose"
+		if s.playerState.Wood < cost.Wood && s.playerState.Sucrose >= cost.Sucrose {
+			resName = "Wood"
+		}
 		s.EventBus.Publish(eventing.Event{
 			Type: "NotEnoughResourcesEvent",
 			Data: eventing.NotEnoughResourcesEvent{
-				ResourceName:   "Sucrose",
-				UnitBeingBuilt: unitType.ToString(),
+				ResourceName:   resName,
+				UnitBeingBuilt: unitType.DisplayName(),
 			},
 		})
 	}
@@ -183,7 +190,7 @@ func (s *T) GetBuildingByID(id string) (BuildingInterface, error) {
 }
 
 func (s *T) IssueAction(ids []string, point *image.Point) error {
-	fmt.Printf("currentActionKey: %v\n", s.ActionKeyPressed)
+	slog.Debug("issuing action", "currentActionKey", s.ActionKeyPressed)
 	if len(ids) == 0 {
 		return fmt.Errorf("no unit IDs passed")
 	} else if len(ids) == 1 {
@@ -241,7 +248,13 @@ func (s *T) issueSingleAction(id string, point *image.Point) error {
 	for _, step := range steps {
 		unit.Destinations.Enqueue(&vec2.T{X: step.X*TileSize + HalfTileSize, Y: step.Y*TileSize + HalfTileSize})
 	}
-	unit.Destinations.Enqueue(&vec2.T{X: float64(point.X), Y: float64(point.Y)})
+	if unit.DestinationType == types.DestinationTypeResource {
+		// For resource orders, aim at this worker's own slot around the node so a
+		// group sent to one resource fans out instead of all targeting one pixel.
+		unit.Destinations.Enqueue(unit.HarvestApproachPos(unit.LastResourcePos))
+	} else {
+		unit.Destinations.Enqueue(&vec2.T{X: float64(point.X), Y: float64(point.Y)})
+	}
 
 	return nil
 }
@@ -578,13 +591,54 @@ func (s *T) optimizePath(nav []*vec2.T) []*vec2.T {
 	first := nav[0]
 	last := nav[len(nav)-1]
 
-	// Check if straight path is walkable
-	if s.isLineWalkable(first, last) {
+	// Only collapse to a straight line if that line is walkable on the grid AND
+	// does not clip any collision object. isLineWalkable samples tiles via
+	// Bresenham and can skip a thin obstacle at a tile corner; the mover in
+	// MoveToDestination collides against world.MapObjects, so we must verify the
+	// segment against those too. Otherwise the optimizer can route a worker
+	// straight through an impassable resource/obstacle and the mover then wedges
+	// there forever (never "arrives", never dequeues).
+	if s.isLineWalkable(first, last) && s.isSegmentClearOfMapObjects(first, last) {
 		return []*vec2.T{first, last} // optimized path: straight line
 	}
 
 	// fallback to original path
 	return nav
+}
+
+// isSegmentClearOfMapObjects reports whether the straight segment between two
+// TILE coordinates (converted to tile-center pixels) avoids every collision
+// MapObject rect. This matches the collision model the mover actually uses, so
+// an "optimized" straight path can't cut a corner through an obstacle the mover
+// will refuse to cross.
+func (s *T) isSegmentClearOfMapObjects(start, end *vec2.T) bool {
+	// Convert tile coords to pixel-space endpoints at tile centers.
+	x0 := start.X*TileSize + HalfTileSize
+	y0 := start.Y*TileSize + HalfTileSize
+	x1 := end.X*TileSize + HalfTileSize
+	y1 := end.Y*TileSize + HalfTileSize
+
+	// Sample the segment finely enough that no tile-sized obstacle can slip
+	// between samples (step well under one tile).
+	dist := math.Hypot(x1-x0, y1-y0)
+	if dist == 0 {
+		return true
+	}
+	step := HalfTileSize // 64px steps: never skips a 128px collision rect
+	steps := int(math.Ceil(dist/step)) + 1
+
+	for _, mo := range s.world.MapObjects {
+		for i := 0; i <= steps; i++ {
+			t := float64(i) / float64(steps)
+			px := x0 + (x1-x0)*t
+			py := y0 + (y1-y0)*t
+			if int(px) >= mo.Rect.Min.X && int(px) < mo.Rect.Max.X &&
+				int(py) >= mo.Rect.Min.Y && int(py) < mo.Rect.Max.Y {
+				return false
+			}
+		}
+	}
+	return true
 }
 
 func (s *T) isLineWalkable(start, end *vec2.T) bool {
@@ -643,4 +697,8 @@ func (s *T) FindUnitGroupCenter(positions []*vec2.T) vec2.T {
 		sumY += pos.Y
 	}
 	return vec2.T{X: sumX / float64(len(positions)), Y: sumY / float64(len(positions))}
+}
+
+func (s *T) RevealFogOfWar(topLeft *vec2.T, bottomRight *vec2.T) {
+	s.world.RevealFogOfWar(topLeft, bottomRight)
 }

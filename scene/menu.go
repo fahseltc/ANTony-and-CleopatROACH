@@ -55,8 +55,8 @@ func (s *MenuScene) Update() error {
 		s.started = true
 		s.sound.Play("msx_menusong")
 	}
-	s.startBtn.Update()
-	s.optsBtn.Update()
+	s.startBtn.Update(true)
+	s.optsBtn.Update(true)
 	s.pause.Update()
 	return nil
 }

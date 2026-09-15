@@ -42,12 +42,10 @@ func NewLevelCollection() *LevelCollection {
 
 		Arise, player! Command thy swarm!`,
 		SetupFunc: func(scene *PlayScene) (string, string) {
-			u := sim.NewDefaultAnt()
-			u.SetTilePosition(6, 12)
+			u := sim.NewDefaultAntWithTilePosition(6, 10)
 			scene.sim.AddUnit(u)
 
-			u2 := sim.NewDefaultAnt()
-			u2.SetTilePosition(6, 5)
+			u2 := sim.NewDefaultAntWithTilePosition(6, 5)
 			scene.sim.AddUnit(u2)
 
 			king := sim.NewRoyalAnt()
@@ -56,7 +54,6 @@ func NewLevelCollection() *LevelCollection {
 
 			queen := sim.NewRoyalRoach()
 			queen.SetTilePosition(28, 10)
-			queen.Faction = 1
 			scene.sim.AddUnit(queen)
 
 			scene.Ui.Camera.SetZoom(ui.MinZoom)
@@ -67,12 +64,6 @@ func NewLevelCollection() *LevelCollection {
 			h.SetTilePosition(8, 8)
 			scene.sim.AddBuilding(h)
 
-			// bad guys temp
-			e1 := sim.NewDefaultAnt()
-			e1.Faction = 1
-			e1.SetTilePosition(14, 11)
-			scene.sim.AddUnit(e1)
-
 			scene.CompletionCondition = NewSceneCompletion(queen, king, scene.tileMap.MapCompletionObjects[0].Rect)
 			return queen.ID.String(), king.ID.String()
 		},
@@ -81,6 +72,7 @@ func NewLevelCollection() *LevelCollection {
 			s.Ui.DrawEnabled = false
 			s.drag.Enabled = false
 			s.cutsceneActions = []CutsceneAction{
+				&DisableInputAction{},
 				&FadeCameraAction{Mode: "in", Speed: 2},
 				&ShowPortraitTextAreaAction{
 					portraitTextArea: ui.NewPortraitTextArea(
@@ -88,6 +80,10 @@ func NewLevelCollection() *LevelCollection {
 						"Antony: O brave new bugworld! Where art thou, my chitinous queen? I must construct yon bridge, ere my love is lost!",
 						ui.PortraitTypeRoyalAnt,
 					),
+				},
+				&RevealFogOfWarAction{
+					TopLeft:     &image.Point{X: 14, Y: 4},
+					BottomRight: &image.Point{X: 32, Y: 18},
 				},
 				&IssueUnitCommandAction{
 					unitID:     antony,
@@ -117,12 +113,13 @@ func NewLevelCollection() *LevelCollection {
 					unitID:     cleopatroach,
 					targetTile: &image.Point{X: 28, Y: 10},
 				},
+				&EnableInputAction{},
 			}
 
 			s.tutorialDialogs = []Tutorial{
 				NewTutorialStep( // click and drag units
 					"tutorials/tutorial-1.png",
-					&image.Rectangle{Min: image.Point{X: 412, Y: 341}, Max: image.Point{X: 800, Y: 600}},
+					&image.Rectangle{Min: image.Point{X: 450, Y: 180}, Max: image.Point{X: 780, Y: 400}},
 					nil, // trigger always
 					func(ps *PlayScene) bool { // only complete once a unit is selected
 						if len(ps.selectedUnitIDs) > 0 {
@@ -133,7 +130,7 @@ func NewLevelCollection() *LevelCollection {
 				),
 				NewTutorialStep( // move camera
 					"tutorials/tutorial-2.png",
-					&image.Rectangle{Min: image.Point{X: 412, Y: 341}, Max: image.Point{X: 800, Y: 600}},
+					&image.Rectangle{Min: image.Point{X: 450, Y: 180}, Max: image.Point{X: 780, Y: 400}},
 					nil,
 					func(ps *PlayScene) bool { // only complete once a unit is selected
 						if ps.Ui.Camera.ViewPortX != 0 && ps.Ui.Camera.ViewPortY != 0 { // TODO fragile!!
@@ -144,15 +141,15 @@ func NewLevelCollection() *LevelCollection {
 				),
 				NewTutorialStep( // pause
 					"tutorials/tutorial-pause.png",
-					&image.Rectangle{Min: image.Point{X: 412, Y: 341}, Max: image.Point{X: 800, Y: 600}},
+					&image.Rectangle{Min: image.Point{X: 450, Y: 180}, Max: image.Point{X: 780, Y: 400}},
 					nil,
 					nil,
 				),
 				NewTutorialStep( // collected some sucrose + select hive
 					"tutorials/tutorial-3.png",
-					&image.Rectangle{Min: image.Point{X: 0, Y: 341}, Max: image.Point{X: 388, Y: 600}},
+					&image.Rectangle{Min: image.Point{X: 450, Y: 180}, Max: image.Point{X: 780, Y: 400}},
 					func(ps *PlayScene) bool {
-						if ps.sim.GetSucroseAmount() > 30 {
+						if ps.sim.GetSucroseAmount() > 50 {
 							return true
 						}
 						return false
@@ -181,7 +178,7 @@ func NewLevelCollection() *LevelCollection {
 				),
 				NewTutorialStep( // wood collected + select single unit
 					"tutorials/tutorial-5.png",
-					&image.Rectangle{Min: image.Point{X: 0, Y: 0}, Max: image.Point{X: 388, Y: 259}},
+					&image.Rectangle{Min: image.Point{X: 450, Y: 180}, Max: image.Point{X: 780, Y: 400}},
 					func(ps *PlayScene) bool {
 						if ps.sim.GetWoodAmount() > 30 {
 							return true
@@ -242,6 +239,7 @@ func NewLevelCollection() *LevelCollection {
 			s.selectedUnitIDs = []string{} // clear selected unit IDs
 
 			s.cutsceneActions = []CutsceneAction{
+				&DisableInputAction{},
 				&IssueUnitCommandAction{
 					unitID:     cleopatroach,
 					targetTile: &image.Point{X: 27, Y: 5},
@@ -353,6 +351,7 @@ func NewLevelCollection() *LevelCollection {
 		},
 		SetupInitialCutscene: func(s *PlayScene, cleopatroach string, antony string) {
 			s.cutsceneActions = []CutsceneAction{
+				&DisableInputAction{},
 				&FadeCameraAction{Mode: "in", Speed: 2},
 				// &PanCameraAction{TargetX: float64(2), TargetY: float64(4), Speed: 300},
 
@@ -406,6 +405,7 @@ func NewLevelCollection() *LevelCollection {
 					targetTile: &image.Point{X: 9, Y: 9},
 				},
 				&PanCameraAction{TargetX: float64(1), TargetY: float64(1), Speed: 300},
+				&EnableInputAction{},
 			}
 		},
 		SetupCompletionCutscene: func(s *PlayScene, cleopatroach string, antony string) {

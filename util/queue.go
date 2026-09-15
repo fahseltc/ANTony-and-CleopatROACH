@@ -44,6 +44,16 @@ func (q *Queue[T]) Peek() (T, error) {
 	return q.Items[0], nil
 }
 
+// PeekBack returns the item at the back of the queue without removing it.
+// Returns an error if the queue is empty.
+func (q *Queue[T]) PeekBack() (T, error) {
+	var zero T
+	if len(q.Items) == 0 {
+		return zero, errors.New("queue is empty")
+	}
+	return q.Items[len(q.Items)-1], nil
+}
+
 // Len returns the number of Items in the queue.
 func (q *Queue[T]) Len() int {
 	return len(q.Items)

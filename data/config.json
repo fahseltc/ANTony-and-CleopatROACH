@@ -4,8 +4,8 @@
     "muteAudio": true,
     "debugDraw": true,
     "skipMenu": true,
-    "skipToGameplay": true,
-    "startingLevel": 3,
+    "skipToGameplay": false,
+    "startingLevel": 0,
     "resolution": {
         "external": {
             "w": 1200,

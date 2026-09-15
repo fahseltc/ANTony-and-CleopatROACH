@@ -151,20 +151,28 @@ func (btn *Button) Draw(screen *ebiten.Image) {
 
 	}
 
-	if btn.tooltip != nil && btn.MouseCollides() {
-		btn.tooltip.OnHover(screen)
-	}
-
 	if btn.key != 999 {
 		util.DrawCenteredText(screen, btn.fonts.XSmall, btn.key.String(), btn.rect.Min.X+6, btn.rect.Min.Y-4, color.RGBA{R: 255, G: 255, B: 255, A: 255})
 	}
 }
 
-func (btn *Button) Update() {
+// DrawTooltip draws the button's tooltip if the mouse is hovering over it.
+// This is separated from Draw so callers can render all button backgrounds
+// first and tooltips last, keeping tooltips on top of neighbouring buttons.
+func (btn *Button) DrawTooltip(screen *ebiten.Image) {
 	if btn.Hidden {
 		return
 	}
-	// clicks
+	if btn.tooltip != nil && btn.MouseCollides() {
+		btn.tooltip.OnHover(screen)
+	}
+}
+
+func (btn *Button) Update(keyboardEnabled bool) {
+	if btn.Hidden {
+		return
+	}
+	// clicks (always processed; mouse input is never gated here)
 	if btn.OnClick != nil && inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) && btn.MouseCollides() {
 		btn.currentImg = btn.pressedImg
 	}
@@ -173,14 +181,16 @@ func (btn *Button) Update() {
 
 		btn.currentImg = btn.defaultImg
 	}
-	// key presses
-	if btn.key != 999 && inpututil.IsKeyJustPressed(btn.key) {
-		btn.currentImg = btn.pressedImg
-	}
-	if btn.key != 999 && inpututil.IsKeyJustReleased(btn.key) {
-		btn.OnClick()
+	// key presses (gated: skipped when keyboard input is disabled)
+	if keyboardEnabled {
+		if btn.key != 999 && inpututil.IsKeyJustPressed(btn.key) {
+			btn.currentImg = btn.pressedImg
+		}
+		if btn.key != 999 && inpututil.IsKeyJustReleased(btn.key) {
+			btn.OnClick()
 
-		btn.currentImg = btn.defaultImg
+			btn.currentImg = btn.defaultImg
+		}
 	}
 }
 

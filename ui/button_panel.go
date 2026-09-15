@@ -63,24 +63,10 @@ func NewUnitButtonPanel(fonts *fonts.All, s *simulation.T) *ButtonPanel {
 		}),
 		WithImage(util.LoadImage("ui/btn/atk-btn.png"), util.LoadImage("ui/btn/atk-btn-pressed.png")),
 		WithKeyActivation(ebiten.KeyQ),
-		WithToolTip(NewTooltip(*fonts, image.Rectangle{}, LeftAlignment, "")),
+		WithToolTip(NewTooltip(*fonts, image.Rectangle{}, LeftAlignment, "Attack-Move to a location")),
 	)
 	btnPanel.btns = append(btnPanel.btns, atkBtn)
 	btnY += BtnDimension + BtnPad
-
-	// Move button is the same as right click so its been removed.
-	// moveBtn := NewButton(fonts,
-	// 	WithRect(image.Rectangle{Min: image.Pt(btnX, btnY), Max: image.Pt(btnX+BtnDimension, btnY+BtnDimension)}),
-	// 	WithImage(util.LoadImage("ui/btn/move-btn.png"), util.LoadImage("ui/btn/move-btn-pressed.png")),
-	// 	WithClickFunc(func() {
-	// 		btnPanel.log.Info("movebtnclicked")
-	// 		s.SetActionKeyPressed(sim.MoveKeyPressed)
-	// 	}),
-	// 	WithKeyActivation(ebiten.KeyZ),
-	// 	WithToolTip(NewTooltip(*fonts, image.Rectangle{}, LeftAlignment, "")),
-	// )
-	// btnPanel.btns = append(btnPanel.btns, moveBtn)
-	// btnX += BtnDimension + BtnPad
 
 	stopBtn := NewButton(fonts,
 		WithRect(image.Rectangle{Min: image.Pt(btnX, btnY), Max: image.Pt(btnX+BtnDimension, btnY+BtnDimension)}),
@@ -89,7 +75,7 @@ func NewUnitButtonPanel(fonts *fonts.All, s *simulation.T) *ButtonPanel {
 			s.SetActionKeyPressed(sim.StopKeyPressed)
 		}),
 		WithKeyActivation(ebiten.KeyZ),
-		WithToolTip(NewTooltip(*fonts, image.Rectangle{}, LeftAlignment, "")),
+		WithToolTip(NewTooltip(*fonts, image.Rectangle{}, LeftAlignment, "Stop the current action")),
 	)
 	btnPanel.btns = append(btnPanel.btns, stopBtn)
 	btnX += BtnDimension + BtnPad
@@ -102,7 +88,7 @@ func NewUnitButtonPanel(fonts *fonts.All, s *simulation.T) *ButtonPanel {
 			s.SetActionKeyPressed(sim.HoldPositionKeyPressed)
 		}),
 		WithKeyActivation(ebiten.KeyX),
-		WithToolTip(NewTooltip(*fonts, image.Rectangle{}, LeftAlignment, "")),
+		WithToolTip(NewTooltip(*fonts, image.Rectangle{}, LeftAlignment, "Hold position")),
 	)
 	btnPanel.btns = append(btnPanel.btns, holdBtn)
 
@@ -229,7 +215,7 @@ func NewHiveButtonPanel(fonts *fonts.All, s *simulation.T) *ButtonPanel {
 		}),
 		WithImage(util.LoadImage("ui/btn/upgrade-btn.png"), util.LoadImage("ui/btn/upgrade-btn-pressed.png")),
 		WithKeyActivation(ebiten.KeyZ),
-		WithToolTip(NewTooltip(*fonts, image.Rectangle{}, TopAlignment, "")),
+		WithToolTip(NewTooltip(*fonts, image.Rectangle{}, LeftAlignment, "Upgrade worker units to harvest 20% faster")),
 	)
 	btnPanel.btns = append(btnPanel.btns, upgradeBtn)
 
@@ -254,7 +240,7 @@ func NewWorkerUnitButtonPanel(fonts *fonts.All, s *sim.T) *ButtonPanel {
 			btnPanel.AltModeEnabled = true
 		}),
 		WithKeyActivation(ebiten.KeyB),
-		WithToolTip(NewTooltip(*fonts, image.Rectangle{}, LeftAlignment, "")),
+		WithToolTip(NewTooltip(*fonts, image.Rectangle{}, LeftAlignment, "Create Buildings")),
 	)
 	btnPanel.btns = append(btnPanel.btns, buildBtn)
 
@@ -273,7 +259,7 @@ func NewWorkerUnitButtonPanel(fonts *fonts.All, s *sim.T) *ButtonPanel {
 			})
 		}),
 		WithKeyActivation(ebiten.KeyQ),
-		WithToolTip(NewTooltip(*fonts, image.Rectangle{}, LeftAlignment, "")),
+		WithToolTip(NewTooltip(*fonts, image.Rectangle{}, LeftAlignment, "Build a bridge to cross water.")),
 	)
 	btnPanel.altBtns = append(btnPanel.altBtns, bridgeBtn)
 
@@ -292,7 +278,7 @@ func NewWorkerUnitButtonPanel(fonts *fonts.All, s *sim.T) *ButtonPanel {
 			})
 		}),
 		WithKeyActivation(ebiten.KeyE),
-		WithToolTip(NewTooltip(*fonts, image.Rectangle{}, TopAlignment, "")),
+		WithToolTip(NewTooltip(*fonts, image.Rectangle{}, TopAlignment, "Barracks allow fighter units to be trained.")),
 	)
 	btnPanel.altBtns = append(btnPanel.altBtns, barracksBtn)
 
@@ -305,35 +291,39 @@ func NewWorkerUnitButtonPanel(fonts *fonts.All, s *sim.T) *ButtonPanel {
 			btnPanel.AltModeEnabled = false
 		}),
 		WithKeyActivation(ebiten.KeyZ),
-		WithToolTip(NewTooltip(*fonts, image.Rectangle{}, LeftAlignment, "")),
+		WithToolTip(NewTooltip(*fonts, image.Rectangle{}, LeftAlignment, "Click to go back")),
 	)
 	btnPanel.altBtns = append(btnPanel.altBtns, cancelBtn)
 
 	return btnPanel
 }
 
-func (b *ButtonPanel) Update() {
+func (b *ButtonPanel) Update(keyboardEnabled bool) {
 	// Check sim global state for buildings presence and allow Fighters to be made
 	if !b.AltModeEnabled {
 		for _, btn := range b.btns {
-			btn.Update()
+			btn.Update(keyboardEnabled)
 		}
 	} else {
 		for _, btn := range b.altBtns {
-			btn.Update()
+			btn.Update(keyboardEnabled)
 		}
 	}
 
 }
 func (b *ButtonPanel) Draw(screen *ebiten.Image) {
 	//ebitenutil.DrawRect(screen, float64(b.panelRect.Min.X), float64(b.panelRect.Min.Y), float64(b.panelRect.Dx()), float64(b.panelRect.Dy()), color.RGBA{100, 100, 100, 255})
-	if !b.AltModeEnabled {
-		for _, btn := range b.btns {
-			btn.Draw(screen)
-		}
-	} else {
-		for _, btn := range b.altBtns {
-			btn.Draw(screen)
-		}
+	btns := b.btns
+	if b.AltModeEnabled {
+		btns = b.altBtns
+	}
+	// Draw all button backgrounds first...
+	for _, btn := range btns {
+		btn.Draw(screen)
+	}
+	// ...then draw tooltips on top, so a hovered button's tooltip is never
+	// painted over by a later-drawn neighbouring button.
+	for _, btn := range btns {
+		btn.DrawTooltip(screen)
 	}
 }

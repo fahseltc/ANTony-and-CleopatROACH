@@ -54,7 +54,7 @@ func (p *Pause) Update() {
 	if !p.Hidden {
 		p.SFXSlider.Update()
 		p.MSXSlider.Update()
-		p.closeBtn.Update()
+		p.closeBtn.Update(true)
 
 		if inpututil.IsMouseButtonJustReleased(ebiten.MouseButtonLeft) {
 			p.sound.SetGlobalMSXVolume(p.MSXSlider.Volume)

@@ -27,6 +27,25 @@ func (ut Unit) ToString() string {
 	}
 }
 
+// DisplayName returns a player-facing name for the unit, suitable for showing
+// in UI notifications (unlike ToString, which returns the internal enum name).
+func (ut Unit) DisplayName() string {
+	switch ut {
+	case UnitTypeDefaultAnt:
+		return "Worker Ant"
+	case UnitTypeRoyalAnt:
+		return "Royal Ant"
+	case UnitTypeFighterAnt:
+		return "Fighter Ant"
+	case UnitTypeDefaultRoach:
+		return "Worker Roach"
+	case UnitTypeRoyalRoach:
+		return "Royal Roach"
+	default:
+		return "Worker Ant"
+	}
+}
+
 func UtilUnitTypeFromString(unitString string) Unit {
 	switch unitString {
 	case "worker":

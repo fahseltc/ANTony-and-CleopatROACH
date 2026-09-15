@@ -35,6 +35,10 @@ type Camera struct {
 	fadeSpeed   uint8 // how fast it fades per frame
 	IsFadingIn  bool
 	IsFadingOut bool
+
+	// InputEnabled gates keyboard panning and wheel zoom. Programmatic panning
+	// and fades continue regardless (so cutscene camera moves still work).
+	InputEnabled bool
 }
 
 func NewCamera(TileWidthCount, TileHeightCount int) *Camera {
@@ -43,6 +47,7 @@ func NewCamera(TileWidthCount, TileHeightCount int) *Camera {
 		ViewPortX:    0,
 		ViewPortY:    0,
 		ViewPortZoom: 1,
+		InputEnabled: true,
 
 		mapWidth:  TileWidthCount * TileDimensions,
 		mapHeight: TileHeightCount * TileDimensions,
@@ -51,24 +56,26 @@ func NewCamera(TileWidthCount, TileHeightCount int) *Camera {
 
 func (c *Camera) Update() {
 	mx, my := ebiten.CursorPosition()
-	if ebiten.IsKeyPressed(ebiten.KeyW) {
-		c.PanY(MapScrollSpeed)
-	}
-	if ebiten.IsKeyPressed(ebiten.KeyA) {
-		c.PanX(MapScrollSpeed)
-	}
-	if ebiten.IsKeyPressed(ebiten.KeyS) {
-		c.PanY(-MapScrollSpeed)
-	}
-	if ebiten.IsKeyPressed(ebiten.KeyD) {
-		c.PanX(-MapScrollSpeed)
-	}
-	_, mouseWheelY := ebiten.Wheel()
-	if mouseWheelY > 0 {
-		c.Zoom(ZoomIncrement, mx, my)
-	}
-	if mouseWheelY < 0 {
-		c.Zoom(-ZoomIncrement, mx, my)
+	if c.InputEnabled {
+		if ebiten.IsKeyPressed(ebiten.KeyW) {
+			c.PanY(MapScrollSpeed)
+		}
+		if ebiten.IsKeyPressed(ebiten.KeyA) {
+			c.PanX(MapScrollSpeed)
+		}
+		if ebiten.IsKeyPressed(ebiten.KeyS) {
+			c.PanY(-MapScrollSpeed)
+		}
+		if ebiten.IsKeyPressed(ebiten.KeyD) {
+			c.PanX(-MapScrollSpeed)
+		}
+		_, mouseWheelY := ebiten.Wheel()
+		if mouseWheelY > 0 {
+			c.Zoom(ZoomIncrement, mx, my)
+		}
+		if mouseWheelY < 0 {
+			c.Zoom(-ZoomIncrement, mx, my)
+		}
 	}
 
 	// handle panning

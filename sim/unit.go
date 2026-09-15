@@ -99,6 +99,12 @@ func NewDefaultAnt() *Unit {
 	return GetUnitInstance(types.UnitTypeDefaultAnt, uint(PlayerFaction))
 }
 
+func NewDefaultAntWithTilePosition(x int, y int) *Unit {
+	u := GetUnitInstance(types.UnitTypeDefaultAnt, uint(PlayerFaction))
+	u.SetTilePosition(x, y)
+	return u
+}
+
 func (unit *Unit) findNearestEnemy(sim *T) *Unit {
 	bestScore := math.Inf(-1)
 	var bestTarget *Unit
@@ -229,6 +235,47 @@ func (unit *Unit) IsAlive() bool {
 
 func (unit *Unit) IsWorker() bool {
 	return unit.Type == types.UnitTypeDefaultAnt || unit.Type == types.UnitTypeDefaultRoach
+}
+
+// HarvestSlotRadius controls how far around a resource center workers spread out
+// when approaching it. Larger values give more room but make workers walk a bit
+// further from the resource.
+var HarvestSlotRadius = 90.0
+
+// HarvestApproachPos returns a stable per-unit point to stand at while harvesting
+// the resource at resourceCenter. Instead of every worker piling onto the exact
+// tile center (which causes crowding, stalling, and give-ups), each worker is
+// assigned a deterministic slot on a ring around the resource based on its ID.
+// The same unit always resolves to the same slot for a given resource, so its
+// approach target is stable frame-to-frame.
+func (unit *Unit) HarvestApproachPos(resourceCenter *vec2.T) *vec2.T {
+	if resourceCenter == nil {
+		return resourceCenter
+	}
+	// Derive a stable index from the unit's UUID so slots are spread out but
+	// deterministic (no per-frame jitter).
+	idBytes := unit.ID
+	var seed uint32
+	for _, b := range idBytes {
+		seed = seed*31 + uint32(b)
+	}
+
+	// Arrange workers on concentric rings; 8 slots per ring, each ring a little
+	// further out so large numbers of workers still fan out instead of stacking.
+	const slotsPerRing = 8
+	slot := seed % slotsPerRing
+	ring := (seed / slotsPerRing) % 3 // up to 3 rings before repeating angles
+
+	angle := (float64(slot) / float64(slotsPerRing)) * 2 * math.Pi
+	// Offset alternating rings by half a slot so rings interleave.
+	angle += float64(ring) * (math.Pi / float64(slotsPerRing))
+
+	radius := HarvestSlotRadius * (1.0 + 0.6*float64(ring))
+
+	return &vec2.T{
+		X: resourceCenter.X + radius*math.Cos(angle),
+		Y: resourceCenter.Y + radius*math.Sin(angle),
+	}
 }
 
 func (unit *Unit) ChangeState(newState UnitStateInterface) {

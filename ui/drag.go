@@ -70,6 +70,13 @@ func (d *Drag) Update(sprites map[string]*Sprite, camera *Camera, HUD *HUD) {
 	}
 
 	if inpututil.IsMouseButtonJustReleased(ebiten.MouseButtonLeft) {
+		// Guard against a release with no matching press this drag (e.g. a click
+		// that started while drag was disabled, such as during a cutscene).
+		// Without this, firstClickPoint stays at the origin and the selection
+		// rectangle sweeps from (0,0), selecting a phantom unit.
+		if d.firstClickPoint.Eq(image.Pt(0, 0)) {
+			return
+		}
 		var selectedIDs []string
 		mapRect := image.Rectangle{
 			Min: image.Pt(camera.ScreenPosToMapPos(d.dragRect.Min.X, d.dragRect.Min.Y)),

@@ -58,6 +58,10 @@ type PlayScene struct {
 	inCutscene      bool
 	currentDialog   *ui.PortraitTextArea
 
+	// When true, all keyboard input (movement, hotkeys, button keys) and drag
+	// selecting are ignored. Mouse clicks still work. Toggled by DisableInputAction.
+	inputDisabled bool
+
 	// Tutorial stuff
 	tutorialDialogs []Tutorial
 	inTutorial      bool
@@ -154,16 +158,18 @@ func (s *PlayScene) Update() error {
 	// Remove building & unit sprites that are no longer in the SIM
 	s.updateRemoveInactiveSprites()
 
-	// Handle hotkey-selected units
-	hotkeyUnits := s.UnitGroupManager.Update(s.selectedUnitIDs, s.Ui.Camera, s.sim)
-	if len(hotkeyUnits) != 0 {
-		for _, spr := range s.Sprites {
-			for _, selected := range hotkeyUnits {
-				if spr.Id.String() == selected {
-					spr.Selected = true
-					break
-				} else {
-					spr.Selected = false
+	// Handle hotkey-selected units (keyboard driven, so skip when input disabled)
+	if !s.inputDisabled {
+		hotkeyUnits := s.UnitGroupManager.Update(s.selectedUnitIDs, s.Ui.Camera, s.sim)
+		if len(hotkeyUnits) != 0 {
+			for _, spr := range s.Sprites {
+				for _, selected := range hotkeyUnits {
+					if spr.Id.String() == selected {
+						spr.Selected = true
+						break
+					} else {
+						spr.Selected = false
+					}
 				}
 			}
 		}
@@ -186,6 +192,13 @@ func (s *PlayScene) Update() error {
 			s.inCutscene = false
 			s.Ui.DrawEnabled = true
 			s.drag.Enabled = true
+			s.inputDisabled = false // restore input when the cutscene finishes
+			// The click that dismissed the final cutscene dialog was pressed
+			// during the cutscene; its mouse-release lands on this first
+			// post-cutscene frame. Return early so drag.Update doesn't treat
+			// that dangling release as a drag-select (which would otherwise
+			// select a phantom unit and trip tutorial completion checks).
+			return nil
 		} else {
 			currentCutScene := s.cutsceneActions[0]
 			if s.currentDialog != nil {
@@ -218,126 +231,130 @@ func (s *PlayScene) Update() error {
 		s.currentDialog = nil // no active tutorial dialog
 	}
 
-	// handle selectedIDs
-	for _, spr := range s.Sprites {
-		if spr.Type == ui.SpriteTypeStatic {
-			continue
-		}
-		unit, err := s.sim.GetUnitByID(spr.Id.String()) // remove unfactioned units from selection
-		if err == nil {
-			if unit.Faction != 0 {
-				spr.Selected = false
+	if !s.inCutscene {
+		// handle selectedIDs
+		for _, spr := range s.Sprites {
+			if spr.Type == ui.SpriteTypeStatic {
 				continue
 			}
-		}
-		bld, err := s.sim.GetBuildingByID(spr.Id.String()) // remove unfactioned buildings from selection
-		if err == nil {
-			if bld.GetFaction() != uint(PlayerFaction) {
-				spr.Selected = false
-				continue
+			unit, err := s.sim.GetUnitByID(spr.Id.String()) // remove unfactioned units from selection
+			if err == nil {
+				if unit.Faction != 0 {
+					spr.Selected = false
+					continue
+				}
 			}
-		}
-		if spr.Selected {
-			if !slices.Contains(s.selectedUnitIDs, spr.Id.String()) {
-				s.selectedUnitIDs = append(s.selectedUnitIDs, spr.Id.String())
+			bld, err := s.sim.GetBuildingByID(spr.Id.String()) // remove unfactioned buildings from selection
+			if err == nil {
+				if bld.GetFaction() != uint(PlayerFaction) {
+					spr.Selected = false
+					continue
+				}
 			}
-		} else if slices.ContainsFunc(s.selectedUnitIDs, func(id string) bool { return id == spr.Id.String() }) {
-			s.selectedUnitIDs = slices.DeleteFunc(s.selectedUnitIDs, func(id string) bool { return id == spr.Id.String() })
+			if spr.Selected {
+				if !slices.Contains(s.selectedUnitIDs, spr.Id.String()) {
+					s.selectedUnitIDs = append(s.selectedUnitIDs, spr.Id.String())
+				}
+			} else if slices.ContainsFunc(s.selectedUnitIDs, func(id string) bool { return id == spr.Id.String() }) {
+				s.selectedUnitIDs = slices.DeleteFunc(s.selectedUnitIDs, func(id string) bool { return id == spr.Id.String() })
+			}
 		}
 	}
 
-	if len(s.selectedUnitIDs) > 0 {
-		if len(s.selectedUnitIDs) == 1 { // Handle 1 unit or building selected
-			unitOrHiveString := s.sim.DetermineUnitOrHiveById(s.selectedUnitIDs[0])
-			switch unitOrHiveString {
-			case "hive":
-				if s.Ui.HUD.RightSideState != ui.HiveSelectedState { // hide ui selected UI
-					s.eventBus.Publish(eventing.Event{
-						Type: "PlaySelectHiveSFX",
-					})
-					s.Ui.HUD.RightSideState = ui.HiveSelectedState
-					s.constructionMouse.Enabled = false
-				}
-				// Handle single hive clicks
-				if inpututil.IsMouseButtonJustReleased(ebiten.MouseButtonRight) {
-					mx, my := ebiten.CursorPosition()
-					if !s.Ui.HUD.IsPointInside(image.Pt(mx, my)) { // if its not in the UI, set the rally point
-						hive, err := s.sim.GetBuildingByID(s.selectedUnitIDs[0])
-						if err != nil {
-							return nil
-						}
-						mapX, mapY := s.Ui.Camera.ScreenPosToMapPos(mx, my)
-						s.ActionIssuedLocation = &image.Point{X: mapX, Y: mapY}
-						hive.SetRallyPoint(&image.Point{X: mapX, Y: mapY})
+	if !s.inCutscene {
+		if len(s.selectedUnitIDs) > 0 {
+			if len(s.selectedUnitIDs) == 1 { // Handle 1 unit or building selected
+				unitOrHiveString := s.sim.DetermineUnitOrHiveById(s.selectedUnitIDs[0])
+				switch unitOrHiveString {
+				case "hive":
+					if s.Ui.HUD.RightSideState != ui.HiveSelectedState { // hide ui selected UI
+						s.eventBus.Publish(eventing.Event{
+							Type: "PlaySelectHiveSFX",
+						})
+						s.Ui.HUD.RightSideState = ui.HiveSelectedState
+						s.constructionMouse.Enabled = false
 					}
-				}
-			case "unit":
-				// hide HIVE build ui element
-				if s.Ui.HUD.RightSideState != ui.UnitSelectedState { // hide hive build UI
-					s.Ui.HUD.RightSideState = ui.UnitSelectedState
-					s.constructionMouse.Enabled = false
-				}
-				// handle single unit and clicks
-				if inpututil.IsMouseButtonJustReleased(ebiten.MouseButtonRight) { // activate on buttonRelease to debounce
-					mx, my := ebiten.CursorPosition()
-					if !s.Ui.HUD.IsPointInside(image.Pt(mx, my)) {
-						mapX, mapY := s.Ui.Camera.ScreenPosToMapPos(mx, my)
-						s.ActionIssuedLocation = &image.Point{X: mapX, Y: mapY}
-						for _, unitId := range s.selectedUnitIDs {
-							s.sim.IssueAction([]string{unitId}, s.ActionIssuedLocation)
+					// Handle single hive clicks
+					if inpututil.IsMouseButtonJustReleased(ebiten.MouseButtonRight) {
+						mx, my := ebiten.CursorPosition()
+						if !s.Ui.HUD.IsPointInside(image.Pt(mx, my)) { // if its not in the UI, set the rally point
+							hive, err := s.sim.GetBuildingByID(s.selectedUnitIDs[0])
+							if err != nil {
+								return nil
+							}
+							mapX, mapY := s.Ui.Camera.ScreenPosToMapPos(mx, my)
+							s.ActionIssuedLocation = &image.Point{X: mapX, Y: mapY}
+							hive.SetRallyPoint(&image.Point{X: mapX, Y: mapY})
+						}
+					}
+				case "unit":
+					// hide HIVE build ui element
+					if s.Ui.HUD.RightSideState != ui.UnitSelectedState { // hide hive build UI
+						s.Ui.HUD.RightSideState = ui.UnitSelectedState
+						s.constructionMouse.Enabled = false
+					}
+					// handle single unit and clicks
+					if inpututil.IsMouseButtonJustReleased(ebiten.MouseButtonRight) { // activate on buttonRelease to debounce
+						mx, my := ebiten.CursorPosition()
+						if !s.Ui.HUD.IsPointInside(image.Pt(mx, my)) {
+							mapX, mapY := s.Ui.Camera.ScreenPosToMapPos(mx, my)
+							s.ActionIssuedLocation = &image.Point{X: mapX, Y: mapY}
+							for _, unitId := range s.selectedUnitIDs {
+								s.sim.IssueAction([]string{unitId}, s.ActionIssuedLocation)
+								s.eventBus.Publish(eventing.Event{
+									Type: "PlayIssueActionSFX",
+								})
+							}
+						} else if s.Ui.HUD.IsPointInsideMinimap(image.Pt(mx, my)) {
+							worldX, worldY := s.Ui.MiniMap.ToWorldPixels(mx, my, s.tileMap)
+							s.ActionIssuedLocation = &image.Point{X: worldX, Y: worldY}
+							s.sim.IssueAction(s.selectedUnitIDs, s.ActionIssuedLocation)
 							s.eventBus.Publish(eventing.Event{
 								Type: "PlayIssueActionSFX",
 							})
 						}
-					} else if s.Ui.HUD.IsPointInsideMinimap(image.Pt(mx, my)) {
-						worldX, worldY := s.Ui.MiniMap.ToWorldPixels(mx, my, s.tileMap)
-						s.ActionIssuedLocation = &image.Point{X: worldX, Y: worldY}
-						s.sim.IssueAction(s.selectedUnitIDs, s.ActionIssuedLocation)
-						s.eventBus.Publish(eventing.Event{
-							Type: "PlayIssueActionSFX",
-						})
 					}
+				default:
+					s.Ui.HUD.RightSideState = ui.HiddenState
 				}
-			default:
-				s.Ui.HUD.RightSideState = ui.HiddenState
+			} else {
+				unitOrHiveString := s.sim.DetermineUnitOrHiveById(s.selectedUnitIDs[0])
+				switch unitOrHiveString {
+				case "unit":
+					// Handle multiple unit or building selected
+					if s.Ui.HUD.RightSideState != ui.UnitSelectedState {
+						s.Ui.HUD.RightSideState = ui.UnitSelectedState
+						s.constructionMouse.Enabled = false
+					}
+					if inpututil.IsMouseButtonJustReleased(ebiten.MouseButtonRight) { // activate on buttonRelease to debounce
+						mx, my := ebiten.CursorPosition()
+						if !s.Ui.HUD.IsPointInside(image.Pt(mx, my)) {
+							mapX, mapY := s.Ui.Camera.ScreenPosToMapPos(mx, my)
+							s.ActionIssuedLocation = &image.Point{X: mapX, Y: mapY}
+							s.sim.IssueAction(s.selectedUnitIDs, s.ActionIssuedLocation)
+							s.eventBus.Publish(eventing.Event{
+								Type: "PlayIssueActionSFX",
+							})
+						} else if s.Ui.HUD.IsPointInsideMinimap(image.Pt(mx, my)) {
+							worldX, worldY := s.Ui.MiniMap.ToWorldPixels(mx, my, s.tileMap)
+							s.ActionIssuedLocation = &image.Point{X: worldX, Y: worldY}
+							s.sim.IssueAction(s.selectedUnitIDs, s.ActionIssuedLocation)
+							s.eventBus.Publish(eventing.Event{
+								Type: "PlayIssueActionSFX",
+							})
+						}
+					}
+				default:
+					s.Ui.HUD.RightSideState = ui.HiddenState
+				}
+
 			}
 		} else {
-			unitOrHiveString := s.sim.DetermineUnitOrHiveById(s.selectedUnitIDs[0])
-			switch unitOrHiveString {
-			case "unit":
-				// Handle multiple unit or building selected
-				if s.Ui.HUD.RightSideState != ui.UnitSelectedState {
-					s.Ui.HUD.RightSideState = ui.UnitSelectedState
-					s.constructionMouse.Enabled = false
-				}
-				if inpututil.IsMouseButtonJustReleased(ebiten.MouseButtonRight) { // activate on buttonRelease to debounce
-					mx, my := ebiten.CursorPosition()
-					if !s.Ui.HUD.IsPointInside(image.Pt(mx, my)) {
-						mapX, mapY := s.Ui.Camera.ScreenPosToMapPos(mx, my)
-						s.ActionIssuedLocation = &image.Point{X: mapX, Y: mapY}
-						s.sim.IssueAction(s.selectedUnitIDs, s.ActionIssuedLocation)
-						s.eventBus.Publish(eventing.Event{
-							Type: "PlayIssueActionSFX",
-						})
-					} else if s.Ui.HUD.IsPointInsideMinimap(image.Pt(mx, my)) {
-						worldX, worldY := s.Ui.MiniMap.ToWorldPixels(mx, my, s.tileMap)
-						s.ActionIssuedLocation = &image.Point{X: worldX, Y: worldY}
-						s.sim.IssueAction(s.selectedUnitIDs, s.ActionIssuedLocation)
-						s.eventBus.Publish(eventing.Event{
-							Type: "PlayIssueActionSFX",
-						})
-					}
-				}
-			default:
+			// zero units selected - hide the rightside HUD
+			if s.Ui.HUD.RightSideState != ui.HiddenState {
 				s.Ui.HUD.RightSideState = ui.HiddenState
+				s.constructionMouse.Enabled = false
 			}
-
-		}
-	} else {
-		// zero units selected - hide the rightside HUD
-		if s.Ui.HUD.RightSideState != ui.HiddenState {
-			s.Ui.HUD.RightSideState = ui.HiddenState
-			s.constructionMouse.Enabled = false
 		}
 	}
 
@@ -365,12 +382,21 @@ func (s *PlayScene) Update() error {
 		}
 		s.sim.ActionKeyPressed = sim.NoneKeyPressed
 	}
-	s.drag.Update(s.Sprites, s.Ui.Camera, s.Ui.HUD)
-	s.constructionMouse.Update(s.tileMap, s.sim, s.Ui.Camera)
-	if !s.constructionMouse.Enabled {
+	// Disable drag selecting while input is locked.
+	if s.inputDisabled {
+		s.drag.Enabled = false
+	}
+	if !s.inCutscene {
+		s.drag.Update(s.Sprites, s.Ui.Camera, s.Ui.HUD)
+		s.constructionMouse.Update(s.tileMap, s.sim, s.Ui.Camera)
+	}
+	if !s.constructionMouse.Enabled && !s.inputDisabled {
 		s.drag.Enabled = true
 	}
-	s.Ui.Update(s.sim, s.selectedUnitIDs)
+	// Gate keyboard-driven camera panning/zoom and button hotkeys. Mouse clicks
+	// on buttons still work because those aren't gated by this flag.
+	s.Ui.Camera.InputEnabled = !s.inputDisabled
+	s.Ui.Update(s.sim, s.selectedUnitIDs, !s.inputDisabled)
 
 	return nil
 }

@@ -51,9 +51,16 @@ func (unit *Unit) MoveToDestination(sim *T) {
 	}
 
 	arrived := unit.EdgeDistanceTo(dest) <= uint(ArrivalThreshold)
-	// Reduce or ignore repulsion when very close
+	// Reduce or ignore repulsion when very close.
 	if arrived {
-		repulsion = &vec2.T{} // disable repulsion
+		if unit.IsWorker() {
+			// Keep a gentle push for workers so a crowd converging on a resource
+			// spreads into a ring instead of stacking on the same point.
+			gentle := repulsion.Scale(0.5)
+			repulsion = &gentle
+		} else {
+			repulsion = &vec2.T{} // disable repulsion
+		}
 	}
 
 	moveVec := toTarget.Add(repulsion.Scale(UnitRepulsionWeight)).Normalize().Scale(speed)
@@ -112,10 +119,40 @@ func (unit *Unit) MoveToDestination(sim *T) {
 		if unit.StuckFrames > UnitMaxStuckFrames {
 			unit.StuckAttempts++
 			if unit.StuckAttempts >= 3 {
-				unit.ChangeState(&IdleState{})
-				unit.Destinations.Clear()
 				unit.StuckFrames = 0
 				unit.StuckAttempts = 0
+
+				// A worker heading TO a resource (carrying nothing) should never
+				// silently abandon the job just because the approach was crowded.
+				// If it's already close enough to the node, let it harvest right
+				// here; otherwise re-plan a harvest approach to its own slot.
+				//
+				// A worker that IS carrying resources is on a delivery run, so we
+				// leave its delivery destinations intact and just try to route
+				// around the blockage below rather than redirecting it to harvest.
+				harvestingWorker := unit.IsWorker() &&
+					unit.LastResourcePos != nil &&
+					unit.Stats.ResourcesCarried == 0
+				if harvestingWorker {
+					unit.Destinations.Clear()
+					if unit.EdgeDistanceTo(unit.LastResourcePos) <= UnitHarvestDistance {
+						unit.ChangeState(&HarvestingState{})
+					} else {
+						unit.Destinations.Enqueue(unit.HarvestApproachPos(unit.LastResourcePos))
+						unit.ChangeState(&MovingState{NextState: &HarvestingState{}})
+					}
+					return
+				}
+
+				// Carrying workers: keep trying to reach home instead of dropping
+				// to Idle (which would strand the resources). Non-workers give up.
+				if unit.IsWorker() && unit.Stats.ResourcesCarried > 0 {
+					unit.NavigateAround(sim)
+					return
+				}
+
+				unit.ChangeState(&IdleState{})
+				unit.Destinations.Clear()
 				return
 			}
 			unit.NavigateAround(sim)
@@ -225,16 +262,45 @@ func (unit *Unit) TrySidestep(sim *T) {
 }
 
 func (unit *Unit) NavigateAround(sim *T) {
-	// Get direction unit was moving last
+	// First, try to recompute a real path from the unit's current tile to the
+	// tile of its FINAL destination. The grid pathfinder respects collision
+	// MapObjects, so this routes the unit around the obstacle it's wedged
+	// against instead of blindly stepping backward into it again.
+	if finalDest, err := unit.Destinations.PeekBack(); err == nil && finalDest != nil {
+		start := unit.GetTileCoordinates()
+		endTile := &vec2.T{
+			X: math.Floor(finalDest.X / TileSize),
+			Y: math.Floor(finalDest.Y / TileSize),
+		}
+		// Don't bother re-pathing to the tile we're already on.
+		if int(start.X) != int(endTile.X) || int(start.Y) != int(endTile.Y) {
+			path := sim.FindClickedPath(start, endTile)
+			if len(path) > 0 {
+				// Preserve the exact final approach waypoint (e.g. a harvest
+				// slot or precise drop-off pixel) which the caller enqueued and
+				// which may sit off tile-center.
+				unit.Destinations.Clear()
+				for _, p := range path {
+					unit.Destinations.Enqueue(&vec2.T{
+						X: p.X*TileSize + HalfTileSize,
+						Y: p.Y*TileSize + HalfTileSize,
+					})
+				}
+				unit.Destinations.Enqueue(finalDest)
+				return
+			}
+		}
+	}
+
+	// Fallback (no viable re-path found): step one tile backward from current
+	// facing to try to break a local deadlock, then let normal movement retry.
 	angle := unit.MovingAngle - math.Pi/2 // undo +π/2 used earlier
 
-	// Calculate "backwards" vector (opposite of current direction)
 	backwards := vec2.T{
 		X: -math.Cos(angle),
 		Y: -math.Sin(angle),
 	}.Normalize()
 
-	// Move one tile back — assuming tiles are 128x128
 	tileSize := 128.0
 	backDest := unit.GetCenteredPosition().Add(backwards.Scale(tileSize))
 

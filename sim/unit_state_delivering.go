@@ -34,6 +34,13 @@ func (s *DeliveringState) Update(unit *Unit, sim *T) {
 		for _, p := range path {
 			unit.Destinations.Enqueue(p.ToCenteredPixelCoordinates())
 		}
+		// Replace the final waypoint (the shared resource tile center) with this
+		// worker's own approach slot so returning workers fan out around the node
+		// instead of converging on one pixel.
+		if n := len(unit.Destinations.Items); n > 0 {
+			unit.Destinations.Items = unit.Destinations.Items[:n-1]
+		}
+		unit.Destinations.Enqueue(unit.HarvestApproachPos(unit.LastResourcePos))
 		unit.ChangeState(&HarvestingState{})
 		return
 	}

@@ -129,6 +129,30 @@ func (a *ShowPortraitTextAreaAction) Update(s *PlayScene, dt float64) bool {
 	return a.portraitTextArea.Ta.Dismissed
 }
 
+// RevealFogOfWarAction clears the fog of war over a rectangular region during a
+// cutscene. TopLeft and BottomRight are TILE coordinates (inclusive), matching
+// how other level-authored actions specify tiles.
+//
+// NOTE: this is a partial implementation for use in cutscene design. It reveals
+// the region once and completes immediately. TODO(cutscene): consider an optional
+// animated/progressive reveal and a "keep permanently visible" flag.
+type RevealFogOfWarAction struct {
+	TopLeft     *image.Point
+	BottomRight *image.Point
+}
+
+func (a *RevealFogOfWarAction) Update(s *PlayScene, dt float64) bool {
+	if a.TopLeft == nil || a.BottomRight == nil {
+		return true
+	}
+	// sim.RevealFogOfWar works in tile coordinates via vec2.T; the fog grid is
+	// tile-indexed, so pass tile coords straight through (no *128 conversion).
+	topLeft := &vec2.T{X: float64(a.TopLeft.X), Y: float64(a.TopLeft.Y)}
+	bottomRight := &vec2.T{X: float64(a.BottomRight.X), Y: float64(a.BottomRight.Y)}
+	s.sim.RevealFogOfWar(topLeft, bottomRight)
+	return true
+}
+
 type WaitAction struct {
 	Duration float64
 	Elapsed  float64
@@ -137,6 +161,25 @@ type WaitAction struct {
 func (a *WaitAction) Update(s *PlayScene, dt float64) bool {
 	a.Elapsed += dt
 	return a.Elapsed >= a.Duration
+}
+
+// DisableInputAction locks out keyboard input (camera movement, unit hotkeys,
+// button key activation) and drag selecting. Mouse clicks still work. It
+// completes immediately; the lock stays in effect until an EnableInputAction
+// runs. Note the cutscene loop re-enables drag when the whole cutscene ends.
+type DisableInputAction struct{}
+
+func (a *DisableInputAction) Update(s *PlayScene, dt float64) bool {
+	s.inputDisabled = true
+	return true
+}
+
+// EnableInputAction re-enables keyboard input and drag selecting.
+type EnableInputAction struct{}
+
+func (a *EnableInputAction) Update(s *PlayScene, dt float64) bool {
+	s.inputDisabled = false
+	return true
 }
 
 type IssueUnitCommandAction struct {
