@@ -1,13 +1,16 @@
 package ui
 
 import (
-	"strings"
-
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/text/v2"
 )
 
 var MaxDuration = 120
+
+// NotificationMaxWidth is the maximum pixel width a notification line may occupy
+// before it is wrapped onto the next line. The notification is centered on the
+// 800px-wide screen, so this leaves a margin on both sides.
+var NotificationMaxWidth = 700
 
 type Notification struct {
 	font            *text.Face
@@ -17,8 +20,11 @@ type Notification struct {
 	Completed       bool
 }
 
-func NewNotification(font *text.Face, text string) *Notification {
-	lines := strings.Split(text, "\n")
+func NewNotification(font *text.Face, msg string) *Notification {
+	// wrapText also splits on explicit newlines, so a message with hard breaks
+	// (e.g. the bridge "not enough resources" message) still breaks where
+	// intended, while long unbroken lines are word-wrapped to fit on screen.
+	lines := wrapText(msg, *font, NotificationMaxWidth)
 
 	return &Notification{
 		font:            font,

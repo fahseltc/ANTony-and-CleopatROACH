@@ -50,6 +50,28 @@ func DrawCenteredText(screen *ebiten.Image, f text.Face, s string, cx, cy int, c
 	text.Draw(screen, s, f, &opt)
 }
 
+// DrawCenteredTextRotated draws text centered at (cx, cy) but rotated by the
+// given angle (in radians) around that center point. Used for UI elements like
+// buttons that tilt/wobble and want their labels to move with them.
+func DrawCenteredTextRotated(screen *ebiten.Image, f text.Face, s string, cx, cy int, angle float64, clr color.Color) {
+	tw, th := text.Measure(s, f, 6)
+
+	var textColor color.Color
+	if clr == nil {
+		textColor = color.RGBA{R: 255, G: 255, B: 255, A: 255}
+	} else {
+		textColor = clr
+	}
+
+	opt := text.DrawOptions{}
+	opt.ColorScale.ScaleWithColor(textColor)
+	// Rotate around the text's own centre, then move that centre to (cx, cy).
+	opt.GeoM.Translate(-tw/2, -th/2)
+	opt.GeoM.Rotate(angle)
+	opt.GeoM.Translate(float64(cx), float64(cy))
+	text.Draw(screen, s, f, &opt)
+}
+
 func DrawCircle(screen *ebiten.Image, x, y float64, radius float64, clr color.Color) {
 	img := ebiten.NewImage(int(radius*2), int(radius*2))
 	for dy := -radius; dy <= radius; dy++ {

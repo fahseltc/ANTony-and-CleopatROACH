@@ -5,6 +5,7 @@ import (
 	"gamejam/fonts"
 	"gamejam/util"
 	"image"
+	"image/color"
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/inpututil"
@@ -23,7 +24,16 @@ type Pause struct {
 }
 
 func NewPause(sound *audio.SoundManager, fonts *fonts.All) *Pause {
-	rect := &image.Rectangle{Min: image.Point{X: 200, Y: 175}, Max: image.Point{X: 600, Y: 575}}
+	// Center a fixed-size panel on the screen. Sliders and the close button are
+	// positioned relative to rect.Min, so deriving Min from the screen center
+	// keeps everything aligned as a unit.
+	const panelW, panelH = 400, 400
+	minX := (GameResolutionW - panelW) / 2
+	minY := (GameResolutionH - panelH) / 2
+	rect := &image.Rectangle{
+		Min: image.Point{X: minX, Y: minY},
+		Max: image.Point{X: minX + panelW, Y: minY + panelH},
+	}
 	scaled := util.ScaleImage(util.LoadImage("ui/metalPanel.png"), float32(rect.Dx()), float32(rect.Dy()))
 	p := &Pause{
 		sound:     sound,
@@ -67,6 +77,12 @@ func (p *Pause) Update() {
 
 func (p *Pause) Draw(screen *ebiten.Image) {
 	if !p.Hidden {
+		// Dim the gameplay behind the pause panel with a translucent black overlay.
+		bounds := screen.Bounds()
+		overlay := ebiten.NewImage(bounds.Dx(), bounds.Dy())
+		overlay.Fill(color.RGBA{0, 0, 0, 160}) // ~63% opacity
+		screen.DrawImage(overlay, nil)
+
 		opts := &ebiten.DrawImageOptions{}
 		opts.GeoM.Translate(float64(p.rect.Min.X), float64(p.rect.Min.Y))
 		screen.DrawImage(p.bg, opts)

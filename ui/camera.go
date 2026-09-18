@@ -54,6 +54,28 @@ func NewCamera(TileWidthCount, TileHeightCount int) *Camera {
 	}
 }
 
+// PlayerMovedCameraThisFrame reports whether the player is issuing camera input
+// this frame: any of the WASD pan keys held, or the mouse wheel scrolled to
+// zoom. It mirrors the input handled in Update and is gated by InputEnabled so
+// programmatic/cutscene camera moves never count. Useful for tutorial prompts
+// that should dismiss when the player actually tries the controls, rather than
+// relying on fragile absolute-viewport checks.
+func (c *Camera) PlayerMovedCameraThisFrame() bool {
+	if !c.InputEnabled {
+		return false
+	}
+	if ebiten.IsKeyPressed(ebiten.KeyW) ||
+		ebiten.IsKeyPressed(ebiten.KeyA) ||
+		ebiten.IsKeyPressed(ebiten.KeyS) ||
+		ebiten.IsKeyPressed(ebiten.KeyD) {
+		return true
+	}
+	if _, wheelY := ebiten.Wheel(); wheelY != 0 {
+		return true
+	}
+	return false
+}
+
 func (c *Camera) Update() {
 	mx, my := ebiten.CursorPosition()
 	if c.InputEnabled {

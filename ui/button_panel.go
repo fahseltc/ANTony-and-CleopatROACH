@@ -95,7 +95,30 @@ func NewUnitButtonPanel(fonts *fonts.All, s *simulation.T) *ButtonPanel {
 	return btnPanel
 }
 
+// NewHiveButtonPanel builds the button panel shown when an ant hive is selected.
 func NewHiveButtonPanel(fonts *fonts.All, s *simulation.T) *ButtonPanel {
+	return newHiveButtonPanel(fonts, s,
+		"ui/btn/make-worker-btn.png", "ui/btn/make-worker-btn-pressed.png",
+		types.UnitTypeDefaultAnt, true)
+}
+
+// NewRoachHiveButtonPanel builds the button panel shown when a roach hive is
+// selected. It uses the roach worker icon/cost and omits the fighter button
+// (roach hives don't produce the advanced/fighter unit).
+func NewRoachHiveButtonPanel(fonts *fonts.All, s *simulation.T) *ButtonPanel {
+	return newHiveButtonPanel(fonts, s,
+		"ui/btn/make-roach-btn.png", "ui/btn/make-roach-btn-pressed.png",
+		types.UnitTypeDefaultRoach, false)
+}
+
+// newHiveButtonPanel is the shared hive-panel builder. workerImgPath /
+// workerPressedImgPath are the worker button's icon (normal/pressed) and
+// workerUnitType drives its cost tooltip. showFighter controls whether the
+// advanced/fighter unit button is included (ant hives yes, roach hives no).
+// The produced-unit choice itself is made in sim.ConstructUnit based on the
+// selected hive's type; the "worker" event payload below is intentionally
+// generic for both hives.
+func newHiveButtonPanel(fonts *fonts.All, s *simulation.T, workerImgPath, workerPressedImgPath string, workerUnitType types.Unit, showFighter bool) *ButtonPanel {
 	pos := image.Point{
 		X: GameResolutionW - PanelWidth - PanelHorizontalPad,
 		Y: GameResolutionH - PanelHeight - PanelBottomPad,
@@ -127,50 +150,53 @@ func NewHiveButtonPanel(fonts *fonts.All, s *simulation.T) *ButtonPanel {
 				},
 			})
 		}),
-		WithImage(util.LoadImage("ui/btn/make-worker-btn.png"), util.LoadImage("ui/btn/make-worker-btn-pressed.png")),
+		WithImage(util.LoadImage(workerImgPath), util.LoadImage(workerPressedImgPath)),
 		WithKeyActivation(ebiten.KeyQ),
 		WithToolTip(
-			NewUnitCostToolTip(*fonts, types.UnitTypeDefaultAnt, image.Rectangle{}, LeftAlignment),
+			NewUnitCostToolTip(*fonts, workerUnitType, image.Rectangle{}, LeftAlignment),
 		),
 	)
 	btnPanel.btns = append(btnPanel.btns, workerBtn)
 
-	// Make Fighter Button
-	btnX += BtnDimension + BtnPad
-	var fighterBtn *Button
-	fighterBtn = NewButton(fonts,
-		WithRect(image.Rectangle{Min: image.Pt(btnX, btnY), Max: image.Pt(btnX+BtnDimension, btnY+BtnDimension)}),
-		WithClickFunc(func() {
-			btnPanel.log.Info("fighterbtnclicked")
-			if fighterBtn.GreyedOut {
-				s.EventBus.Publish(eventing.Event{
-					Type: "NotificationEvent",
-					Data: eventing.NotificationEvent{
-						Message: "Fighter unit is not unlocked yet and cannot be built!",
-					},
-				})
-			} else {
-				s.EventBus.Publish(eventing.Event{
-					Type: "MakeAntButtonClickedEvent",
-					Data: &eventing.MakeAntButtonClickedEvent{
-						UnitType: "fighter",
-					},
-				})
-			}
+	// Make Fighter Button (ant hives only; roach hives omit the advanced unit).
+	if showFighter {
+		fighterX := btnX + BtnDimension + BtnPad
+		var fighterBtn *Button
+		fighterBtn = NewButton(fonts,
+			WithRect(image.Rectangle{Min: image.Pt(fighterX, btnY), Max: image.Pt(fighterX+BtnDimension, btnY+BtnDimension)}),
+			WithClickFunc(func() {
+				btnPanel.log.Info("fighterbtnclicked")
+				if fighterBtn.GreyedOut {
+					s.EventBus.Publish(eventing.Event{
+						Type: "NotificationEvent",
+						Data: eventing.NotificationEvent{
+							Message: "Fighter unit is not unlocked yet and cannot be built!",
+						},
+					})
+				} else {
+					s.EventBus.Publish(eventing.Event{
+						Type: "MakeAntButtonClickedEvent",
+						Data: &eventing.MakeAntButtonClickedEvent{
+							UnitType: "fighter",
+						},
+					})
+				}
 
-		}),
-		WithImage(util.LoadImage("ui/btn/make-fighter-btn.png"), util.LoadImage("ui/btn/make-fighter-btn-pressed.png")),
-		WithKeyActivation(ebiten.KeyE),
-		WithToolTip(
-			NewUnitCostToolTip(*fonts, types.UnitTypeFighterAnt, image.Rectangle{}, LeftAlignment),
-		),
-	)
-	fighterBtn.GreyedOut = true
-	fighterBtn.description = "fighter_btn"
-	btnPanel.btns = append(btnPanel.btns, fighterBtn)
+			}),
+			WithImage(util.LoadImage("ui/btn/make-fighter-btn.png"), util.LoadImage("ui/btn/make-fighter-btn-pressed.png")),
+			WithKeyActivation(ebiten.KeyE),
+			WithToolTip(
+				NewUnitCostToolTip(*fonts, types.UnitTypeFighterAnt, image.Rectangle{}, LeftAlignment),
+			),
+		)
+		fighterBtn.GreyedOut = true
+		fighterBtn.description = "fighter_btn"
+		btnPanel.btns = append(btnPanel.btns, fighterBtn)
+	}
 
-	// Rally Button
-	btnX -= BtnDimension + BtnPad
+	// Rally Button. Anchor to the left column (pos.X) explicitly so it lands in
+	// the right place whether or not the fighter button above was added.
+	btnX = pos.X
 	btnY += BtnDimension + BtnPad
 	var rallyBtn *Button
 	rallyBtn = NewButton(fonts,

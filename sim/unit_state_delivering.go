@@ -40,7 +40,7 @@ func (s *DeliveringState) Update(unit *Unit, sim *T) {
 		if n := len(unit.Destinations.Items); n > 0 {
 			unit.Destinations.Items = unit.Destinations.Items[:n-1]
 		}
-		unit.Destinations.Enqueue(unit.HarvestApproachPos(unit.LastResourcePos))
+		unit.Destinations.Enqueue(unit.HarvestApproachPos(sim, unit.LastResourcePos))
 		unit.ChangeState(&HarvestingState{})
 		return
 	}

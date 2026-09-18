@@ -87,6 +87,82 @@ func (a *PanCameraAction) Update(s *PlayScene, dt float64) bool {
 	return false
 }
 
+// NudgeCameraByTilesAction scrolls the camera by a RELATIVE offset measured in
+// tiles from its current position (unlike PanCameraAction, which pans to an
+// absolute tile position). Positive OffsetTilesX/Y nudge the view right/down.
+//
+// Unlike the old tile-nudge, this is zoom-aware: an offset of N tiles moves the
+// view by N tiles as they appear on screen at the current zoom. It also
+// accumulates sub-pixel movement so small speeds still progress instead of
+// truncating to zero each frame.
+//
+// Speed is in on-screen pixels per second.
+type NudgeCameraByTilesAction struct {
+	OffsetTilesX, OffsetTilesY float64
+	Speed                      float64
+
+	resolved         bool
+	targetX, targetY float64 // absolute viewport pixel target
+	curX, curY       float64 // float-accumulated viewport position
+}
+
+func (a *NudgeCameraByTilesAction) Update(s *PlayScene, dt float64) bool {
+	const tileSize = 128.0
+	cam := s.Ui.Camera
+
+	if !a.resolved {
+		// A tile spans tileSize*zoom pixels on screen, so a relative tile offset
+		// translates into that many viewport pixels. ViewPortX/Y are the draw
+		// offset (negative of map position), and a positive tile offset should
+		// move the view toward higher map coordinates, i.e. decrease ViewPort.
+		a.curX = float64(cam.ViewPortX)
+		a.curY = float64(cam.ViewPortY)
+		a.targetX = a.curX - a.OffsetTilesX*tileSize*cam.ViewPortZoom
+		a.targetY = a.curY - a.OffsetTilesY*tileSize*cam.ViewPortZoom
+		a.resolved = true
+	}
+
+	dx := a.targetX - a.curX
+	dy := a.targetY - a.curY
+	dist := math.Hypot(dx, dy)
+
+	if dist < 1 {
+		cam.ViewPortX = int(a.targetX)
+		cam.ViewPortY = int(a.targetY)
+		cam.PanX(0) // clamp to map bounds
+		cam.PanY(0)
+		return true
+	}
+
+	step := a.Speed * dt
+	if step >= dist {
+		step = dist
+	}
+	a.curX += dx / dist * step
+	a.curY += dy / dist * step
+
+	prevX, prevY := cam.ViewPortX, cam.ViewPortY
+	cam.ViewPortX = int(a.curX)
+	cam.ViewPortY = int(a.curY)
+	cam.PanX(0) // clamp to map bounds
+	cam.PanY(0)
+
+	// If the map-bounds clamp overrode our intended position, the camera is
+	// against an edge. Resync the float accumulators to the clamped values (so
+	// we don't keep pushing into the wall) and finish. Otherwise KEEP the float
+	// accumulators as-is so sub-pixel movement builds up across frames and small
+	// speeds still make progress instead of truncating to zero.
+	if cam.ViewPortX != int(a.curX) || cam.ViewPortY != int(a.curY) {
+		a.curX = float64(cam.ViewPortX)
+		a.curY = float64(cam.ViewPortY)
+		if cam.ViewPortX == prevX && cam.ViewPortY == prevY {
+			return true // wedged against a bound, nothing more to do
+		}
+	}
+
+	return false
+}
+
 type FadeCameraAction struct {
 	Mode    string // "in" or "out"
 	Speed   uint8

@@ -22,6 +22,7 @@ type RightSideHUDState int
 const (
 	HiddenState RightSideHUDState = iota
 	HiveSelectedState
+	RoachHiveSelectedState
 	UnitSelectedState
 )
 
@@ -33,7 +34,8 @@ type HUD struct {
 	miniMapRect image.Rectangle
 
 	rightWorkerUnitButtonPanel *ButtonPanel // Buttons for worker selected (spawn more units)
-	rightHiveButtonPanel       *ButtonPanel // Buttons for building selected (spawn more units)
+	rightHiveButtonPanel       *ButtonPanel // Buttons for ant hive selected (spawn more units)
+	rightRoachHiveButtonPanel  *ButtonPanel // Buttons for roach hive selected (spawn more roaches)
 
 	resourceDisplay  *ResourceDisplay
 	selectedUnitArea *SelectedUnitArea
@@ -53,6 +55,7 @@ func NewHUD(fonts *fonts.All, sim *sim.T) *HUD {
 
 		rightWorkerUnitButtonPanel: NewWorkerUnitButtonPanel(fonts, sim),
 		rightHiveButtonPanel:       NewHiveButtonPanel(fonts, sim),
+		rightRoachHiveButtonPanel:  NewRoachHiveButtonPanel(fonts, sim),
 
 		resourceDisplay:  NewResourceDisplay(fonts.Med),
 		selectedUnitArea: NewSelectedUnitArea(),
@@ -86,6 +89,8 @@ func (h *HUD) Update(selectedUnitIDs []string, keyboardEnabled bool) {
 		// do nothing +
 	case HiveSelectedState:
 		h.rightHiveButtonPanel.Update(keyboardEnabled)
+	case RoachHiveSelectedState:
+		h.rightRoachHiveButtonPanel.Update(keyboardEnabled)
 	case UnitSelectedState:
 		h.rightWorkerUnitButtonPanel.Update(keyboardEnabled)
 	}
@@ -104,6 +109,8 @@ func (c *HUD) Draw(screen *ebiten.Image, sprites map[string]*Sprite) {
 		// do nothing
 	case HiveSelectedState:
 		c.rightHiveButtonPanel.Draw(screen)
+	case RoachHiveSelectedState:
+		c.rightRoachHiveButtonPanel.Draw(screen)
 	case UnitSelectedState:
 		c.rightWorkerUnitButtonPanel.Draw(screen)
 	}

@@ -138,15 +138,26 @@ func (unit *Unit) MoveToDestination(sim *T) {
 					if unit.EdgeDistanceTo(unit.LastResourcePos) <= UnitHarvestDistance {
 						unit.ChangeState(&HarvestingState{})
 					} else {
-						unit.Destinations.Enqueue(unit.HarvestApproachPos(unit.LastResourcePos))
+						unit.Destinations.Enqueue(unit.HarvestApproachPos(sim, unit.LastResourcePos))
 						unit.ChangeState(&MovingState{NextState: &HarvestingState{}})
 					}
 					return
 				}
 
 				// Carrying workers: keep trying to reach home instead of dropping
-				// to Idle (which would strand the resources). Non-workers give up.
+				// to Idle (which would strand the resources).
 				if unit.IsWorker() && unit.Stats.ResourcesCarried > 0 {
+					unit.NavigateAround(sim)
+					return
+				}
+
+				// Non-workers (e.g. the royal units moved by cutscenes) keep
+				// re-pathing rather than abandoning the order to Idle. Dropping to
+				// Idle here strands a scripted unit on a bridge edge and breaks
+				// the cutscene, which expects it to reach its target. NavigateAround
+				// re-plans a real grid path (with start-tile recovery), so this
+				// won't spin uselessly; if no path exists it nudges free.
+				if !unit.IsWorker() {
 					unit.NavigateAround(sim)
 					return
 				}
@@ -196,6 +207,20 @@ func (unit *Unit) isColliding(rect *image.Rectangle, sim *T) bool {
 			continue // skip self
 		}
 
+		// Map terrain (water/chasm): use the same closest-point circle test as
+		// the MapObjects loop below, and waive it where a bridge covers the
+		// contact point. Using a strict "<" means a unit sitting flush on its
+		// own tile (contact point exactly on the tile boundary, distance ==
+		// radius) is NOT blocked, so a regular 64px-radius unit fits a 1-wide
+		// bridge. A larger royal (radius > 64) penetrates the flanking water and
+		// IS blocked, so it can't cross a 1-wide bridge.
+		if collider.OwnerID == "map" {
+			if mapCollides(futureUnitCenterX, futureUnitCenterY, futureUnitRadius, collider.Rect, sim) {
+				return true
+			}
+			continue
+		}
+
 		collidingUnit, _ := sim.GetUnitByID(collider.OwnerID)
 
 		// Skip unit-unit collision for workers that are not idle
@@ -213,16 +238,52 @@ func (unit *Unit) isColliding(rect *image.Rectangle, sim *T) bool {
 			return true
 		}
 	}
-	for _, mo := range sim.world.MapObjects {
-		closestX := math.Max(float64(mo.Rect.Min.X), math.Min(futureUnitCenterX, float64(mo.Rect.Max.X)))
-		closestY := math.Max(float64(mo.Rect.Min.Y), math.Min(futureUnitCenterY, float64(mo.Rect.Max.Y)))
-		dx := futureUnitCenterX - closestX
-		dy := futureUnitCenterY - closestY
-		if dx*dx+dy*dy <= futureUnitRadius*futureUnitRadius {
+
+	// Iterate the tilemap's live collision objects rather than the snapshot in
+	// sim.world.MapObjects. The tilemap reassigns its MapObjects slice whenever
+	// a collision rect is added/removed (buildings), which leaves the world's
+	// copy pointing at a stale backing array that diverges from the pathing grid.
+	for _, mo := range sim.world.TileMap.MapObjects {
+		if mapCollides(futureUnitCenterX, futureUnitCenterY, futureUnitRadius, mo.Rect, sim) {
 			return true
 		}
 	}
 	return false
+}
+
+// mapCollides reports whether a unit circle (center cx,cy, radius r) collides
+// with a water/chasm rect, accounting for bridges. The nearest point on the
+// rect to the unit center is the contact point; if the unit penetrates the rect
+// (distance strictly less than the radius) it collides, UNLESS that contact
+// point sits on a bridge tile (walkable). The strict "<" lets a unit rest flush
+// against a rect edge (distance == radius) without colliding, so a 64px-radius
+// unit fits exactly on a one-tile-wide bridge while a larger royal does not.
+func mapCollides(cx, cy, r float64, waterRect *image.Rectangle, sim *T) bool {
+	closestX := math.Max(float64(waterRect.Min.X), math.Min(cx, float64(waterRect.Max.X)))
+	closestY := math.Max(float64(waterRect.Min.Y), math.Min(cy, float64(waterRect.Max.Y)))
+	dx := cx - closestX
+	dy := cy - closestY
+	if dx*dx+dy*dy >= r*r {
+		return false // flush or clear
+	}
+	// Penetrating the water rect: walkable only if the contact point is bridged.
+	// The contact point can sit exactly on the rect's edge, which is the shared
+	// boundary with the neighbouring (possibly bridged) tile. Sample a pixel
+	// nudged INTO the water rect (toward its interior) so we test the water
+	// tile itself, not the boundary that belongs to the adjacent bridge tile.
+	sampleX := closestX
+	sampleY := closestY
+	if closestX == float64(waterRect.Min.X) {
+		sampleX += 1
+	} else if closestX == float64(waterRect.Max.X) {
+		sampleX -= 1
+	}
+	if closestY == float64(waterRect.Min.Y) {
+		sampleY += 1
+	} else if closestY == float64(waterRect.Max.Y) {
+		sampleY -= 1
+	}
+	return !sim.IsCoveredByBridge(int(sampleX), int(sampleY))
 }
 
 func (unit *Unit) TrySidestep(sim *T) {

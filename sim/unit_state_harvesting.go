@@ -6,12 +6,35 @@ import (
 )
 
 var (
-	UnitHarvestDistance   = uint(110)
+	// UnitHarvestDistance is the edge-to-resource-center distance within which a
+	// worker may harvest. A worker stands on a tile ADJACENT to the resource, so
+	// when correctly placed its nearest rect edge is only ~half a tile (~64px)
+	// from the resource center; a diagonal neighbour and the movement arrival
+	// slack (ArrivalThreshold) push that a little further. 140px comfortably
+	// covers a worker standing on any adjacent tile without letting one harvest
+	// from ~two tiles away, which is what made ants look far off yet still
+	// gather. Keep this a bit above one tile (128px) so a worker settled just
+	// past its slot doesn't ping-pong between Moving and Harvesting.
+	UnitHarvestDistance   = uint(140)
 	UnitHarvestFrameCount = uint(30)
 )
 
+// MaxHarvestApproachAttempts caps how many times a worker will re-walk toward
+// the resource before giving up and harvesting from wherever it ended up. This
+// lets a genuinely boxed-in worker (can't physically get adjacent) still gather
+// instead of bouncing forever, without letting an ordinary worker harvest from
+// far away after a single approach.
+var MaxHarvestApproachAttempts = 3
+
 type HarvestingState struct {
 	harvestTimer uint
+	// approachAttempts counts how many times we've walked toward the resource
+	// this session. Unlike the old single "approached" commit, we keep trying to
+	// get within range across a few attempts, so a worker that stopped short
+	// (movement arrival slack, crowding) closes the gap instead of harvesting
+	// from a tile or two away. Only after MaxHarvestApproachAttempts do we let
+	// it harvest out of range (it's genuinely blocked).
+	approachAttempts int
 }
 
 func (s *HarvestingState) Enter(unit *Unit) {
@@ -20,16 +43,22 @@ func (s *HarvestingState) Enter(unit *Unit) {
 }
 func (s *HarvestingState) Update(unit *Unit, sim *T) {
 	// Distance is measured to the resource center itself so any worker standing
-	// within harvest range of the node can gather, regardless of which slot on
-	// the ring it settled into. This lets many workers harvest the same resource
+	// within harvest range of the node can gather, regardless of which adjacent
+	// tile it settled on. This lets many workers harvest the same resource
 	// concurrently instead of fighting for one exact pixel.
 	dist := unit.EdgeDistanceTo(unit.LastResourcePos)
-	if dist > UnitHarvestDistance {
-		// Move back toward the resource, aiming at this worker's own spread-out
-		// approach slot rather than the shared tile center.
+	// Walk toward the resource while we're out of harvest range, retrying up to
+	// MaxHarvestApproachAttempts times. Requiring in-range to harvest (rather
+	// than committing after a single approach) stops workers gathering from a
+	// tile or two away when they stopped short of their approach slot; the retry
+	// cap prevents an endless Moving<->Harvesting bounce for a boxed-in worker.
+	if dist > UnitHarvestDistance && s.approachAttempts < MaxHarvestApproachAttempts {
+		s.approachAttempts++
 		unit.Destinations.Clear()
-		unit.Destinations.Enqueue(unit.HarvestApproachPos(unit.LastResourcePos))
-		unit.ChangeState(&MovingState{NextState: &HarvestingState{}})
+		unit.Destinations.Enqueue(unit.HarvestApproachPos(sim, unit.LastResourcePos))
+		// Re-enter THIS same state (not a fresh one) after moving, so the
+		// attempt counter persists and we don't reset progress each approach.
+		unit.ChangeState(&MovingState{NextState: s})
 		return
 	}
 	s.harvestTimer += 1

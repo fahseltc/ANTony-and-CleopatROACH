@@ -46,9 +46,25 @@ type UnitGroupManager struct {
 	rect              image.Rectangle
 	lastPressedHotkey ebiten.Key
 
+	// recenteredGroupKey records the hotkey whose group the camera was last
+	// re-centered on via a double-tap this session (0 if none yet). Used by the
+	// level-2 tutorial to detect "press 1 twice to jump the camera to the group".
+	recenteredGroupKey ebiten.Key
+
 	fonts *fonts.All
 
 	btnImg *ebiten.Image
+}
+
+// HasGroup reports whether a control group has been assigned to the given hotkey.
+func (u *UnitGroupManager) HasGroup(key ebiten.Key) bool {
+	return u.groups[key] != nil
+}
+
+// DidRecenterOnGroup reports whether the camera has been re-centered on the
+// group bound to the given hotkey via a double-tap of that key.
+func (u *UnitGroupManager) DidRecenterOnGroup(key ebiten.Key) bool {
+	return u.recenteredGroupKey == key
 }
 
 func NewUnitGroupManager(fonts *fonts.All) *UnitGroupManager {
@@ -90,6 +106,7 @@ func (u *UnitGroupManager) Update(selectedUnits []string, camera *Camera, sim *s
 				if unitGroup != nil {
 					if u.lastPressedHotkey == k { // detect double tap?
 						camera.CenterCameraOnUnitGroupByIds(unitGroup.IDs, sim)
+						u.recenteredGroupKey = k
 					}
 					u.lastPressedHotkey = k
 					return unitGroup.IDs

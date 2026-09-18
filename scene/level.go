@@ -7,6 +7,7 @@ import (
 	"image"
 
 	"github.com/google/uuid"
+	"github.com/hajimehoshi/ebiten/v2"
 )
 
 type LevelData struct {
@@ -20,6 +21,16 @@ type LevelData struct {
 
 type LevelCollection struct {
 	Levels map[int]LevelData
+}
+
+// GetLevel returns the level data for the given level number, falling back to
+// level 0 when the number is out of range. This guards against an invalid
+// dev.startingLevel in config producing an empty LevelData.
+func (c *LevelCollection) GetLevel(n int) LevelData {
+	if ld, ok := c.Levels[n]; ok {
+		return ld
+	}
+	return c.Levels[0]
 }
 
 func NewLevelCollection() *LevelCollection {
@@ -42,14 +53,14 @@ func NewLevelCollection() *LevelCollection {
 
 		Arise, player! Command thy swarm!`,
 		SetupFunc: func(scene *PlayScene) (string, string) {
-			u := sim.NewDefaultAntWithTilePosition(6, 10)
+			u := sim.NewDefaultAntWithTilePosition(5, 9)
 			scene.sim.AddUnit(u)
 
-			u2 := sim.NewDefaultAntWithTilePosition(6, 5)
+			u2 := sim.NewDefaultAntWithTilePosition(6, 4)
 			scene.sim.AddUnit(u2)
 
 			king := sim.NewRoyalAnt()
-			king.SetTilePosition(12, 11)
+			king.SetTilePosition(12, 4)
 			scene.sim.AddUnit(king)
 
 			queen := sim.NewRoyalRoach()
@@ -61,7 +72,7 @@ func NewLevelCollection() *LevelCollection {
 			scene.Ui.Camera.FadeAlpha = 255
 
 			h := sim.GetBuildingInstance(types.BuildingTypeAntHive, uint(PlayerFaction))
-			h.SetTilePosition(8, 8)
+			h.SetTilePosition(6, 6)
 			scene.sim.AddBuilding(h)
 
 			scene.CompletionCondition = NewSceneCompletion(queen, king, scene.tileMap.MapCompletionObjects[0].Rect)
@@ -73,6 +84,11 @@ func NewLevelCollection() *LevelCollection {
 			s.drag.Enabled = false
 			s.cutsceneActions = []CutsceneAction{
 				&DisableInputAction{},
+				&NudgeCameraByTilesAction{OffsetTilesX: 0, OffsetTilesY: -4, Speed: 300},
+				&RevealFogOfWarAction{
+					TopLeft:     &image.Point{X: 14, Y: 4},
+					BottomRight: &image.Point{X: 32, Y: 18},
+				},
 				&FadeCameraAction{Mode: "in", Speed: 2},
 				&ShowPortraitTextAreaAction{
 					portraitTextArea: ui.NewPortraitTextArea(
@@ -81,13 +97,9 @@ func NewLevelCollection() *LevelCollection {
 						ui.PortraitTypeRoyalAnt,
 					),
 				},
-				&RevealFogOfWarAction{
-					TopLeft:     &image.Point{X: 14, Y: 4},
-					BottomRight: &image.Point{X: 32, Y: 18},
-				},
 				&IssueUnitCommandAction{
 					unitID:     antony,
-					targetTile: &image.Point{X: 14, Y: 11},
+					targetTile: &image.Point{X: 18, Y: 10},
 				},
 				&PanCameraAction{TargetX: float64(27), TargetY: float64(10), Speed: 300},
 				&IssueUnitCommandAction{
@@ -115,41 +127,44 @@ func NewLevelCollection() *LevelCollection {
 				},
 				&EnableInputAction{},
 			}
-
+			// This should be two tutorials, one about selecting units and another about sending them to harvest the two resource types.
 			s.tutorialDialogs = []Tutorial{
-				NewTutorialStep( // click and drag units
-					"tutorials/tutorial-1.png",
-					&image.Rectangle{Min: image.Point{X: 450, Y: 180}, Max: image.Point{X: 780, Y: 400}},
+				NewTutorialStep( // 'left click and drag a box around units. Send the units to harvest with right click'
+					"tutorials/level1/tutorial-1.png",
+					TutorialRightCenter, TutorialSizeTiny,
 					nil, // trigger always
-					func(ps *PlayScene) bool { // only complete once a unit is selected
-						if len(ps.selectedUnitIDs) > 0 {
-							return true
+					func(ps *PlayScene) bool { // only complete once a selected WORKER is returning resources (delivering)
+						for _, id := range ps.selectedUnitIDs {
+							if unit, err := ps.sim.GetUnitByID(id); err == nil &&
+								unit.IsWorker() &&
+								unit.CurrentState != nil &&
+								unit.CurrentState.GetName() == sim.UnitStateDelivering.ToString() {
+								return true
+							}
 						}
 						return false
 					},
 				),
-				NewTutorialStep( // move camera
-					"tutorials/tutorial-2.png",
-					&image.Rectangle{Min: image.Point{X: 450, Y: 180}, Max: image.Point{X: 780, Y: 400}},
+				NewTutorialStep( // 'use wasd and mouse wheel to move camera'
+					"tutorials/level1/tutorial-2.png",
+					TutorialRightCenter, TutorialSizeTiny,
 					nil,
-					func(ps *PlayScene) bool { // only complete once a unit is selected
-						if ps.Ui.Camera.ViewPortX != 0 && ps.Ui.Camera.ViewPortY != 0 { // TODO fragile!!
-							return true
-						}
-						return false
-					},
-				),
-				NewTutorialStep( // pause
-					"tutorials/tutorial-pause.png",
-					&image.Rectangle{Min: image.Point{X: 450, Y: 180}, Max: image.Point{X: 780, Y: 400}},
-					nil,
-					nil,
-				),
-				NewTutorialStep( // collected some sucrose + select hive
-					"tutorials/tutorial-3.png",
-					&image.Rectangle{Min: image.Point{X: 450, Y: 180}, Max: image.Point{X: 780, Y: 400}},
 					func(ps *PlayScene) bool {
-						if ps.sim.GetSucroseAmount() > 50 {
+						return ps.Ui.Camera.PlayerMovedCameraThisFrame()
+					},
+				),
+				NewPauseTutorialStep( // 'you can press esc to pause the game'
+					"tutorials/level1/tutorial-pause.png",
+					TutorialRightCenter, TutorialSizeTiny,
+					nil,
+					nil,
+				),
+				// KEEP HARVESTING TUTORIAL??
+				NewTutorialStep( // 'once youve gathered some sucrose, click the nearby hive'
+					"tutorials/level1/tutorial-3.png",
+					TutorialRightCenter, TutorialSizeTiny,
+					func(ps *PlayScene) bool {
+						if ps.sim.GetSucroseAmount() >= 50 {
 							return true
 						}
 						return false
@@ -163,9 +178,9 @@ func NewLevelCollection() *LevelCollection {
 						return false
 					},
 				),
-				NewTutorialStep( // hive selected + build unit
-					"tutorials/tutorial-4.png",
-					&image.Rectangle{Min: image.Point{X: 0, Y: 341}, Max: image.Point{X: 388, Y: 600}},
+				NewTutorialStep( // 'With the hive selected, press Q or click ICON to create a new ant for 50 sucrose'
+					"tutorials/level1/tutorial-4.png",
+					TutorialRightCenter, TutorialSizeTiny,
 					nil,
 					func(ps *PlayScene) bool {
 						for _, bld := range ps.sim.GetAllBuildings() {
@@ -177,8 +192,8 @@ func NewLevelCollection() *LevelCollection {
 					},
 				),
 				NewTutorialStep( // wood collected + select single unit
-					"tutorials/tutorial-5.png",
-					&image.Rectangle{Min: image.Point{X: 450, Y: 180}, Max: image.Point{X: 780, Y: 400}},
+					"tutorials/level1/tutorial-5.png",
+					TutorialRightCenter, TutorialSizeTiny,
 					func(ps *PlayScene) bool {
 						if ps.sim.GetWoodAmount() > 30 {
 							return true
@@ -194,23 +209,19 @@ func NewLevelCollection() *LevelCollection {
 						return false
 					},
 				),
-				NewTutorialStep( // unit selected + start building bridge
-					"tutorials/tutorial-6.png",
-					&image.Rectangle{Min: image.Point{X: 0, Y: 0}, Max: image.Point{X: 388, Y: 259}},
+				NewTutorialStep( // ' with the unit selected, press G then Q or ICON to begin a new bridge construction for 50 WOOD'
+					"tutorials/level1/tutorial-6.png",
+					TutorialTopLeft, TutorialSizeTiny,
 					nil,
 					func(ps *PlayScene) bool {
 						return ps.constructionMouse.Enabled
 					},
 				),
-				NewTutorialStep( // info about building bridges
-					"tutorials/tutorial-7.png",
-					&image.Rectangle{Min: image.Point{X: 0, Y: 0}, Max: image.Point{X: 388, Y: 259}},
-					nil,
-					nil,
-				),
-				NewTutorialStep( // Build a bridge
-					"tutorials/tutorial-8.png",
-					&image.Rectangle{Min: image.Point{X: 0, Y: 0}, Max: image.Point{X: 388, Y: 259}},
+				NewTutorialStepNoClick( // Build a bridge - this is the placement step.
+					// Do NOT dismiss on the left-click that places the bridge
+					// blueprint; complete once an in-construction building exists.
+					"tutorials/level1/tutorial-7.png",
+					TutorialTopLeft, TutorialSizeTiny,
 					nil,
 					func(ps *PlayScene) bool {
 						for _, bld := range ps.sim.GetAllBuildings() {
@@ -221,9 +232,9 @@ func NewLevelCollection() *LevelCollection {
 						return false
 					},
 				),
-				NewTutorialStep( // finish the bridge
-					"tutorials/tutorial-9.png",
-					&image.Rectangle{Min: image.Point{X: 0, Y: 341}, Max: image.Point{X: 388, Y: 600}},
+				NewTutorialStep( // finish the bridge to re-unite them -
+					"tutorials/level1/tutorial-8.png",
+					TutorialCenter, TutorialSizeSmall,
 					nil,
 					nil,
 				),
@@ -235,11 +246,17 @@ func NewLevelCollection() *LevelCollection {
 			s.inCutscene = true
 			s.Ui.DrawEnabled = false
 			s.drag.Enabled = false
-
 			s.selectedUnitIDs = []string{} // clear selected unit IDs
 
 			s.cutsceneActions = []CutsceneAction{
 				&DisableInputAction{},
+				&IssueUnitCommandAction{
+					unitID:     antony,
+					targetTile: &image.Point{X: 27, Y: 10},
+				},
+				&WaitAction{
+					Duration: 1.0,
+				},
 				&IssueUnitCommandAction{
 					unitID:     cleopatroach,
 					targetTile: &image.Point{X: 27, Y: 5},
@@ -290,17 +307,24 @@ func NewLevelCollection() *LevelCollection {
 					),
 				},
 				&FadeCameraAction{Mode: "out", Speed: 1},
+				&WaitAction{
+					Duration: 1.0, // wait for 1 second
+				},
 			}
 			s.tutorialDialogs = []Tutorial{
 				NewTutorialStep( // goal of level
 					"tutorials/lvl2-tutorial-1.png",
-					&image.Rectangle{Min: image.Point{X: 0, Y: 341}, Max: image.Point{X: 388, Y: 600}},
+					TutorialBottomLeft, TutorialSizeMedium,
 					nil,
 					nil,
 				),
 			}
 		},
 	}
+
+	// LEVEL 1
+	// LEVEL 1
+	// LEVEL 1
 	coll.Levels[1] = LevelData{
 		LevelNumber: 1,
 		TileMapPath: "tilemap/map2.tmx",
@@ -311,6 +335,7 @@ func NewLevelCollection() *LevelCollection {
 	But hark! The queen doth summon him from beyond the ravine again.
 	A bridge must rise! Broods must hatch!
 	And amid wood chips and whispers, history must crawl forward.`,
+		// LEVEL 1 SETUP FUNC
 		SetupFunc: func(s *PlayScene) (string, string) {
 			// hives
 			h := sim.GetBuildingInstance(types.BuildingTypeAntHive, uint(PlayerFaction))
@@ -334,8 +359,19 @@ func NewLevelCollection() *LevelCollection {
 			u := sim.NewDefaultAnt()
 			u.SetTilePosition(4, 7)
 			s.sim.AddUnit(u)
-			// starting them mining here doesnt work!
-			//s.sim.IssueAction(u.ID.String(), &image.Point{X: 70, Y: 235}) // start him mining
+			// Start this worker harvesting a chosen resource tile right away.
+			// IssueHarvestTile takes TILE coordinates (not pixels) and puts the
+			// unit into its HarvestingState; the sim ticks during the intro
+			// cutscene, so it walks over and begins gathering as the scene plays.
+			// (3,4) is a sucrose tile in the top-left patch on map2.tmx; the
+			// worker approaches it from the adjacent walkable tile.
+			s.sim.IssueHarvestTile(u.ID.String(), 3, 4)
+
+			// regular roach
+			u2 := sim.NewDefaultRoach()
+			u2.SetTilePosition(42, 9)
+			s.sim.AddUnit(u2)
+			s.sim.IssueHarvestTile(u2.ID.String(), 46, 11)
 
 			s.Ui.Camera.SetZoom(ui.MinZoom)
 			s.Ui.Camera.SetPosition(0, 105)
@@ -349,12 +385,16 @@ func NewLevelCollection() *LevelCollection {
 			s.CompletionCondition = NewSceneCompletion(queen, king, s.tileMap.MapCompletionObjects[0].Rect)
 			return queen.ID.String(), king.ID.String()
 		},
+		// LEVEL 1 CUTSCENE
 		SetupInitialCutscene: func(s *PlayScene, cleopatroach string, antony string) {
 			s.cutsceneActions = []CutsceneAction{
 				&DisableInputAction{},
-				&FadeCameraAction{Mode: "in", Speed: 2},
-				// &PanCameraAction{TargetX: float64(2), TargetY: float64(4), Speed: 300},
-
+				&PanCameraAction{TargetX: float64(4), TargetY: float64(4), Speed: 1500},
+				&FadeCameraAction{Mode: "in", Speed: 3},
+				&IssueUnitCommandAction{
+					unitID:     antony,
+					targetTile: &image.Point{X: 14, Y: 11},
+				},
 				&ShowPortraitTextAreaAction{
 					portraitTextArea: ui.NewPortraitTextArea(
 						s.fonts,
@@ -362,7 +402,7 @@ func NewLevelCollection() *LevelCollection {
 						ui.PortraitTypeRoyalAnt,
 					),
 				},
-				&PanCameraAction{TargetX: float64(12), TargetY: float64(4), Speed: 400},
+				&PanCameraAction{TargetX: float64(12), TargetY: float64(4), Speed: 800},
 				&IssueUnitCommandAction{
 					unitID:     cleopatroach,
 					targetTile: &image.Point{X: 31, Y: 9},
@@ -374,11 +414,7 @@ func NewLevelCollection() *LevelCollection {
 						ui.PortraitTypeRoyalRoach,
 					),
 				},
-				&PanCameraAction{TargetX: float64(4), TargetY: float64(4), Speed: 500},
-				&IssueUnitCommandAction{
-					unitID:     antony,
-					targetTile: &image.Point{X: 15, Y: 12},
-				},
+				&PanCameraAction{TargetX: float64(5), TargetY: float64(7), Speed: 800},
 				&ShowPortraitTextAreaAction{
 					portraitTextArea: ui.NewPortraitTextArea(
 						s.fonts,
@@ -392,6 +428,15 @@ func NewLevelCollection() *LevelCollection {
 						"Antony: In yonder ring where daisies dare to bloom. ",
 						ui.PortraitTypeRoyalAnt,
 					),
+				},
+				&PanCameraAction{TargetX: float64(5), TargetY: float64(7), Speed: 800},
+				&IssueUnitCommandAction{
+					unitID:     antony,
+					targetTile: &image.Point{X: 16, Y: 13},
+				},
+				&RevealFogOfWarAction{
+					TopLeft:     &image.Point{X: 12, Y: 10},
+					BottomRight: &image.Point{X: 20, Y: 25},
 				},
 				&ShowPortraitTextAreaAction{
 					portraitTextArea: ui.NewPortraitTextArea(
@@ -407,7 +452,71 @@ func NewLevelCollection() *LevelCollection {
 				&PanCameraAction{TargetX: float64(1), TargetY: float64(1), Speed: 300},
 				&EnableInputAction{},
 			}
+			// LEVEL 1 TUTORIAL
+			s.tutorialDialogs = []Tutorial{
+				NewTutorialStep( // Get both to the flower circle
+					"tutorials/level2/tutorial-1.png",
+					TutorialRightCenter, TutorialSizeTiny,
+					nil, // trigger always
+					nil, // only progress via left click
+				),
+				NewTutorialStep( // Manage two different hives
+					"tutorials/level2/tutorial-2.png",
+					TutorialRightCenter, TutorialSizeTiny,
+					nil, // trigger always
+					nil, // only progress via left click
+				),
+				NewTutorialStepNoClick( // select the first hive
+					"tutorials/level2/tutorial-3.png",
+					TutorialRightCenter, TutorialSizeTiny,
+					nil, // trigger always
+					// Complete once the ant hive is the selected building. The
+					// placement/selection click must not dismiss the modal, so
+					// this is a no-click step gated on the selection instead.
+					func(ps *PlayScene) bool {
+						return isHiveTypeSelected(ps, types.BuildingTypeAntHive)
+					},
+				),
+				NewTutorialStepNoClick( // press control + 1 to set the hotkey
+					"tutorials/level2/tutorial-4.png",
+					TutorialRightCenter, TutorialSizeTiny,
+					nil, // trigger always
+					// Complete once a control group has been bound to hotkey 1.
+					func(ps *PlayScene) bool {
+						return ps.UnitGroupManager.HasGroup(ebiten.Key1)
+					},
+				),
+				NewTutorialStepNoClick( // scroll to roach hive and select it
+					"tutorials/level2/tutorial-5.png",
+					TutorialTopLeft, TutorialSizeTiny,
+					nil, // trigger always
+					// Complete once the roach hive is the selected building.
+					func(ps *PlayScene) bool {
+						return isHiveTypeSelected(ps, types.BuildingTypeRoachHive)
+					},
+				),
+				NewTutorialStepNoClick( // press control + 2 to set the hotkey
+					"tutorials/level2/tutorial-6.png",
+					TutorialRightCenter, TutorialSizeTiny,
+					nil, // trigger always
+					// Complete once a control group has been bound to hotkey 2.
+					func(ps *PlayScene) bool {
+						return ps.UnitGroupManager.HasGroup(ebiten.Key2)
+					},
+				),
+				NewTutorialStepNoClick( // press 1 twice to move the camera back to the first hive
+					"tutorials/level2/tutorial-7.png",
+					TutorialRightCenter, TutorialSizeTiny,
+					nil, // trigger always
+					// Complete once the player double-taps hotkey 1, which jumps
+					// the camera back to the first (ant hive) group.
+					func(ps *PlayScene) bool {
+						return ps.UnitGroupManager.DidRecenterOnGroup(ebiten.Key1)
+					},
+				),
+			}
 		},
+
 		SetupCompletionCutscene: func(s *PlayScene, cleopatroach string, antony string) {
 			s.inCutscene = true
 			s.inCutscene = true
@@ -542,63 +651,76 @@ func NewLevelCollection() *LevelCollection {
 		SetupCompletionCutscene: func(s *PlayScene, cleopatroach string, antony string) {},
 	}
 
-	coll.Levels[3] = LevelData{
-		LevelNumber:    3,
-		TileMapPath:    "tilemap/test-map.tmx",
-		LevelIntroText: "",
-		SetupFunc: func(s *PlayScene) (string, string) {
-			u := sim.NewDefaultAnt()
-			u.SetTilePosition(9, 0)
-			s.sim.AddUnit(u)
+	// coll.Levels[3] = LevelData{
+	// 	LevelNumber:    3,
+	// 	TileMapPath:    "tilemap/test-map.tmx",
+	// 	LevelIntroText: "",
+	// 	SetupFunc: func(s *PlayScene) (string, string) {
+	// 		u := sim.NewDefaultAnt()
+	// 		u.SetTilePosition(9, 0)
+	// 		s.sim.AddUnit(u)
 
-			// for i := 0; i < 5; i++ {
-			// 	u := sim.NewDefaultAnt()
-			// 	u.SetTilePosition(9, i)
-			// 	s.sim.AddUnit(u)
-			// }
+	// 		// for i := 0; i < 5; i++ {
+	// 		// 	u := sim.NewDefaultAnt()
+	// 		// 	u.SetTilePosition(9, i)
+	// 		// 	s.sim.AddUnit(u)
+	// 		// }
 
-			// for i := 0; i < 5; i++ {
-			// 	u := sim.NewDefaultAnt()
-			// 	u.SetTilePosition(5, i)
-			// 	s.sim.AddUnit(u)
-			// }
+	// 		// for i := 0; i < 5; i++ {
+	// 		// 	u := sim.NewDefaultAnt()
+	// 		// 	u.SetTilePosition(5, i)
+	// 		// 	s.sim.AddUnit(u)
+	// 		// }
 
-			// king := sim.NewRoyalAnt()
-			// king.SetTilePosition(12, 11)
-			// s.sim.AddUnit(king)
+	// 		// king := sim.NewRoyalAnt()
+	// 		// king.SetTilePosition(12, 11)
+	// 		// s.sim.AddUnit(king)
 
-			// queen := sim.NewRoyalRoach()
-			// queen.SetTilePosition(28, 10)
-			// queen.Faction = 1
-			// s.sim.AddUnit(queen)
+	// 		// queen := sim.NewRoyalRoach()
+	// 		// queen.SetTilePosition(28, 10)
+	// 		// queen.Faction = 1
+	// 		// s.sim.AddUnit(queen)
 
-			s.Ui.Camera.SetZoom(ui.MinZoom)
-			s.Ui.Camera.SetPosition(0, 0)
-			s.Ui.Camera.FadeAlpha = 255
+	// 		s.Ui.Camera.SetZoom(ui.MinZoom)
+	// 		s.Ui.Camera.SetPosition(0, 0)
+	// 		s.Ui.Camera.FadeAlpha = 255
 
-			h := sim.GetBuildingInstance(types.BuildingTypeAntHive, uint(PlayerFaction))
-			h.SetTilePosition(6, 7)
-			s.sim.AddBuilding(h)
+	// 		h := sim.GetBuildingInstance(types.BuildingTypeAntHive, uint(PlayerFaction))
+	// 		h.SetTilePosition(6, 7)
+	// 		s.sim.AddBuilding(h)
 
-			// //bad guys
-			// for i := 0; i < 5; i++ {
-			// 	u := sim.NewDefaultAnt()
-			// 	u.Faction = 1
-			// 	u.SetTilePosition(21, 14+i)
-			// 	s.sim.AddUnit(u)
-			// }
-			// for i := 0; i < 15; i++ {
-			// 	u := sim.NewDefaultAnt()
-			// 	u.Faction = 1
-			// 	u.SetTilePosition(23, 14+i)
-			// 	s.sim.AddUnit(u)
-			// }
+	// 		// //bad guys
+	// 		// for i := 0; i < 5; i++ {
+	// 		// 	u := sim.NewDefaultAnt()
+	// 		// 	u.Faction = 1
+	// 		// 	u.SetTilePosition(21, 14+i)
+	// 		// 	s.sim.AddUnit(u)
+	// 		// }
+	// 		// for i := 0; i < 15; i++ {
+	// 		// 	u := sim.NewDefaultAnt()
+	// 		// 	u.Faction = 1
+	// 		// 	u.SetTilePosition(23, 14+i)
+	// 		// 	s.sim.AddUnit(u)
+	// 		// }
 
-			return "", ""
-		},
-		SetupInitialCutscene:    func(s *PlayScene, cleopatroach string, antony string) {},
-		SetupCompletionCutscene: func(s *PlayScene, cleopatroach string, antony string) {},
-	}
+	// 		return "", ""
+	// 	},
+	// 	SetupInitialCutscene:    func(s *PlayScene, cleopatroach string, antony string) {},
+	// 	SetupCompletionCutscene: func(s *PlayScene, cleopatroach string, antony string) {},
+	// }
 
 	return coll
+}
+
+// isHiveTypeSelected reports whether the player's current selection contains a
+// building of the given hive type. Used by the level-2 tutorial to detect when
+// the ant hive or roach hive has been selected. (sim.DetermineUnitOrHiveById
+// only recognises the ant hive, so we inspect the building type directly here.)
+func isHiveTypeSelected(ps *PlayScene, hiveType types.Building) bool {
+	for _, id := range ps.selectedUnitIDs {
+		if bld, err := ps.sim.GetBuildingByID(id); err == nil && bld.GetType() == hiveType {
+			return true
+		}
+	}
+	return false
 }

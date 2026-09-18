@@ -59,7 +59,7 @@
         "HPMax": 200,
         "ResourceCost": {
             "Sucrose": 0,
-            "Wood": 100
+            "Wood": 50
         },
         "ConstructionTime": 120,
         "VisionRange": 3,

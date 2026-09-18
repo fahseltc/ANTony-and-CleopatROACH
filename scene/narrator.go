@@ -26,7 +26,7 @@ func NewNarratorScene(fonts *fonts.All, sound *audio.SoundManager, levelData Lev
 		sound:          sound,
 		bg:             util.LoadImage("ui/bg/narrator-bg.png"),
 		fonts:          fonts,
-		fullscreenText: ui.NewFullscreenText(fonts.Large, levelData.LevelIntroText, 2),
+		fullscreenText: ui.NewFullscreenText(fonts.Small, levelData.LevelIntroText, 3),
 	}
 }
 

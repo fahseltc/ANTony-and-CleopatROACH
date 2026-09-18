@@ -31,6 +31,13 @@ type Tilemap struct {
 
 	TileSet map[int]*tiled.TilesetTile
 	Tiles   [][]*Tile
+
+	// walkableOverrides holds tile coordinates that have been force-opened
+	// (e.g. by a finished bridge spanning a water collision object). These are
+	// re-applied after every GenerateTiles() so that regenerating the grid for
+	// an unrelated reason (adding/removing another collision rect) doesn't
+	// clobber previously-opened bridge tiles.
+	walkableOverrides map[image.Point]bool
 }
 
 type MapObject struct {
@@ -197,6 +204,16 @@ func (tm *Tilemap) GenerateTiles() {
 		}
 	}
 	tm.PathGrid = newGrid
+
+	// Re-apply bridge (and other) walkable overrides, since the loop above
+	// derives walkability purely from MapObjects and would otherwise re-block
+	// tiles a bridge has opened over the water.
+	for coord := range tm.walkableOverrides {
+		if tile := tm.GetTileByCoordinates(coord.X, coord.Y); tile != nil {
+			tile.HasCollision = false
+			tm.PathGrid.SetCellTile(pathing.GridCoord{X: coord.X, Y: coord.Y}, WalkableTile)
+		}
+	}
 }
 
 func (tm *Tilemap) GetTileByPosition(x, y int) *Tile {
@@ -214,6 +231,25 @@ func (tm *Tilemap) GetTileByCoordinates(xCoord, yCoord int) *Tile {
 	}
 }
 
+// SetTileWalkable forces the tile at the given tile coordinates to be walkable
+// on both the pathing grid and the Tile record, without touching MapObjects.
+// Used for bridges, which make an otherwise-impassable tile (spanning a chasm
+// collision object) traversable without removing the underlying object.
+func (tm *Tilemap) SetTileWalkable(tileX, tileY int) {
+	tile := tm.GetTileByCoordinates(tileX, tileY)
+	if tile == nil {
+		return
+	}
+	tile.HasCollision = false
+	tm.PathGrid.SetCellTile(pathing.GridCoord{X: tileX, Y: tileY}, WalkableTile)
+	// Remember this override so future GenerateTiles() calls (triggered by
+	// unrelated collision changes) don't re-block the tile.
+	if tm.walkableOverrides == nil {
+		tm.walkableOverrides = make(map[image.Point]bool)
+	}
+	tm.walkableOverrides[image.Point{X: tileX, Y: tileY}] = true
+}
+
 func (tm *Tilemap) RemoveCollisionRect(rectToRemove *image.Rectangle) bool {
 	newObjs := tm.MapObjects[:0]
 	removed := false
@@ -228,6 +264,25 @@ func (tm *Tilemap) RemoveCollisionRect(rectToRemove *image.Rectangle) bool {
 	tm.MapObjects = newObjs
 	tm.GenerateTiles()
 	return removed
+}
+
+// IsBridgeBuildable reports whether a bridge may be placed on the tile at the
+// given tile coordinates. Bridges are only allowed on water that the map author
+// explicitly marked buildable: those are the collision objects carrying the
+// "buildable" property (IsBuildable == true), which sit over the water crossing.
+// Plain terrain (no collision object) and impassable water/chasm (collision
+// object without the buildable flag) both return false.
+func (tm *Tilemap) IsBridgeBuildable(tileX, tileY int) bool {
+	tile := tm.GetTileByCoordinates(tileX, tileY)
+	if tile == nil {
+		return false
+	}
+	for _, mo := range tm.MapObjects {
+		if mo.IsBuildable && mo.Rect.Overlaps(*tile.Rect) {
+			return true
+		}
+	}
+	return false
 }
 
 func (tm *Tilemap) AddCollisionRect(rectToAdd *image.Rectangle) bool {

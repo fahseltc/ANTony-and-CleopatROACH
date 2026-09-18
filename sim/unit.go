@@ -66,21 +66,27 @@ type UnitStats struct {
 	VisionRange uint
 }
 
+// RoyalUnitSize is the collision-rect size (px) of the royal ant/roach. It is
+// deliberately larger than one tile (128px) so the royals are physically big:
+// with radius = RoyalUnitSize/2 > 64px (half a tile), a royal centered on a
+// single-tile-wide bridge still clips the unbridged water on either side, so it
+// CANNOT cross a 1-wide bridge - it needs a wider crossing. Regular units
+// (128px, radius 64) still fit a 1-wide bridge exactly.
+const RoyalUnitSize = 176
+
 func NewRoyalRoach() *Unit {
 	u := GetUnitInstance(types.UnitTypeRoyalRoach, uint(PlayerFaction))
 	u.Type = types.UnitTypeRoyalRoach
-	size := 128 // match sprite
 	u.Rect.Min = image.Point{0, 0}
-	u.Rect.Max = image.Point{size, size}
+	u.Rect.Max = image.Point{RoyalUnitSize, RoyalUnitSize}
 	return u
 }
 
 func NewRoyalAnt() *Unit {
 	u := GetUnitInstance(types.UnitTypeRoyalAnt, uint(PlayerFaction))
 	u.Type = types.UnitTypeRoyalAnt
-	size := 128 // match sprite
 	u.Rect.Min = image.Point{0, 0}
-	u.Rect.Max = image.Point{size, size}
+	u.Rect.Max = image.Point{RoyalUnitSize, RoyalUnitSize}
 	return u
 }
 
@@ -237,45 +243,94 @@ func (unit *Unit) IsWorker() bool {
 	return unit.Type == types.UnitTypeDefaultAnt || unit.Type == types.UnitTypeDefaultRoach
 }
 
-// HarvestSlotRadius controls how far around a resource center workers spread out
-// when approaching it. Larger values give more room but make workers walk a bit
-// further from the resource.
-var HarvestSlotRadius = 90.0
-
-// HarvestApproachPos returns a stable per-unit point to stand at while harvesting
-// the resource at resourceCenter. Instead of every worker piling onto the exact
-// tile center (which causes crowding, stalling, and give-ups), each worker is
-// assigned a deterministic slot on a ring around the resource based on its ID.
-// The same unit always resolves to the same slot for a given resource, so its
-// approach target is stable frame-to-frame.
-func (unit *Unit) HarvestApproachPos(resourceCenter *vec2.T) *vec2.T {
+// HarvestApproachPos returns the pixel-center of a walkable tile adjacent to the
+// resource tile at resourceCenter, i.e. an actual spot on the map the unit can
+// stand to harvest. Workers are distributed across the available adjacent tiles
+// deterministically by unit ID, so a group sent to one resource fans out onto
+// different neighbouring tiles instead of all targeting the same point.
+//
+// Unlike a purely geometric ring offset, this only ever returns tiles that are
+// on the map, not impassable, not themselves resource tiles, and — importantly —
+// actually reachable from the unit's current position via pathfinding. This
+// prevents a worker from being assigned a tile that is walkable in isolation but
+// boxed in behind the resource, which made it wiggle in place instead of
+// harvesting. If no adjacent tile is reachable it falls back to the closest
+// walkable neighbour, and finally to the resource center.
+func (unit *Unit) HarvestApproachPos(sim *T, resourceCenter *vec2.T) *vec2.T {
 	if resourceCenter == nil {
 		return resourceCenter
 	}
-	// Derive a stable index from the unit's UUID so slots are spread out but
-	// deterministic (no per-frame jitter).
-	idBytes := unit.ID
-	var seed uint32
-	for _, b := range idBytes {
-		seed = seed*31 + uint32(b)
+
+	// Resource tile coordinates from the center pixel.
+	rx := int(resourceCenter.X / TileSize)
+	ry := int(resourceCenter.Y / TileSize)
+
+	// Candidate stand tiles: the 8 neighbours around the resource tile.
+	dirs := []struct{ dx, dy int }{
+		{-1, 0}, {1, 0}, {0, -1}, {0, 1}, // cardinals first (preferred)
+		{-1, -1}, {1, -1}, {-1, 1}, {1, 1}, // diagonals
 	}
 
-	// Arrange workers on concentric rings; 8 slots per ring, each ring a little
-	// further out so large numbers of workers still fan out instead of stacking.
-	const slotsPerRing = 8
-	slot := seed % slotsPerRing
-	ring := (seed / slotsPerRing) % 3 // up to 3 rings before repeating angles
-
-	angle := (float64(slot) / float64(slotsPerRing)) * 2 * math.Pi
-	// Offset alternating rings by half a slot so rings interleave.
-	angle += float64(ring) * (math.Pi / float64(slotsPerRing))
-
-	radius := HarvestSlotRadius * (1.0 + 0.6*float64(ring))
-
-	return &vec2.T{
-		X: resourceCenter.X + radius*math.Cos(angle),
-		Y: resourceCenter.Y + radius*math.Sin(angle),
+	// Collect walkable, non-resource neighbour tiles, split by whether the unit
+	// can actually path to them. A tile can be walkable in isolation but boxed
+	// in behind the resource/other obstacles so the unit can never reach it —
+	// picking such a tile is what makes a worker wiggle behind the resource
+	// instead of harvesting. We only assign reachable tiles.
+	unitTile := unit.GetTileCoordinates()
+	var reachable []*vec2.T
+	var walkableButUnreachable []*vec2.T
+	for _, d := range dirs {
+		nx, ny := rx+d.dx, ry+d.dy
+		tile := sim.world.TileMap.GetTileByCoordinates(nx, ny)
+		if tile == nil || tile.HasCollision {
+			continue
+		}
+		// Don't stand on another resource tile — units can't occupy those and
+		// it's the source of the "sent inside another resource" bug.
+		if tile.Type == types.TileTypeWood || tile.Type == types.TileTypeSucrose {
+			continue
+		}
+		center := &vec2.T{
+			X: float64(nx)*TileSize + HalfTileSize,
+			Y: float64(ny)*TileSize + HalfTileSize,
+		}
+		// Reachability: does a path exist from the unit's tile to this tile?
+		// (If the unit is already standing on the candidate tile, it's trivially
+		// reachable.)
+		if (int(unitTile.X) == nx && int(unitTile.Y) == ny) ||
+			len(sim.world.TileMap.FindPath(unitTile, &vec2.T{X: float64(nx), Y: float64(ny)})) > 0 {
+			reachable = append(reachable, center)
+		} else {
+			walkableButUnreachable = append(walkableButUnreachable, center)
+		}
 	}
+
+	// Prefer reachable tiles; distribute deterministically per-unit so a group
+	// sent to one resource fans out but each unit's target is stable.
+	if len(reachable) > 0 {
+		var seed uint32
+		for _, b := range unit.ID {
+			seed = seed*31 + uint32(b)
+		}
+		return reachable[seed%uint32(len(reachable))]
+	}
+
+	// Nothing reachable. Aim at the closest walkable-but-unreachable neighbour if
+	// any (pathing will get the unit as close as it can); otherwise the resource
+	// center. Either way this avoids committing to a far unreachable slot that
+	// leaves the unit stuck on the wrong side of the resource.
+	if len(walkableButUnreachable) > 0 {
+		closest := walkableButUnreachable[0]
+		minDist := unit.GetCenteredPosition().Distance(*closest)
+		for _, c := range walkableButUnreachable[1:] {
+			if d := unit.GetCenteredPosition().Distance(*c); d < minDist {
+				minDist = d
+				closest = c
+			}
+		}
+		return closest
+	}
+	return resourceCenter
 }
 
 func (unit *Unit) ChangeState(newState UnitStateInterface) {

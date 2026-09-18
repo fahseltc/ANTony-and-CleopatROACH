@@ -23,6 +23,11 @@ type Button struct {
 	Hidden    bool // Completely not shown or updated
 	GreyedOut bool // shown greyed out but still clickable
 
+	// Rotation is an optional angle in radians applied to the button image
+	// when drawn. It rotates around the button's centre and defaults to 0
+	// (no rotation), so existing buttons are unaffected.
+	Rotation float64
+
 	currentImg *ebiten.Image
 	defaultImg *ebiten.Image
 	pressedImg *ebiten.Image
@@ -109,8 +114,12 @@ func WithKeyActivation(key ebiten.Key) BtnOptFunc {
 func WithToolTip(tt TooltipInterface) BtnOptFunc {
 	return func(btn *Button) {
 		btn.tooltip = tt
+		// ReAlignToRect aligns the tooltip background AND its text to the button
+		// and clamps them on screen as one unit. Do NOT re-align the background
+		// afterwards: doing so moved only the background (not the text) back to
+		// the pre-clamp position, desyncing the two so bottom-row buttons (whose
+		// tooltips get clamped upward) drew their box in the wrong place.
 		btn.tooltip.ReAlignToRect(&btn.rect)
-		btn.tooltip.GetAlignment().Align(btn.rect, tt.GetRect())
 	}
 }
 
@@ -132,6 +141,14 @@ func (btn *Button) Draw(screen *ebiten.Image) {
 		return
 	}
 	op := &ebiten.DrawImageOptions{}
+	if btn.Rotation != 0 {
+		// Rotate around the image centre so the button sways in place.
+		w := float64(btn.currentImg.Bounds().Dx())
+		h := float64(btn.currentImg.Bounds().Dy())
+		op.GeoM.Translate(-w/2, -h/2)
+		op.GeoM.Rotate(btn.Rotation)
+		op.GeoM.Translate(w/2, h/2)
+	}
 	op.GeoM.Translate(float64(btn.rect.Min.X), float64(btn.rect.Min.Y))
 	if btn.GreyedOut {
 		gray := ebiten.ColorM{}
@@ -141,14 +158,19 @@ func (btn *Button) Draw(screen *ebiten.Image) {
 	screen.DrawImage(btn.currentImg, op)
 
 	if btn.text != "" {
-		// draw text centered
-		centerX, centerY := btn.GetCenter()
+		yOffset := 0
 		if btn.currentImg == btn.pressedImg {
-			util.DrawCenteredText(screen, btn.fonts.Med, btn.text, centerX, centerY+4, color.RGBA{R: 0, G: 0, B: 0, A: 255})
-		} else {
-			util.DrawCenteredText(screen, btn.fonts.Med, btn.text, centerX, centerY, color.RGBA{R: 0, G: 0, B: 0, A: 255})
+			yOffset = 4
 		}
-
+		if btn.Rotation != 0 {
+			// Match the image rotation, which pivots around the button's
+			// centre, so the label stays glued to the button face.
+			centerX, centerY := btn.GetCenter()
+			util.DrawCenteredTextRotated(screen, btn.fonts.Med, btn.text, centerX, centerY+yOffset, btn.Rotation, color.RGBA{R: 0, G: 0, B: 0, A: 255})
+		} else {
+			centerX, centerY := btn.GetCenter()
+			util.DrawCenteredText(screen, btn.fonts.Med, btn.text, centerX, centerY+yOffset, color.RGBA{R: 0, G: 0, B: 0, A: 255})
+		}
 	}
 
 	if btn.key != 999 {

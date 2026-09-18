@@ -35,7 +35,7 @@ func NewEventHandlerManager(bus *eventing.EventBus, scene *PlayScene) *EventHand
 
 // Shows a UI notification based on an event
 func (ehm *EventHandlerManager) HandleNotificationEvent(event eventing.Event) {
-	ehm.scene.CurrentNotification = ui.NewNotification(&ehm.scene.fonts.Med, event.Data.(eventing.NotificationEvent).Message)
+	ehm.scene.CurrentNotification = ui.NewNotification(&ehm.scene.fonts.Small, event.Data.(eventing.NotificationEvent).Message)
 }
 
 // Shows a UI notification about not having enough resources
@@ -90,16 +90,10 @@ func (ehm *EventHandlerManager) HandleBuildingButtonClickedEvent(event eventing.
 func (ehm *EventHandlerManager) HandleBuildClickedEvent(event eventing.Event) {
 	innerEvent := event.Data.(eventing.BuildClickedEvent)
 	if len(ehm.scene.selectedUnitIDs) >= 1 {
-		success := ehm.scene.sim.ConstructBuilding(innerEvent.TargetCoordinates, ehm.scene.selectedUnitIDs[0], innerEvent.BuildingType)
-		if !success {
-			ehm.eventBus.Publish(eventing.Event{
-				Type: "NotEnoughResourcesEvent",
-				Data: eventing.NotEnoughResourcesEvent{ // todo: add reason why, for example "unit not close enough" etc
-					ResourceName:   "Wood",
-					UnitBeingBuilt: "Bridge",
-				},
-			})
-		}
+		// ConstructBuilding publishes its own failure feedback (invalid
+		// placement, or not enough resources) so the message matches the actual
+		// reason. Nothing to do here on failure.
+		ehm.scene.sim.ConstructBuilding(innerEvent.TargetCoordinates, ehm.scene.selectedUnitIDs[0], innerEvent.BuildingType)
 	}
 	ehm.scene.drag.Enabled = true
 	ehm.scene.constructionMouse.Enabled = false

@@ -3,6 +3,7 @@ package sim
 import (
 	"fmt"
 	"gamejam/eventing"
+	"gamejam/log"
 	"gamejam/tilemap"
 	"gamejam/types"
 	"gamejam/util"
@@ -14,7 +15,11 @@ import (
 )
 
 var NearbyDistance = uint(300)
-var BuilderMaxDistance = uint(340)
+
+// BuilderMaxDistance is the maximum edge-to-target distance (in pixels) a
+// selected unit may be from the tile it is trying to build on. Roughly 1.5
+// tiles (tiles are 128px), so the builder must be close to the build site.
+var BuilderMaxDistance = uint(325)
 
 type T struct {
 	EventBus *eventing.EventBus
@@ -28,6 +33,8 @@ type T struct {
 	buildingMap map[int][]BuildingInterface
 
 	ActionKeyPressed ActionKeyPressed
+
+	log *slog.Logger
 }
 
 type Collider struct {
@@ -88,6 +95,8 @@ func New(tps int, tileMap *tilemap.Tilemap) *T {
 		// enemyUnits:  make([]*Unit, 0, 10),
 		unitMap:     make(map[int][]*Unit),
 		buildingMap: make(map[int][]BuildingInterface),
+
+		log: log.NewLogger().With("for", "sim"),
 	}
 	bus.Subscribe("ConstructUnitEvent", sim.HandleConstructUnitEvent)
 	return sim
@@ -154,7 +163,23 @@ func (s *T) AddBuilding(b BuildingInterface) {
 		s.buildingMap[int(faction)] = make([]BuildingInterface, 0)
 	}
 	s.buildingMap[int(faction)] = append(s.buildingMap[int(faction)], b)
-	s.world.TileMap.AddCollisionRect(b.GetRect())
+	// Bridges are walkable: they exist precisely to open up an otherwise
+	// impassable tile, so they must not add a collision rect back onto it.
+	// (The runtime collider check in GetAllCollidersOverlapping already skips
+	// bridges for the same reason.)
+	if b.GetType() != types.BuildingTypeBridge {
+		s.world.TileMap.AddCollisionRect(b.GetRect())
+	} else {
+		// Explicitly mark the bridge's tile walkable on the pathing grid. The
+		// underlying chasm collision object can't be removed by exact-rect match
+		// (it may span multiple tiles), so instead we clear the grid cell for
+		// this tile directly. The runtime collision (isColliding) is made
+		// bridge-aware via IsCoveredByBridge.
+		rect := b.GetRect()
+		tileX := (rect.Min.X + rect.Dx()/2) / int(TileSize)
+		tileY := (rect.Min.Y + rect.Dy()/2) / int(TileSize)
+		s.world.TileMap.SetTileWalkable(tileX, tileY)
+	}
 }
 
 func (s *T) RemoveBuilding(b BuildingInterface) {
@@ -190,7 +215,7 @@ func (s *T) GetBuildingByID(id string) (BuildingInterface, error) {
 }
 
 func (s *T) IssueAction(ids []string, point *image.Point) error {
-	slog.Debug("issuing action", "currentActionKey", s.ActionKeyPressed)
+	s.log.Debug("issuing action", "currentActionKey", s.ActionKeyPressed)
 	if len(ids) == 0 {
 		return fmt.Errorf("no unit IDs passed")
 	} else if len(ids) == 1 {
@@ -202,6 +227,34 @@ func (s *T) IssueAction(ids []string, point *image.Point) error {
 	return nil
 }
 
+// IssueHarvestTile orders a single unit (by ID) to harvest the resource on the
+// given TILE coordinate. It converts the tile to its center pixel and routes
+// through IssueAction, which starts a HarvestingState when the tile is a
+// resource. Intended for level setup / cutscenes where you want a worker to
+// begin gathering a specific node without a player click.
+//
+// The tile must be a wood or sucrose tile; if it isn't (or is off-map), this
+// logs a warning and the unit will simply move there (or do nothing) instead of
+// harvesting, so authoring mistakes are visible in the logs.
+func (s *T) IssueHarvestTile(unitID string, tileX, tileY int) error {
+	tile := s.world.TileMap.GetTileByCoordinates(tileX, tileY)
+	if tile == nil {
+		s.log.Warn("IssueHarvestTile: tile not found", "unitID", unitID, "tileX", tileX, "tileY", tileY)
+		return fmt.Errorf("harvest tile (%d,%d) not found", tileX, tileY)
+	}
+	if tile.Type != types.TileTypeWood && tile.Type != types.TileTypeSucrose {
+		s.log.Warn("IssueHarvestTile: tile is not a resource; unit will not harvest",
+			"unitID", unitID, "tileX", tileX, "tileY", tileY, "tileType", tile.Type)
+	}
+	// Target the tile CENTER so DetermineDestinationType reliably samples this
+	// tile (an edge pixel could round into a neighbour).
+	center := &image.Point{
+		X: tileX*int(TileSize) + int(HalfTileSize),
+		Y: tileY*int(TileSize) + int(HalfTileSize),
+	}
+	return s.IssueAction([]string{unitID}, center)
+}
+
 func (s *T) issueSingleAction(id string, point *image.Point) error {
 	unit, err := s.GetUnitByID(id)
 	if err != nil {
@@ -210,7 +263,7 @@ func (s *T) issueSingleAction(id string, point *image.Point) error {
 
 	clickedTile := s.world.TileMap.GetTileByPosition(point.X, point.Y)
 	if clickedTile == nil {
-		slog.Warn("tile clicked was not found")
+		s.log.Warn("tile clicked was not found", "x", point.X, "y", point.Y)
 		return fmt.Errorf("tile clicked was not found")
 	}
 
@@ -240,21 +293,35 @@ func (s *T) issueSingleAction(id string, point *image.Point) error {
 	}
 
 	start := unit.GetTileCoordinates()
-	end := util.PointToVec2(clickedTile.Coordinates)
 
-	// parse A* path into a series of destinations.
 	unit.Destinations.Clear()
+
+	if unit.DestinationType == types.DestinationTypeResource {
+		// The clicked resource tile is impassable, so route to a walkable tile
+		// adjacent to it (this worker's own approach slot) and path all the way
+		// there. This avoids A* aiming at the resource tile itself and avoids
+		// the final waypoint jumping to an unvalidated offset.
+		approach := unit.HarvestApproachPos(s, unit.LastResourcePos)
+		approachTile := &vec2.T{
+			X: math.Floor(approach.X / TileSize),
+			Y: math.Floor(approach.Y / TileSize),
+		}
+		steps := s.FindClickedPath(start, approachTile)
+		for _, step := range steps {
+			unit.Destinations.Enqueue(&vec2.T{X: step.X*TileSize + HalfTileSize, Y: step.Y*TileSize + HalfTileSize})
+		}
+		unit.Destinations.Enqueue(approach)
+		return nil
+	}
+
+	// Non-resource orders: path to the clicked tile and finish at the exact
+	// clicked pixel.
+	end := util.PointToVec2(clickedTile.Coordinates)
 	steps := s.FindClickedPath(start, end)
 	for _, step := range steps {
 		unit.Destinations.Enqueue(&vec2.T{X: step.X*TileSize + HalfTileSize, Y: step.Y*TileSize + HalfTileSize})
 	}
-	if unit.DestinationType == types.DestinationTypeResource {
-		// For resource orders, aim at this worker's own slot around the node so a
-		// group sent to one resource fans out instead of all targeting one pixel.
-		unit.Destinations.Enqueue(unit.HarvestApproachPos(unit.LastResourcePos))
-	} else {
-		unit.Destinations.Enqueue(&vec2.T{X: float64(point.X), Y: float64(point.Y)})
-	}
+	unit.Destinations.Enqueue(&vec2.T{X: float64(point.X), Y: float64(point.Y)})
 
 	return nil
 }
@@ -322,6 +389,17 @@ func (s *T) issueGroupAction(ids []string, point *image.Point) error {
 
 // accepts integar map coordinates (not pixels)
 func (s *T) FindClickedPath(start *vec2.T, end *vec2.T) []*vec2.T {
+	// If the START tile is unwalkable, A* can't leave it and returns nothing.
+	// This happens when a unit is standing on a tile the grid treats as blocked
+	// - e.g. a bridge EDGE tile, or a tile its rounded position snapped onto
+	// that has no bridge over the water. Snap the start to the nearest walkable
+	// neighbour so pathing can proceed, mirroring the END recovery below.
+	if startTile := s.world.TileMap.GetTileByCoordinates(int(start.X), int(start.Y)); startTile != nil && startTile.HasCollision {
+		if fixedStart := s.FindNearestSurroundingWalkableTiles(start, start); fixedStart != nil {
+			start = fixedStart
+		}
+	}
+
 	path := s.world.TileMap.FindPath(start, end)
 	if len(path) != 0 {
 		return s.optimizePath(path)
@@ -481,7 +559,11 @@ func (s *T) GetAllCollidersOverlapping(rect *image.Rectangle) []*Collider {
 			})
 		}
 	}
-	for _, mapObj := range s.world.MapObjects {
+	// Use the tilemap's live collision objects. s.world.MapObjects is a snapshot
+	// taken at sim construction and goes stale after collision rects are added or
+	// removed (the tilemap reassigns its own slice), so it can diverge from the
+	// pathing grid.
+	for _, mapObj := range s.world.TileMap.MapObjects {
 		if mapObj.Rect.Overlaps(*rect) {
 			colliders = append(colliders, &Collider{
 				Rect:    mapObj.Rect,
@@ -503,9 +585,25 @@ func (s *T) GetAllBuildings() []BuildingInterface {
 	return allBuildings
 }
 
+// IsCoveredByBridge reports whether the given pixel point lies on a completed
+// bridge. Bridges are walkable and exist to open up an otherwise-impassable
+// tile, so a point over a bridge should ignore the underlying chasm collision.
+func (s *T) IsCoveredByBridge(x, y int) bool {
+	pt := image.Point{X: x, Y: y}
+	for _, building := range s.GetAllBuildings() {
+		if building.GetType() != types.BuildingTypeBridge {
+			continue
+		}
+		if pt.In(*building.GetRect()) {
+			return true
+		}
+	}
+	return false
+}
+
 func (s *T) DetermineUnitOrHiveById(id string) string { // TODO use building.GetType()
 	b, err := s.GetBuildingByID(id)
-	if err == nil && b.GetType() == types.BuildingTypeAntHive {
+	if err == nil && (b.GetType() == types.BuildingTypeAntHive || b.GetType() == types.BuildingTypeRoachHive) {
 		return "hive"
 	}
 	_, err2 := s.GetUnitByID(id)
@@ -535,13 +633,18 @@ func (s *T) ConstructUnit(hiveId string, unitType types.Unit) bool {
 	if err != nil {
 		return false
 	}
+	// A roach hive produces roaches from the same "worker" button an ant hive
+	// uses ants for. The button is generic (it always requests the default
+	// worker), so pick the faction-appropriate worker based on the hive type.
+	if unitType == types.UnitTypeDefaultAnt && hive.GetType() == types.BuildingTypeRoachHive {
+		unitType = types.UnitTypeDefaultRoach
+	}
 	newUnit := UtilUnitTypeToUnit(unitType)
 	if s.playerState.Sucrose >= newUnit.Stats.ResourceCost.Sucrose &&
 		s.playerState.Wood >= newUnit.Stats.ResourceCost.Wood {
 		s.playerState.Sucrose -= newUnit.Stats.ResourceCost.Sucrose
 		s.playerState.Wood -= newUnit.Stats.ResourceCost.Wood
 
-		newUnit := UtilUnitTypeToUnit(unitType)
 		hive.AddItemToBuildQueue(&QueuedItem{
 			Type:             types.QueuedItemTypeUnit,
 			Unit:             newUnit,
@@ -561,10 +664,45 @@ func (s *T) ConstructBuilding(tileCoords image.Point, builderID string, building
 
 	building := UtilBuildingTypeToBuilding(buildingType)
 
-	//targetCenter := vec2.T{X: float64(target.Min.X + (target.Dx() / 2)), Y: float64(target.Min.Y + (target.Dy() / 2))}
+	// Bridges may only be placed on water the map author marked buildable.
+	// Reject placement anywhere else BEFORE spending resources so the click is
+	// a no-op on invalid ground, and tell the player why.
+	if buildingType == types.BuildingTypeBridge &&
+		!s.world.TileMap.IsBridgeBuildable(tileCoords.X, tileCoords.Y) {
+		s.EventBus.Publish(eventing.Event{
+			Type: "NotificationEvent",
+			Data: eventing.NotificationEvent{
+				Message: "Bridges can only be built on water.",
+			},
+		})
+		return false
+	}
 
-	//if unit.DistanceTo(&targetCenter) > BuilderMaxDistance {
+	// The builder must be close to the target tile. Measure from the unit's
+	// nearest edge to the target tile center so the requirement is forgiving of
+	// which side the unit stands on.
+	targetCenter := &vec2.T{
+		X: float64(tileCoords.X)*TileSize + HalfTileSize,
+		Y: float64(tileCoords.Y)*TileSize + HalfTileSize,
+	}
+	if unit.EdgeDistanceTo(targetCenter) > BuilderMaxDistance {
+		s.EventBus.Publish(eventing.Event{
+			Type: "NotificationEvent",
+			Data: eventing.NotificationEvent{
+				Message: "Move closer to build here.",
+			},
+		})
+		return false
+	}
+
 	if !building.GetStats().ResourceCost.CanAfford(*s.playerState) {
+		s.EventBus.Publish(eventing.Event{
+			Type: "NotEnoughResourcesEvent",
+			Data: eventing.NotEnoughResourcesEvent{
+				ResourceName:   "Wood",
+				UnitBeingBuilt: buildingType.ToString(),
+			},
+		})
 		return false
 	} else {
 		// actually build the thing
@@ -627,13 +765,18 @@ func (s *T) isSegmentClearOfMapObjects(start, end *vec2.T) bool {
 	step := HalfTileSize // 64px steps: never skips a 128px collision rect
 	steps := int(math.Ceil(dist/step)) + 1
 
-	for _, mo := range s.world.MapObjects {
+	for _, mo := range s.world.TileMap.MapObjects {
 		for i := 0; i <= steps; i++ {
 			t := float64(i) / float64(steps)
 			px := x0 + (x1-x0)*t
 			py := y0 + (y1-y0)*t
 			if int(px) >= mo.Rect.Min.X && int(px) < mo.Rect.Max.X &&
 				int(py) >= mo.Rect.Min.Y && int(py) < mo.Rect.Max.Y {
+				// A bridge opens the tile beneath a collision rect, so a sample
+				// point covered by a bridge does not block the straight path.
+				if s.IsCoveredByBridge(int(px), int(py)) {
+					continue
+				}
 				return false
 			}
 		}

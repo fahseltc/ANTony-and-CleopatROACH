@@ -6,6 +6,7 @@ import (
 	"gamejam/data"
 	"gamejam/eventing"
 	"gamejam/fonts"
+	"gamejam/log"
 	"gamejam/sim"
 	"gamejam/tilemap"
 	"gamejam/types"
@@ -13,6 +14,7 @@ import (
 	"gamejam/util"
 	"image"
 	"image/color"
+	"log/slog"
 	"math"
 	"slices"
 	"strings"
@@ -57,6 +59,14 @@ type PlayScene struct {
 	cutsceneActions []CutsceneAction
 	inCutscene      bool
 	currentDialog   *ui.PortraitTextArea
+	// lastLoggedCutsceneAction is the cutscene action most recently logged as
+	// "started", so each action is logged once as it becomes active rather than
+	// every frame it runs.
+	lastLoggedCutsceneAction CutsceneAction
+	// cutsceneTotalActions is the number of actions the current cutscene started
+	// with. cutsceneActions is consumed (sliced) as actions finish, so this is
+	// captured once at cutscene start to report "current / max" progress in logs.
+	cutsceneTotalActions int
 
 	// When true, all keyboard input (movement, hotkeys, button keys) and drag
 	// selecting are ignored. Mouse clicks still work. Toggled by DisableInputAction.
@@ -79,6 +89,8 @@ type PlayScene struct {
 	Pause *ui.Pause
 
 	UnitGroupManager *ui.UnitGroupManager
+
+	log *slog.Logger
 }
 
 func NewPlayScene(fonts *fonts.All, sound *audio.SoundManager, levelData LevelData) *PlayScene {
@@ -86,6 +98,15 @@ func NewPlayScene(fonts *fonts.All, sound *audio.SoundManager, levelData LevelDa
 
 	tileMap := tilemap.NewTilemap(levelData.TileMapPath)
 	simulation := sim.New(60, tileMap)
+
+	// Grant debug starting resources if configured. Only positive values take
+	// effect; the player starts with this amount of both sucrose and wood.
+	if config.Dev.DebugStartingResources > 0 {
+		amount := uint(config.Dev.DebugStartingResources)
+		simulation.AddResource(amount, types.ResourceTypeSucrose)
+		simulation.AddResource(amount, types.ResourceTypeWood)
+	}
+
 	scene := &PlayScene{
 		Config:            config,
 		sound:             sound,
@@ -100,6 +121,7 @@ func NewPlayScene(fonts *fonts.All, sound *audio.SoundManager, levelData LevelDa
 		eventBus:          simulation.EventBus,
 		Pause:             ui.NewPause(sound, fonts),
 		UnitGroupManager:  ui.NewUnitGroupManager(fonts),
+		log:               log.NewLogger().With("for", "PlayScene"),
 	}
 	scene.eventHandlerManager = NewEventHandlerManager(simulation.EventBus, scene)
 
@@ -108,12 +130,19 @@ func NewPlayScene(fonts *fonts.All, sound *audio.SoundManager, levelData LevelDa
 	scene.setupSFX()
 	levelData.SetupInitialCutscene(scene, scene.QueenID, scene.KingID)
 
-	if config.SkipToGameplay {
-		scene.tutorialDialogs = []Tutorial{}
+	// Skip the intro cutscene if configured, or if jumping straight to gameplay.
+	if config.Dev.SkipCutscenes || config.Dev.SkipToGameplay {
 		scene.cutsceneActions = []CutsceneAction{}
-		scene.Ui.Camera.FadeAlpha = 0
-	} else {
+		scene.inCutscene = false
+		scene.Ui.DrawEnabled = true
+		scene.drag.Enabled = true
+		scene.inputDisabled = false
+		scene.Ui.Camera.FadeAlpha = 0 // don't leave the screen faded to black
+	}
 
+	// Skip the tutorial dialogs if configured, or if jumping straight to gameplay.
+	if config.Dev.SkipTutorial || config.Dev.SkipToGameplay {
+		scene.tutorialDialogs = []Tutorial{}
 	}
 
 	return scene
@@ -140,6 +169,12 @@ func (s *PlayScene) Update() error {
 	// Determine Pause State
 	if inpututil.IsKeyJustPressed(ebiten.KeyEscape) {
 		s.Pause.Hidden = !s.Pause.Hidden
+		// If Escape just OPENED the pause menu and the active tutorial opts in
+		// (only the pause tutorial does), mark it dismissed now so it's already
+		// gone when the player unpauses. Other tutorials are never affected.
+		if !s.Pause.Hidden && len(s.tutorialDialogs) > 0 && s.tutorialDialogs[0].WantsDismissOnPauseOpen() {
+			s.tutorialDialogs[0].Dismiss()
+		}
 	}
 	if !s.Pause.Hidden { // stop the game processing when paused!
 		s.Pause.Update()
@@ -148,6 +183,10 @@ func (s *PlayScene) Update() error {
 
 	if s.CompletionCondition.IsComplete(s.sim) && !s.SceneCompleted {
 		s.SceneCompleted = true
+		// Log the transition exactly once (guarded by SceneCompleted). The
+		// predicate itself stays side-effect free so it can be polled every
+		// frame without spamming the log during the completion cutscene.
+		s.log.Debug("scene completion condition met")
 		s.LevelData.SetupCompletionCutscene(s, s.QueenID, s.KingID)
 	}
 
@@ -185,11 +224,20 @@ func (s *PlayScene) Update() error {
 		dt := 1.0 / 60.0 // or use actual delta time
 		if len(s.cutsceneActions) == 0 {
 			if s.SceneCompleted {
-				LevelData := NewLevelCollection().Levels[s.LevelData.LevelNumber+1]
 				s.sound.Stop("msx_gamesong1")
-				s.BaseScene.sm.SwitchTo(NewNarratorScene(s.fonts, s.sound, LevelData)) // switch to next level
+				nextLevelNum := s.LevelData.LevelNumber + 1
+				if nextLevel, ok := NewLevelCollection().Levels[nextLevelNum]; ok {
+					// There's another level: play its intro narration.
+					s.BaseScene.sm.SwitchTo(NewNarratorScene(s.fonts, s.sound, nextLevel))
+				} else {
+					// Last level finished (no level nextLevelNum in the map).
+					// Return to the main menu instead of loading an empty level.
+					s.log.Info("no next level; returning to main menu", "finishedLevel", s.LevelData.LevelNumber)
+					s.BaseScene.sm.SwitchTo(NewMenuScene(s.fonts, s.sound, s.Config))
+				}
 			}
 			s.inCutscene = false
+			s.cutsceneTotalActions = 0 // reset so the next cutscene recaptures its total
 			s.Ui.DrawEnabled = true
 			s.drag.Enabled = true
 			s.inputDisabled = false // restore input when the cutscene finishes
@@ -200,12 +248,36 @@ func (s *PlayScene) Update() error {
 			// select a phantom unit and trip tutorial completion checks).
 			return nil
 		} else {
+			// Capture the cutscene's total action count once, at its start.
+			// cutsceneActions is sliced down as actions finish, so len() alone
+			// can't report the full length after the first action completes.
+			if s.cutsceneTotalActions == 0 {
+				s.cutsceneTotalActions = len(s.cutsceneActions)
+			}
+			// current is the 1-based index of the active action within the whole
+			// cutscene: total minus the not-yet-started remainder.
+			current := s.cutsceneTotalActions - len(s.cutsceneActions) + 1
+
 			currentCutScene := s.cutsceneActions[0]
+			// Log each cutscene action once, when it becomes the active action,
+			// routing it through the JSON logging system like other components.
+			if currentCutScene != s.lastLoggedCutsceneAction {
+				s.log.Info("cutscene action started",
+					"action", fmt.Sprintf("%T", currentCutScene),
+					"current", current,
+					"max", s.cutsceneTotalActions)
+				s.lastLoggedCutsceneAction = currentCutScene
+			}
 			if s.currentDialog != nil {
 				s.currentDialog.Update()
 			}
 			if currentCutScene.Update(s, dt) {
+				s.log.Info("cutscene action finished",
+					"action", fmt.Sprintf("%T", currentCutScene),
+					"current", current,
+					"max", s.cutsceneTotalActions)
 				s.cutsceneActions = s.cutsceneActions[1:]
+				s.lastLoggedCutsceneAction = nil
 			}
 			// Early return to skip normal controls
 			return nil
@@ -267,11 +339,18 @@ func (s *PlayScene) Update() error {
 				unitOrHiveString := s.sim.DetermineUnitOrHiveById(s.selectedUnitIDs[0])
 				switch unitOrHiveString {
 				case "hive":
-					if s.Ui.HUD.RightSideState != ui.HiveSelectedState { // hide ui selected UI
+					// Ant and roach hives share selection behaviour but show
+					// different build panels (roach panel produces roaches).
+					hiveState := ui.HiveSelectedState
+					if hive, err := s.sim.GetBuildingByID(s.selectedUnitIDs[0]); err == nil &&
+						hive.GetType() == types.BuildingTypeRoachHive {
+						hiveState = ui.RoachHiveSelectedState
+					}
+					if s.Ui.HUD.RightSideState != hiveState { // hide ui selected UI
 						s.eventBus.Publish(eventing.Event{
 							Type: "PlaySelectHiveSFX",
 						})
-						s.Ui.HUD.RightSideState = ui.HiveSelectedState
+						s.Ui.HUD.RightSideState = hiveState
 						s.constructionMouse.Enabled = false
 					}
 					// Handle single hive clicks
@@ -512,12 +591,17 @@ func (s *PlayScene) Draw(screen *ebiten.Image) {
 	// Then fog of war
 	s.drawFogOfWar(screen)
 
-	if s.Config.DebugDraw {
+	if s.Config.Dev.DebugDraw {
 		s.DebugDraw(screen)
 	}
 	s.drawExpandingActionIssuedCircle(screen)
 	s.Ui.Draw(screen, s.Sprites)
-	s.UnitGroupManager.Draw(screen)
+	// The unit-hotkey group buttons are part of the HUD, so hide them whenever
+	// the rest of the UI is hidden (e.g. during cutscenes). s.Ui.Draw already
+	// gates itself on DrawEnabled internally, but this panel is drawn separately.
+	if s.Ui.DrawEnabled {
+		s.UnitGroupManager.Draw(screen)
+	}
 	s.drag.Draw(screen)
 	s.constructionMouse.Draw(screen, s.Ui.Camera)
 
