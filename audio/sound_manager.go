@@ -30,8 +30,8 @@ type SoundManager struct {
 
 func NewSoundManager() *SoundManager {
 	return &SoundManager{
-		GlobalSFXVolume:  0.3,
-		GlobalMSXVolume:  0.4,
+		GlobalSFXVolume:  0.25,
+		GlobalMSXVolume:  0.25,
 		sounds:           make(map[string][]byte),
 		activePlayers:    make(map[string][]*audio.Player),
 		lastPlayedFrame:  make(map[string]int),
