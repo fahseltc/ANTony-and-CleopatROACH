@@ -1,8 +1,10 @@
 package eventing
 
 import (
-	"fmt"
+	"gamejam/log"
+	"gamejam/types"
 	"image"
+	"log/slog"
 	"time"
 )
 
@@ -18,40 +20,51 @@ type Event struct {
 }
 
 type NotEnoughResourcesEvent struct {
-	ResourceName     string
-	TargetBeingBuilt string
+	ResourceName   string
+	UnitBeingBuilt string
 }
 
-type SceneCompletionEvent struct {
-	RoyalAntID   string
-	RoyalRoachID string
-}
+// type SceneCompletionEvent struct {
+// 	RoyalAntID   string
+// 	RoyalRoachID string
+// }
 
 type BuildClickedEvent struct {
-	TargetRect *image.Rectangle
-	// building type
+	TargetCoordinates image.Point
+	BuildingType      types.Building
+}
+
+type NotificationEvent struct {
+	Message string
 }
 
 type ConstructUnitEvent struct {
-	HiveID string
+	HiveID   string
+	UnitType string
 }
 
-type ToggleRightSideHUDEvent struct {
-	Show bool
+type MakeAntButtonClickedEvent struct {
+	UnitType string
+}
+
+type ResearchButtonClickedEvent struct {
+	TechID string
 }
 
 type EventBus struct {
 	subscribers map[string][]func(event Event)
+	log         *slog.Logger
 }
 
 func NewEventBus() *EventBus {
 	return &EventBus{
 		subscribers: make(map[string][]func(event Event)),
+		log:         log.NewLogger().With("for", "EventBus"),
 	}
 }
 
 func (eb *EventBus) Subscribe(eventType string, handler func(event Event)) {
-	fmt.Printf("EventBus: Event Subscribed To: %v\n", eventType)
+	eb.log.Info("event subscribed", "eventType", eventType)
 	eb.subscribers[eventType] = append(eb.subscribers[eventType], handler)
 }
 
@@ -63,16 +76,16 @@ func (eb *EventBus) Unsubscribe(eventType string) {
 	if _, exists := eb.subscribers[eventType]; exists {
 		delete(eb.subscribers, eventType)
 	} else {
-		fmt.Printf("EventBus: No subscribers found for event type: %s\n", eventType)
+		eb.log.Warn("no subscribers found for event type", "eventType", eventType)
 	}
 }
 
 // Publish sends an event to all subscribers of a given event type
 func (eb *EventBus) Publish(event Event) {
-	fmt.Printf("EventBus: Event Published: %v handlers: %v\n", event, len(eb.subscribers[event.Type]))
 	handlers := eb.subscribers[event.Type]
+	eb.log.Info("event published", "eventType", event.Type, "handlers", len(handlers))
 	for _, handler := range handlers {
-		fmt.Printf("EventBus: Calling handler for event type: %s, length: %v\n", event.Type, len(handlers))
+		eb.log.Debug("calling handler", "eventType", event.Type, "handlers", len(handlers))
 		handler(event)
 	}
 }

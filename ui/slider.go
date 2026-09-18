@@ -21,7 +21,7 @@ type Slider struct {
 	font                text.Face
 }
 
-func NewSlider(sliderType string, x, y int, font fonts.All, startingVolume float64) *Slider {
+func NewSlider(sliderType string, x, y int, font *fonts.All, startingVolume float64) *Slider {
 	// Clamp starting volume between 0 and 1
 	if startingVolume < 0 {
 		startingVolume = 0

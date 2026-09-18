@@ -1,123 +1,284 @@
 package sim
 
 import (
+	"gamejam/types"
+	"gamejam/vec2"
 	"image"
 	"math"
+	"sort"
 
 	"github.com/google/uuid"
 )
 
-var TileDimensions = 128
+var (
+	TileDimensions      = 128
+	BuildingVisionRange = 9
+)
 
 type Building struct {
 	ID       uuid.UUID
-	Type     BuildingType
-	Position *image.Point
+	Type     types.Building
+	Stats    *BuildingStats
+	Position *vec2.T
 	Rect     *image.Rectangle
 	Faction  uint
+}
+
+type BuildingStats struct {
+	Name  string
+	HPMax uint
+	HPCur uint
+
+	ResourceCost     ResourceCost
+	ConstructionTime uint
+
+	VisionRange uint
+	SizePx      uint
 
 	ProgressMax     uint
 	ProgressCurrent uint
 }
 
-type BuildingType int
-
-const (
-	BuildingTypeInConstruction BuildingType = iota
-	BuildingTypeHive
-	BuildingTypeRoachHive
-	BuildingTypeBridge
-)
-
 type BuildingInterface interface {
-	SetPosition(x, y, width, height int)
+	//SetPosition(x, y, width, height int)
 	SetTilePosition(x, y int)
+	GetTilePosition() *vec2.T
+	GetAdjacentCoordinates() []*vec2.T
 	GetID() uuid.UUID
-	GetType() BuildingType
-	GetPosition() *image.Point
-	GetCenteredPosition() *image.Point
-	GetClosestPosition(x, y int) *image.Point
+	GetType() types.Building
+	GetPosition() *vec2.T
+	SetPosition(*vec2.T)
+	GetCenteredPosition() *vec2.T
+	GetClosestPosition(*vec2.T) *vec2.T
 	GetRect() *image.Rectangle
 	GetFaction() uint
+	GetVisionRange() uint
 
-	Update(sim *T) // if buildings have an Update behavior
-	DistanceTo(point image.Point) uint
+	Update(*T) // if buildings have an Update behavior
+	DistanceTo(vec2.T) uint
 	GetProgress() float64
 
+	GetStats() *BuildingStats
+	GetNearbyPosition(sim *T, unitSize int) *vec2.T
+
 	// needs to be implemented by inheriting building
-	AddUnitToBuildQueue()
+	AddItemToBuildQueue(*QueuedItem)
+	SetRallyPoint(rallypoint *image.Point)
+	SetTargetBuilding(targetBuilding types.Building) // only for InConstructionBuilding
 }
 
-func NewBuilding(x, y, width, height int, faction uint, bt BuildingType, progressMax uint) *Building {
-	pos := &image.Point{X: x, Y: y}
+func NewBuilding(x, y, width, height int, faction uint, bt types.Building) *Building {
 	rect := &image.Rectangle{
-		Min: *pos,
+		Min: image.Point{X: x, Y: y},
 		Max: image.Point{X: x + width, Y: y + height},
 	}
 	return &Building{
-		ID:          uuid.New(),
-		Type:        bt,
-		Position:    pos,
-		Rect:        rect,
-		Faction:     faction,
-		ProgressMax: progressMax,
+		ID:   uuid.New(),
+		Type: bt,
+		Stats: &BuildingStats{
+			HPMax: 100,
+			HPCur: 100,
+
+			ResourceCost: ResourceCost{},
+
+			ProgressMax:     0,
+			ProgressCurrent: 0,
+
+			VisionRange: uint(BuildingVisionRange),
+		},
+		Position: &vec2.T{X: float64(x), Y: float64(y)},
+		Rect:     rect,
+		Faction:  faction,
 	}
 }
 
-func (b *Building) SetPosition(x, y, width, height int) {
-	b.Position = &image.Point{X: x, Y: y}
-	b.Rect.Min = *b.Position
-	b.Rect.Max = image.Point{X: x + width, Y: y + height}
-}
+// Sets Tile Coordinates of the building
 func (b *Building) SetTilePosition(x, y int) {
-	b.Position = &image.Point{X: x * TileDimensions, Y: y * TileDimensions}
-	b.Rect.Min = *b.Position
-	b.Rect.Max = image.Point{X: b.Position.X + TileDimensions*2, Y: b.Position.Y + TileDimensions*2}
+	b.Position = &vec2.T{X: float64(x * TileDimensions), Y: float64(y * TileDimensions)}
+	b.Rect.Min = image.Point{X: int(b.Position.X), Y: int(b.Position.Y)}
+	b.Rect.Max = image.Point{X: int(b.Position.X) + int(b.GetStats().SizePx), Y: int(b.Position.Y) + int(b.GetStats().SizePx)}
 }
 
-func (b *Building) GetID() uuid.UUID          { return b.ID }
-func (b *Building) GetType() BuildingType     { return b.Type }
-func (b *Building) GetPosition() *image.Point { return b.Position }
-func (b *Building) GetCenteredPosition() *image.Point {
+func (b *Building) GetTilePosition() *vec2.T {
+	tileX := float64(b.Position.X) / float64(TileDimensions)
+	tileY := float64(b.Position.Y) / float64(TileDimensions)
+	return &vec2.T{
+		X: tileX,
+		Y: tileY,
+	}
+}
+func (b *Building) GetAdjacentCoordinates() []*vec2.T {
+	if b.Rect == nil {
+		return nil
+	}
+	// Get tile bounds
+	minTileX := b.Rect.Min.X / TileDimensions
+	minTileY := b.Rect.Min.Y / TileDimensions
+	maxTileX := (b.Rect.Max.X - 1) / TileDimensions
+	maxTileY := (b.Rect.Max.Y - 1) / TileDimensions
+
+	adjacent := []*vec2.T{}
+
+	// Top edge
+	for x := minTileX; x <= maxTileX; x++ {
+		adjacent = append(adjacent, &vec2.T{X: float64(x), Y: float64(minTileY - 1)})
+	}
+	// Bottom edge
+	for x := minTileX; x <= maxTileX; x++ {
+		adjacent = append(adjacent, &vec2.T{X: float64(x), Y: float64(maxTileY + 1)})
+	}
+	// Left edge
+	for y := minTileY; y <= maxTileY; y++ {
+		adjacent = append(adjacent, &vec2.T{X: float64(minTileX - 1), Y: float64(y)})
+	}
+	// Right edge
+	for y := minTileY; y <= maxTileY; y++ {
+		adjacent = append(adjacent, &vec2.T{X: float64(maxTileX + 1), Y: float64(y)})
+	}
+
+	return adjacent
+}
+
+func (b *Building) GetID() uuid.UUID        { return b.ID }
+func (b *Building) GetType() types.Building { return b.Type }
+func (b *Building) GetPosition() *vec2.T    { return b.Position }
+func (b *Building) SetPosition(pos *vec2.T) {
+	b.Position = pos.RoundToGrid()
+	b.SetTilePosition(b.Position.ToPoint().X, b.Position.ToPoint().Y)
+}
+func (b *Building) GetCenteredPosition() *vec2.T {
 	if b.Rect == nil {
 		return b.Position
 	}
 	centerX := b.Rect.Min.X + (b.Rect.Dx() / 2)
 	centerY := b.Rect.Min.Y + (b.Rect.Dy() / 2)
-	return &image.Point{X: centerX, Y: centerY}
+	return &vec2.T{X: float64(centerX), Y: float64(centerY)}
 }
 
-func (b *Building) GetClosestPosition(x, y int) *image.Point {
-	clampedX := x
-	clampedY := y
+func (b *Building) GetClosestPosition(pos *vec2.T) *vec2.T {
+	clampedX := pos.X
+	clampedY := pos.X
 
-	if clampedX < b.Rect.Min.X {
-		clampedX = b.Rect.Min.X
-	} else if clampedX > b.Rect.Max.X {
-		clampedX = b.Rect.Max.X
+	if clampedX < float64(b.Rect.Min.X) {
+		clampedX = float64(b.Rect.Min.X)
+	} else if clampedX > float64(b.Rect.Max.X) {
+		clampedX = float64(b.Rect.Max.X)
 	}
 
-	if clampedY < b.Rect.Min.Y {
-		clampedY = b.Rect.Min.Y
-	} else if clampedY > b.Rect.Max.Y {
-		clampedY = b.Rect.Max.Y
+	if clampedY < float64(b.Rect.Min.Y) {
+		clampedY = float64(b.Rect.Min.Y)
+	} else if clampedY > float64(b.Rect.Max.Y) {
+		clampedY = float64(b.Rect.Max.Y)
 	}
 
-	return &image.Point{X: clampedX, Y: clampedY}
+	return &vec2.T{X: float64(clampedX), Y: float64(clampedY)}
 }
 
 func (b *Building) GetRect() *image.Rectangle { return b.Rect }
 func (b *Building) GetFaction() uint          { return b.Faction }
-func (b *Building) DistanceTo(point image.Point) uint {
+func (b *Building) DistanceTo(point vec2.T) uint {
 	xDist := math.Abs(float64(b.Position.X - point.X))
 	yDist := math.Abs(float64(b.Position.Y - point.Y))
 	return uint(math.Sqrt(xDist*xDist + yDist*yDist))
 }
 func (b *Building) GetProgress() float64 {
-	if b.ProgressMax == 0 {
+	if b.Stats.ProgressMax == 0 {
 		return 0
 	}
-	return float64(b.ProgressCurrent) / float64(b.ProgressMax)
+	return float64(b.Stats.ProgressCurrent) / float64(b.Stats.ProgressMax)
 }
-func (b *Building) Update(_ *T)          {} // Default no-op
-func (b *Building) AddUnitToBuildQueue() {}
+func (b *Building) Update(_ *T)                                     {} // Default no-op's
+func (b *Building) AddItemToBuildQueue(_ *QueuedItem)               {} // Default no-op's
+func (b *Building) SetRallyPoint(_ *image.Point)                    {} // Default no-op's
+func (b *Building) SetTargetBuilding(targetBuilding types.Building) {} // Default no-op's
+
+func (b *Building) GetVisionRange() uint {
+	return b.Stats.VisionRange
+}
+func (b *Building) GetStats() *BuildingStats {
+	return b.Stats
+}
+
+func (b *Building) GetNearbyPosition(sim *T, unitSize int) *vec2.T {
+	const maxRadius = 3
+	const tileSize = 128
+	center := b.GetCenteredPosition()
+
+	type spawnCandidate struct {
+		point   image.Point
+		rect    *image.Rectangle
+		density int
+	}
+	// TODO this sucks make it better
+
+	var candidates []spawnCandidate
+
+	for dx := -maxRadius; dx <= maxRadius; dx++ {
+		for dy := -maxRadius; dy <= maxRadius; dy++ {
+			x := int(center.X) + dx*tileSize
+			y := int(center.Y) + dy*tileSize
+
+			rect := &image.Rectangle{
+				Min: image.Point{X: x - unitSize/2, Y: y - unitSize/2},
+				Max: image.Point{X: x + unitSize/2, Y: y + unitSize/2},
+			}
+
+			if rect.Overlaps(*b.Rect) {
+				continue
+			}
+
+			// Score this tile by number of units overlapping or nearby
+			density := 0
+			for _, unit := range sim.GetAllUnits() {
+				if unit == nil || unit.ID.String() == b.ID.String() {
+					continue
+				}
+				// Check proximity (not just overlap)
+				unitCenter := unit.GetCenteredPosition()
+				dist := math.Hypot(float64(int(unitCenter.X)-x), float64(int(unitCenter.Y)-y))
+				if dist < float64(tileSize*2) { // count units within 2-tile radius
+					density++
+				}
+			}
+
+			candidates = append(candidates, spawnCandidate{
+				point:   image.Point{X: x - unitSize/2, Y: y - unitSize/2},
+				rect:    rect,
+				density: density,
+			})
+		}
+	}
+
+	// Sort by least density first
+	sort.Slice(candidates, func(i, j int) bool {
+		return candidates[i].density < candidates[j].density
+	})
+
+	// Try the best candidates in order
+	for _, c := range candidates {
+		colliders := sim.GetAllCollidersOverlapping(c.rect)
+		collision := false
+		for _, collider := range colliders {
+			if collider.OwnerID == b.ID.String() {
+				continue
+			}
+			if c.rect.Overlaps(*collider.Rect) {
+				collision = true
+				break
+			}
+		}
+
+		if !collision {
+			return &vec2.T{
+				X: float64(c.point.X),
+				Y: float64(c.point.Y),
+			}
+		}
+	}
+
+	// Fallback position
+	return &vec2.T{
+		X: float64(center.X + tileSize),
+		Y: float64(center.Y),
+	}
+}

@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<style>
+  body { margin: 0; background: #000; }
+  #version-banner {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    font-family: sans-serif;
+    font-size: 13px;
+    text-align: center;
+    padding: 4px;
+    background: rgba(0, 0, 0, 0.6);
+    color: #fff;
+    z-index: 10;
+  }
+  #version-banner a { color: #7fff7f; }
+</style>
+<div id="version-banner">
+  You're playing the original game jam version.
+  <a href="../">Play the updated version</a>
+</div>
+<script src="wasm_exec.js"></script>
+<script>
+const go = new Go();
+WebAssembly.instantiateStreaming(fetch("gamejam.wasm"), go.importObject).then(result => {
+    go.run(result.instance);
+});
+</script>

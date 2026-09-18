@@ -2,12 +2,15 @@ package tilemap
 
 import (
 	"gamejam/assets"
+	"gamejam/types"
+	"gamejam/vec2"
 	"image"
 	"log"
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/lafriks/go-tiled"
 	"github.com/lafriks/go-tiled/render"
+	"github.com/quasilyte/pathing"
 )
 
 // see https://pkg.go.dev/github.com/lafriks/go-tiled
@@ -16,12 +19,25 @@ type Tilemap struct {
 	Height   int
 	TileSize int
 
-	tileMap              *tiled.Map
-	StaticBg             *ebiten.Image
+	tileMap  *tiled.Map
+	StaticBg *ebiten.Image
+
 	MapObjects           []*MapObject
 	MapCompletionObjects []*MapCompletionObject
-	TileSet              map[int]*tiled.TilesetTile
-	Tiles                [][]*Tile
+
+	Pathing   *pathing.AStar
+	pathLayer pathing.GridLayer
+	PathGrid  *pathing.Grid
+
+	TileSet map[int]*tiled.TilesetTile
+	Tiles   [][]*Tile
+
+	// walkableOverrides holds tile coordinates that have been force-opened
+	// (e.g. by a finished bridge spanning a water collision object). These are
+	// re-applied after every GenerateTiles() so that regenerating the grid for
+	// an unrelated reason (adding/removing another collision rect) doesn't
+	// clobber previously-opened bridge tiles.
+	walkableOverrides map[image.Point]bool
 }
 
 type MapObject struct {
@@ -32,9 +48,13 @@ type MapCompletionObject struct {
 	Rect *image.Rectangle
 }
 
+const (
+	UnwalkableTile = iota
+	WalkableTile
+)
+
 func NewTilemap(mapPath string) *Tilemap {
-	tm, err := tiled.LoadFile(mapPath, tiled.WithFileSystem(assets.Files)) // this wont work in wasm! need to embed files but it breaks
-	//tm, err := tiled.LoadFile(mapPath)                                     // this wont work in wasm! need to embed files but it breaks
+	tm, err := tiled.LoadFile(mapPath, tiled.WithFileSystem(assets.Files))
 
 	if err != nil {
 		log.Fatalf("unable to load tmx: %v", err.Error())
@@ -48,6 +68,7 @@ func NewTilemap(mapPath string) *Tilemap {
 		tilesIdMap[int(tile.ID)] = tile
 	}
 
+	// setup collision objects
 	var mapCollisionObjects []*MapObject
 	var mapCompletionObjects []*MapCompletionObject
 	for _, objectGroup := range tm.ObjectGroups {
@@ -81,8 +102,9 @@ func NewTilemap(mapPath string) *Tilemap {
 	}
 
 	tmap := &Tilemap{
-		tileMap:              tm,
-		StaticBg:             staticBg,
+		tileMap:  tm,
+		StaticBg: staticBg,
+
 		TileSet:              tilesIdMap,
 		Tiles:                make([][]*Tile, tm.Width),
 		MapObjects:           mapCollisionObjects,
@@ -94,7 +116,19 @@ func NewTilemap(mapPath string) *Tilemap {
 	for i := 0; i < tm.Width; i++ {
 		tmap.Tiles[i] = make([]*Tile, tm.Height)
 	}
-	tmap.ToWorld()
+
+	// setup Pathfinding
+	tmap.Pathing = pathing.NewAStar(pathing.AStarConfig{
+		NumCols: uint(tm.Width),
+		NumRows: uint(tm.Height),
+	})
+	tmap.pathLayer = pathing.MakeGridLayer([4]uint8{
+		WalkableTile:   1, // passable
+		UnwalkableTile: 0, // not passable
+	})
+
+	tmap.GenerateTiles()
+
 	return tmap
 }
 
@@ -117,30 +151,67 @@ func (tm *Tilemap) GetMap() *tiled.Map {
 	return tm.tileMap
 }
 
-func (tm *Tilemap) ToWorld() {
+func (tm *Tilemap) GenerateTiles() {
+	for i := 0; i < tm.Width; i++ {
+		tm.Tiles[i] = make([]*Tile, tm.Height)
+	}
+	newGrid := pathing.NewGrid(pathing.GridConfig{
+		WorldWidth:  uint(tm.Width * tm.TileSize),
+		WorldHeight: uint(tm.Height * tm.TileSize),
+		CellWidth:   uint(tm.TileSize),
+		CellHeight:  uint(tm.TileSize),
+	})
 	mapWidth := tm.Width
 	for y := 0; y < tm.Height; y++ {
 		for x := 0; x < tm.Width; x++ {
 			t := tm.tileMap.Layers[0].Tiles[y*mapWidth+x]
-			var tileType string
+			tileRect := &image.Rectangle{
+				Min: image.Point{X: x * tm.TileSize, Y: y * tm.TileSize},
+				Max: image.Point{X: (x * tm.TileSize) + tm.TileSize, Y: (y * tm.TileSize) + tm.TileSize},
+			}
+			var hasCollision bool
+			for _, mo := range tm.MapObjects {
+				if mo.Rect.Overlaps(*tileRect) {
+					hasCollision = true
+					break
+				}
+			}
+			var tileTag uint8
+			if hasCollision {
+				tileTag = UnwalkableTile
+			} else {
+				tileTag = WalkableTile
+			}
+			newGrid.SetCellTile(pathing.GridCoord{X: x, Y: y}, tileTag)
+
+			var tileType types.Tile
 			switch t.ID {
 			case 15:
-				tileType = "sucrose"
+				tileType = types.TileTypeSucrose
 			case 6:
-				tileType = "wood"
+				tileType = types.TileTypeWood
 			default:
-				tileType = "none"
+				tileType = types.TileTypePlain
 			}
 			newTile := &Tile{
-				Type:        tileType,
-				TileID:      int(t.ID),
-				Coordinates: &image.Point{X: x, Y: y},
-				Rect: &image.Rectangle{
-					Min: image.Point{X: x * tm.TileSize, Y: y * tm.TileSize},
-					Max: image.Point{X: (x * tm.TileSize) + tm.TileSize, Y: (y * tm.TileSize) + tm.TileSize},
-				},
+				Type:         tileType,
+				TileID:       int(t.ID),
+				Coordinates:  &image.Point{X: x, Y: y},
+				Rect:         tileRect,
+				HasCollision: hasCollision,
 			}
 			tm.Tiles[x][y] = newTile
+		}
+	}
+	tm.PathGrid = newGrid
+
+	// Re-apply bridge (and other) walkable overrides, since the loop above
+	// derives walkability purely from MapObjects and would otherwise re-block
+	// tiles a bridge has opened over the water.
+	for coord := range tm.walkableOverrides {
+		if tile := tm.GetTileByCoordinates(coord.X, coord.Y); tile != nil {
+			tile.HasCollision = false
+			tm.PathGrid.SetCellTile(pathing.GridCoord{X: coord.X, Y: coord.Y}, WalkableTile)
 		}
 	}
 }
@@ -148,13 +219,35 @@ func (tm *Tilemap) ToWorld() {
 func (tm *Tilemap) GetTileByPosition(x, y int) *Tile {
 	xCoord := x / tm.TileSize
 	yCoord := y / tm.TileSize
-	//fmt.Printf("GetTileByPosition X:%v, Y:%v\n", xCoord, yCoord)
+	return tm.GetTileByCoordinates(xCoord, yCoord)
+}
+
+func (tm *Tilemap) GetTileByCoordinates(xCoord, yCoord int) *Tile {
 	if xCoord < tm.Width && xCoord >= 0 &&
 		yCoord < tm.Height && yCoord >= 0 {
 		return tm.Tiles[xCoord][yCoord]
 	} else {
 		return nil
 	}
+}
+
+// SetTileWalkable forces the tile at the given tile coordinates to be walkable
+// on both the pathing grid and the Tile record, without touching MapObjects.
+// Used for bridges, which make an otherwise-impassable tile (spanning a chasm
+// collision object) traversable without removing the underlying object.
+func (tm *Tilemap) SetTileWalkable(tileX, tileY int) {
+	tile := tm.GetTileByCoordinates(tileX, tileY)
+	if tile == nil {
+		return
+	}
+	tile.HasCollision = false
+	tm.PathGrid.SetCellTile(pathing.GridCoord{X: tileX, Y: tileY}, WalkableTile)
+	// Remember this override so future GenerateTiles() calls (triggered by
+	// unrelated collision changes) don't re-block the tile.
+	if tm.walkableOverrides == nil {
+		tm.walkableOverrides = make(map[image.Point]bool)
+	}
+	tm.walkableOverrides[image.Point{X: tileX, Y: tileY}] = true
 }
 
 func (tm *Tilemap) RemoveCollisionRect(rectToRemove *image.Rectangle) bool {
@@ -169,33 +262,94 @@ func (tm *Tilemap) RemoveCollisionRect(rectToRemove *image.Rectangle) bool {
 		newObjs = append(newObjs, mo)
 	}
 	tm.MapObjects = newObjs
+	tm.GenerateTiles()
 	return removed
 }
 
-// // Import the library
-// import (
-//     etiled "github.com/bird-mtn-dev/ebitengine-tiled"
-// )
+// IsBridgeBuildable reports whether a bridge may be placed on the tile at the
+// given tile coordinates. Bridges are only allowed on water that the map author
+// explicitly marked buildable: those are the collision objects carrying the
+// "buildable" property (IsBuildable == true), which sit over the water crossing.
+// Plain terrain (no collision object) and impassable water/chasm (collision
+// object without the buildable flag) both return false.
+func (tm *Tilemap) IsBridgeBuildable(tileX, tileY int) bool {
+	tile := tm.GetTileByCoordinates(tileX, tileY)
+	if tile == nil {
+		return false
+	}
+	for _, mo := range tm.MapObjects {
+		if mo.IsBuildable && mo.Rect.Overlaps(*tile.Rect) {
+			return true
+		}
+	}
+	return false
+}
 
-// // Load the xml output from tiled during the initilization of the Scene.
-// // Note that OpenTileMap will attempt to load the associated tilesets and tile images
-// Tilemap = etiled.OpenTileMap("assets/tilemap/base.tmx")
-// // Defines the draw parameters of the tilemap tiles
-// Tilemap.Zoom = 1
+func (tm *Tilemap) AddCollisionRect(rectToAdd *image.Rectangle) bool {
+	// Check if the rectangle already exists
+	for _, mo := range tm.MapObjects {
+		if mo.Rect.Min == rectToAdd.Min && mo.Rect.Max == rectToAdd.Max {
+			return false // Already exists
+		}
+	}
+	mo := &MapObject{
+		Rect:        rectToAdd,
+		IsBuildable: false,
+	}
+	tm.MapObjects = append(tm.MapObjects, mo)
+	tm.GenerateTiles()
+	return true
+}
 
-// // Call Update on the Tilemap during the ebitengine Update loop
-// Tilemap.Update()
+func (tm *Tilemap) FindPath(start *vec2.T, end *vec2.T) []*vec2.T {
+	if start == nil || end == nil {
+		return nil
+	}
+	bpr := tm.Pathing.BuildPath(tm.PathGrid, pathing.GridCoord{X: int(start.X), Y: int(start.Y)}, pathing.GridCoord{X: int(end.X), Y: int(end.Y)}, tm.pathLayer)
+	var nav []*vec2.T
+	var currentPos *vec2.T
+	currentPos = start
 
-// // Call Draw on the Tilemap during the ebitegine Draw loop to draw all the layers in the tilemap
-// Tilemap.Draw(worldScreen)
+	if bpr.Partial {
+		for bpr.Partial {
+			bpr = tm.Pathing.BuildPath(tm.PathGrid, pathing.GridCoord{X: int(currentPos.X), Y: int(currentPos.Y)}, pathing.GridCoord{X: int(end.X), Y: int(end.Y)}, tm.pathLayer)
+			nav = append(nav, tm.bprToVecSlice(currentPos, bpr)...)
+			if bpr.Cost == 0 {
+				break
+			}
+			currentPos = nav[len(nav)-1]
+		}
+	} else {
+		nav = tm.bprToVecSlice(start, bpr)
+	}
+	return nav
+}
 
-// // This loop will draw all the Object Groups in the Tilemap.
-// for idx := range Tilemap.ObjectGroups {
-//     Tilemap.ObjectGroups[idx].Draw(worldScreen)
-// }
+func (tm *Tilemap) bprToVecSlice(start *vec2.T, bpr pathing.BuildPathResult) []*vec2.T {
+	var currentPos *vec2.T
+	currentPos = start
+	var nav []*vec2.T
+	for bpr.Steps.HasNext() {
+		switch bpr.Steps.Next() {
+		case pathing.DirRight:
+			vec := &vec2.T{X: currentPos.X + 1, Y: currentPos.Y}
+			nav = append(nav, vec)
+			currentPos = vec
+		case pathing.DirDown:
+			vec := &vec2.T{X: currentPos.X, Y: currentPos.Y + 1}
+			nav = append(nav, vec)
+			currentPos = vec
+		case pathing.DirLeft:
+			vec := &vec2.T{X: currentPos.X - 1, Y: currentPos.Y}
+			nav = append(nav, vec)
+			currentPos = vec
+		case pathing.DirUp:
+			vec := &vec2.T{X: currentPos.X, Y: currentPos.Y - 1}
+			nav = append(nav, vec)
+			currentPos = vec
+		default:
+		}
+	}
+	return nav
 
-// // You can draw a specific Layer by calling
-// Tilemap.GetLayerByName("layer1").Draw(worldScreen)
-
-// // You can draw a specific Object Group by calling
-// Tilemap.GetObjectGroupByName("ojbect group 1").Draw(worldScreen)
+}

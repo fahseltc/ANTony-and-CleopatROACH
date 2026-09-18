@@ -3,6 +3,7 @@ package scene
 import (
 	"gamejam/sim"
 	"gamejam/ui"
+	"gamejam/vec2"
 	"image"
 	"math"
 )
@@ -86,6 +87,82 @@ func (a *PanCameraAction) Update(s *PlayScene, dt float64) bool {
 	return false
 }
 
+// NudgeCameraByTilesAction scrolls the camera by a RELATIVE offset measured in
+// tiles from its current position (unlike PanCameraAction, which pans to an
+// absolute tile position). Positive OffsetTilesX/Y nudge the view right/down.
+//
+// Unlike the old tile-nudge, this is zoom-aware: an offset of N tiles moves the
+// view by N tiles as they appear on screen at the current zoom. It also
+// accumulates sub-pixel movement so small speeds still progress instead of
+// truncating to zero each frame.
+//
+// Speed is in on-screen pixels per second.
+type NudgeCameraByTilesAction struct {
+	OffsetTilesX, OffsetTilesY float64
+	Speed                      float64
+
+	resolved         bool
+	targetX, targetY float64 // absolute viewport pixel target
+	curX, curY       float64 // float-accumulated viewport position
+}
+
+func (a *NudgeCameraByTilesAction) Update(s *PlayScene, dt float64) bool {
+	const tileSize = 128.0
+	cam := s.Ui.Camera
+
+	if !a.resolved {
+		// A tile spans tileSize*zoom pixels on screen, so a relative tile offset
+		// translates into that many viewport pixels. ViewPortX/Y are the draw
+		// offset (negative of map position), and a positive tile offset should
+		// move the view toward higher map coordinates, i.e. decrease ViewPort.
+		a.curX = float64(cam.ViewPortX)
+		a.curY = float64(cam.ViewPortY)
+		a.targetX = a.curX - a.OffsetTilesX*tileSize*cam.ViewPortZoom
+		a.targetY = a.curY - a.OffsetTilesY*tileSize*cam.ViewPortZoom
+		a.resolved = true
+	}
+
+	dx := a.targetX - a.curX
+	dy := a.targetY - a.curY
+	dist := math.Hypot(dx, dy)
+
+	if dist < 1 {
+		cam.ViewPortX = int(a.targetX)
+		cam.ViewPortY = int(a.targetY)
+		cam.PanX(0) // clamp to map bounds
+		cam.PanY(0)
+		return true
+	}
+
+	step := a.Speed * dt
+	if step >= dist {
+		step = dist
+	}
+	a.curX += dx / dist * step
+	a.curY += dy / dist * step
+
+	prevX, prevY := cam.ViewPortX, cam.ViewPortY
+	cam.ViewPortX = int(a.curX)
+	cam.ViewPortY = int(a.curY)
+	cam.PanX(0) // clamp to map bounds
+	cam.PanY(0)
+
+	// If the map-bounds clamp overrode our intended position, the camera is
+	// against an edge. Resync the float accumulators to the clamped values (so
+	// we don't keep pushing into the wall) and finish. Otherwise KEEP the float
+	// accumulators as-is so sub-pixel movement builds up across frames and small
+	// speeds still make progress instead of truncating to zero.
+	if cam.ViewPortX != int(a.curX) || cam.ViewPortY != int(a.curY) {
+		a.curX = float64(cam.ViewPortX)
+		a.curY = float64(cam.ViewPortY)
+		if cam.ViewPortX == prevX && cam.ViewPortY == prevY {
+			return true // wedged against a bound, nothing more to do
+		}
+	}
+
+	return false
+}
+
 type FadeCameraAction struct {
 	Mode    string // "in" or "out"
 	Speed   uint8
@@ -128,6 +205,30 @@ func (a *ShowPortraitTextAreaAction) Update(s *PlayScene, dt float64) bool {
 	return a.portraitTextArea.Ta.Dismissed
 }
 
+// RevealFogOfWarAction clears the fog of war over a rectangular region during a
+// cutscene. TopLeft and BottomRight are TILE coordinates (inclusive), matching
+// how other level-authored actions specify tiles.
+//
+// NOTE: this is a partial implementation for use in cutscene design. It reveals
+// the region once and completes immediately. TODO(cutscene): consider an optional
+// animated/progressive reveal and a "keep permanently visible" flag.
+type RevealFogOfWarAction struct {
+	TopLeft     *image.Point
+	BottomRight *image.Point
+}
+
+func (a *RevealFogOfWarAction) Update(s *PlayScene, dt float64) bool {
+	if a.TopLeft == nil || a.BottomRight == nil {
+		return true
+	}
+	// sim.RevealFogOfWar works in tile coordinates via vec2.T; the fog grid is
+	// tile-indexed, so pass tile coords straight through (no *128 conversion).
+	topLeft := &vec2.T{X: float64(a.TopLeft.X), Y: float64(a.TopLeft.Y)}
+	bottomRight := &vec2.T{X: float64(a.BottomRight.X), Y: float64(a.BottomRight.Y)}
+	s.sim.RevealFogOfWar(topLeft, bottomRight)
+	return true
+}
+
 type WaitAction struct {
 	Duration float64
 	Elapsed  float64
@@ -138,6 +239,25 @@ func (a *WaitAction) Update(s *PlayScene, dt float64) bool {
 	return a.Elapsed >= a.Duration
 }
 
+// DisableInputAction locks out keyboard input (camera movement, unit hotkeys,
+// button key activation) and drag selecting. Mouse clicks still work. It
+// completes immediately; the lock stays in effect until an EnableInputAction
+// runs. Note the cutscene loop re-enables drag when the whole cutscene ends.
+type DisableInputAction struct{}
+
+func (a *DisableInputAction) Update(s *PlayScene, dt float64) bool {
+	s.inputDisabled = true
+	return true
+}
+
+// EnableInputAction re-enables keyboard input and drag selecting.
+type EnableInputAction struct{}
+
+func (a *EnableInputAction) Update(s *PlayScene, dt float64) bool {
+	s.inputDisabled = false
+	return true
+}
+
 type IssueUnitCommandAction struct {
 	unitID     string
 	targetTile *image.Point
@@ -146,7 +266,7 @@ type IssueUnitCommandAction struct {
 func (a *IssueUnitCommandAction) Update(s *PlayScene, dt float64) bool {
 	a.targetTile.X = a.targetTile.X * 128
 	a.targetTile.Y = a.targetTile.Y * 128
-	s.sim.IssueAction(a.unitID, a.targetTile)
+	s.sim.IssueAction([]string{a.unitID}, a.targetTile)
 	return true
 }
 
@@ -167,9 +287,9 @@ func NewDrawTemporarySpriteAction(sprite *ui.Sprite, targetTile *image.Point, du
 
 func (a *DrawTemporarySpriteAction) Update(s *PlayScene, dt float64) bool {
 	if a.CurrentDuration == 0 {
-		a.spr.SetPosition(&image.Point{
-			X: a.TargetPosition.X,
-			Y: a.TargetPosition.Y,
+		a.spr.SetPosition(&vec2.T{
+			X: float64(a.TargetPosition.X),
+			Y: float64(a.TargetPosition.Y),
 		})
 		s.Sprites[a.spr.Id.String()] = a.spr
 	}
@@ -208,9 +328,9 @@ func (a *DrawTemporarySpriteBetweenUnitsAction) Update(s *PlayScene, dt float64)
 		midX := (pos1.X + pos2.X) / 2
 		midY := (pos1.Y + pos2.Y) / 2
 
-		a.spr.SetPosition(&image.Point{
-			X: midX + a.spr.Rect.Dx()/2,
-			Y: midY + a.spr.Rect.Dy()/2,
+		a.spr.SetPosition(&vec2.T{
+			X: midX + float64(a.spr.Rect.Dx())/2,
+			Y: midY + float64(a.spr.Rect.Dy())/2,
 		})
 		s.Sprites[a.spr.Id.String()] = a.spr
 	}

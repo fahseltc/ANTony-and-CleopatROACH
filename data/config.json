@@ -1,18 +1,25 @@
 {
     "windowTitle": "ANTony & CleopatROACH",
     "targetFPS": 60,
-    "muteAudio": false,
-    "debugDraw": false,
-    "skipMenu": false,
-    "startingLevel": 0,
+    "muteAudio": true,
     "resolution": {
         "external": {
             "w": 1200,
-            "h": 1000
+            "h": 900
         },
         "internal": {
             "w": 800,
             "h": 600
         }
+    },
+    "dev": {
+        "debugDraw": true,
+        "debugStartingResources": 500,
+        "skipMenu": false,
+        "skipToGameplay": false,
+        "skipCutscenes": false,
+        "skipTutorial": false,
+        "startingLevel__comment": "values 0, 1, 2 are valid",
+        "startingLevel": 1
     }
 }

@@ -2,6 +2,8 @@ package ui
 
 import (
 	"gamejam/log"
+	"gamejam/sim"
+	"gamejam/vec2"
 	"image/color"
 	"log/slog"
 	"math"
@@ -33,6 +35,10 @@ type Camera struct {
 	fadeSpeed   uint8 // how fast it fades per frame
 	IsFadingIn  bool
 	IsFadingOut bool
+
+	// InputEnabled gates keyboard panning and wheel zoom. Programmatic panning
+	// and fades continue regardless (so cutscene camera moves still work).
+	InputEnabled bool
 }
 
 func NewCamera(TileWidthCount, TileHeightCount int) *Camera {
@@ -41,32 +47,57 @@ func NewCamera(TileWidthCount, TileHeightCount int) *Camera {
 		ViewPortX:    0,
 		ViewPortY:    0,
 		ViewPortZoom: 1,
+		InputEnabled: true,
 
 		mapWidth:  TileWidthCount * TileDimensions,
 		mapHeight: TileHeightCount * TileDimensions,
 	}
 }
 
+// PlayerMovedCameraThisFrame reports whether the player is issuing camera input
+// this frame: any of the WASD pan keys held, or the mouse wheel scrolled to
+// zoom. It mirrors the input handled in Update and is gated by InputEnabled so
+// programmatic/cutscene camera moves never count. Useful for tutorial prompts
+// that should dismiss when the player actually tries the controls, rather than
+// relying on fragile absolute-viewport checks.
+func (c *Camera) PlayerMovedCameraThisFrame() bool {
+	if !c.InputEnabled {
+		return false
+	}
+	if ebiten.IsKeyPressed(ebiten.KeyW) ||
+		ebiten.IsKeyPressed(ebiten.KeyA) ||
+		ebiten.IsKeyPressed(ebiten.KeyS) ||
+		ebiten.IsKeyPressed(ebiten.KeyD) {
+		return true
+	}
+	if _, wheelY := ebiten.Wheel(); wheelY != 0 {
+		return true
+	}
+	return false
+}
+
 func (c *Camera) Update() {
 	mx, my := ebiten.CursorPosition()
-	if ebiten.IsKeyPressed(ebiten.KeyW) {
-		c.PanY(MapScrollSpeed)
-	}
-	if ebiten.IsKeyPressed(ebiten.KeyA) {
-		c.PanX(MapScrollSpeed)
-	}
-	if ebiten.IsKeyPressed(ebiten.KeyS) {
-		c.PanY(-MapScrollSpeed)
-	}
-	if ebiten.IsKeyPressed(ebiten.KeyD) {
-		c.PanX(-MapScrollSpeed)
-	}
-	_, mouseWheelY := ebiten.Wheel()
-	if mouseWheelY > 0 {
-		c.Zoom(ZoomIncrement, mx, my)
-	}
-	if mouseWheelY < 0 {
-		c.Zoom(-ZoomIncrement, mx, my)
+	if c.InputEnabled {
+		if ebiten.IsKeyPressed(ebiten.KeyW) {
+			c.PanY(MapScrollSpeed)
+		}
+		if ebiten.IsKeyPressed(ebiten.KeyA) {
+			c.PanX(MapScrollSpeed)
+		}
+		if ebiten.IsKeyPressed(ebiten.KeyS) {
+			c.PanY(-MapScrollSpeed)
+		}
+		if ebiten.IsKeyPressed(ebiten.KeyD) {
+			c.PanX(-MapScrollSpeed)
+		}
+		_, mouseWheelY := ebiten.Wheel()
+		if mouseWheelY > 0 {
+			c.Zoom(ZoomIncrement, mx, my)
+		}
+		if mouseWheelY < 0 {
+			c.Zoom(-ZoomIncrement, mx, my)
+		}
 	}
 
 	// handle panning
@@ -188,6 +219,12 @@ func (c *Camera) ScreenPosToMapPos(x, y int) (int, int) {
 	mapY := (float64(y) - float64(c.ViewPortY)) / c.ViewPortZoom
 	return int(mapX), int(mapY)
 }
+func (c *Camera) MousePosToMapPos() (int, int) {
+	mx, my := ebiten.CursorPosition()
+	mapX := (float64(mx) - float64(c.ViewPortX)) / c.ViewPortZoom
+	mapY := (float64(my) - float64(c.ViewPortY)) / c.ViewPortZoom
+	return int(mapX), int(mapY)
+}
 
 func (c *Camera) MapPosToScreenPos(x, y int) (int, int) {
 	screenX := float64(x)*c.ViewPortZoom + float64(c.ViewPortX)
@@ -196,9 +233,36 @@ func (c *Camera) MapPosToScreenPos(x, y int) (int, int) {
 }
 
 func (c *Camera) SetPosition(x, y int) {
-	c.ViewPortX = -x
-	c.ViewPortY = -y
+	// x,y are world coordinates to center on
+
+	// Calculate half viewport size in world coordinates
+	halfViewportWidth := int(float64(800) / (2.0 * c.ViewPortZoom))
+	halfViewportHeight := int(float64(600) / (2.0 * c.ViewPortZoom))
+
+	// Calculate viewport top-left (screen offset)
+	// We invert because ViewPortX/Y are offsets for drawing world onto screen
+	c.ViewPortX = -int(float64(x-halfViewportWidth) * c.ViewPortZoom)
+	c.ViewPortY = -int(float64(y-halfViewportHeight) * c.ViewPortZoom)
+
+	// Clamp ViewPortX
+	if c.ViewPortX > 0 {
+		c.ViewPortX = 0
+	}
+	minX := 800 - int(float64(c.mapWidth)*c.ViewPortZoom)
+	if c.ViewPortX < minX {
+		c.ViewPortX = minX
+	}
+
+	// Clamp ViewPortY
+	if c.ViewPortY > 0 {
+		c.ViewPortY = 0
+	}
+	minY := 600 - int(float64(c.mapHeight)*c.ViewPortZoom)
+	if c.ViewPortY < minY {
+		c.ViewPortY = minY
+	}
 }
+
 func (c *Camera) SetZoom(amount float64) {
 	c.ViewPortZoom = amount
 }
@@ -221,4 +285,24 @@ func (c *Camera) FadeOut(speed uint8) {
 	c.IsFadingOut = true
 	c.IsFadingIn = false
 	c.FadeAlpha = 0 // Start fully transparent
+}
+
+func (c *Camera) CenterCameraOnUnitGroupByIds(ids []string, s *sim.T) {
+	var positions []*vec2.T
+	for _, id := range ids {
+		u, err := s.GetUnitByID(id)
+		if err == nil {
+			positions = append(positions, u.GetCenteredPosition())
+		} else {
+			b, err := s.GetBuildingByID(id)
+			if err == nil {
+				positions = append(positions, b.GetCenteredPosition())
+			}
+		}
+	}
+
+	center := s.FindUnitGroupCenter(positions)
+	if !math.IsNaN(center.X) && !math.IsNaN(center.Y) {
+		c.SetPosition(center.ToPoint().X, center.ToPoint().Y)
+	}
 }

@@ -4,20 +4,29 @@ import (
 	"image"
 	"image/color"
 
+	"gamejam/fonts"
 	"gamejam/util"
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/inpututil"
-	"github.com/hajimehoshi/ebiten/v2/text/v2"
 )
 
 type BtnOptFunc func(*Button)
 
 type Button struct {
-	rect image.Rectangle
+	rect        image.Rectangle
+	description string
 
-	text string
-	font text.Face
+	text  string
+	fonts *fonts.All
+
+	Hidden    bool // Completely not shown or updated
+	GreyedOut bool // shown greyed out but still clickable
+
+	// Rotation is an optional angle in radians applied to the button image
+	// when drawn. It rotates around the button's centre and defaults to 0
+	// (no rotation), so existing buttons are unaffected.
+	Rotation float64
 
 	currentImg *ebiten.Image
 	defaultImg *ebiten.Image
@@ -25,21 +34,23 @@ type Button struct {
 
 	OnClick func()
 	key     ebiten.Key
+
+	tooltip TooltipInterface
 }
 
 //
 // NewButton creates a new Button with the given environment and options.
 //
 
-func NewButton(font text.Face, opts ...BtnOptFunc) *Button {
-	btn := defaultBtnOpts(font)
+func NewButton(fonts *fonts.All, opts ...BtnOptFunc) *Button {
+	btn := defaultBtnOpts(fonts)
 	for _, opt := range opts {
 		opt(&btn)
 	}
 	return &btn
 }
 
-func defaultBtnOpts(font text.Face) Button {
+func defaultBtnOpts(fonts *fonts.All) Button {
 	defaultWidth := float32(250.0)
 	defaultHeight := float32(100.0)
 	defaultImg := util.LoadImage("ui/btn/menu-btn.png")
@@ -57,7 +68,7 @@ func defaultBtnOpts(font text.Face) Button {
 				Y: 100,
 			},
 		},
-		font:       font,
+		fonts:      fonts,
 		currentImg: defaultImg,
 		defaultImg: defaultImg,
 		pressedImg: pressed,
@@ -100,13 +111,18 @@ func WithKeyActivation(key ebiten.Key) BtnOptFunc {
 		btn.key = key
 	}
 }
+func WithToolTip(tt TooltipInterface) BtnOptFunc {
+	return func(btn *Button) {
+		btn.tooltip = tt
+		// ReAlignToRect aligns the tooltip background AND its text to the button
+		// and clamps them on screen as one unit. Do NOT re-align the background
+		// afterwards: doing so moved only the background (not the text) back to
+		// the pre-clamp position, desyncing the two so bottom-row buttons (whose
+		// tooltips get clamped upward) drew their box in the wrong place.
+		btn.tooltip.ReAlignToRect(&btn.rect)
+	}
+}
 
-//	func WithToolTip(tt TooltipInterface) BtnOptFunc {
-//		return func(btn *Button) {
-//			btn.ToolTip = tt
-//			btn.ToolTip.GetAlignment().Align(btn.rect, tt.GetRect())
-//		}
-//	}
 // func WithCenteredPos() BtnOptFunc {
 // 	return func(btn *Button) {
 // 		centeredX := float64(btn.rect.Min.X) - 0.5*float64(btn.rect.Dx())
@@ -121,39 +137,82 @@ func WithKeyActivation(key ebiten.Key) BtnOptFunc {
 //
 
 func (btn *Button) Draw(screen *ebiten.Image) {
+	if btn.Hidden {
+		return
+	}
 	op := &ebiten.DrawImageOptions{}
+	if btn.Rotation != 0 {
+		// Rotate around the image centre so the button sways in place.
+		w := float64(btn.currentImg.Bounds().Dx())
+		h := float64(btn.currentImg.Bounds().Dy())
+		op.GeoM.Translate(-w/2, -h/2)
+		op.GeoM.Rotate(btn.Rotation)
+		op.GeoM.Translate(w/2, h/2)
+	}
 	op.GeoM.Translate(float64(btn.rect.Min.X), float64(btn.rect.Min.Y))
+	if btn.GreyedOut {
+		gray := ebiten.ColorM{}
+		gray.Scale(0.5, 0.5, 0.5, 1) // darken RGB, keep alpha
+		op.ColorM = gray
+	}
 	screen.DrawImage(btn.currentImg, op)
 
 	if btn.text != "" {
-		// draw text centered
-		centerX, centerY := btn.GetCenter()
+		yOffset := 0
 		if btn.currentImg == btn.pressedImg {
-			util.DrawCenteredText(screen, btn.font, btn.text, centerX, centerY+4, color.RGBA{R: 0, G: 0, B: 0, A: 255})
-		} else {
-			util.DrawCenteredText(screen, btn.font, btn.text, centerX, centerY, color.RGBA{R: 0, G: 0, B: 0, A: 255})
+			yOffset = 4
 		}
-
+		if btn.Rotation != 0 {
+			// Match the image rotation, which pivots around the button's
+			// centre, so the label stays glued to the button face.
+			centerX, centerY := btn.GetCenter()
+			util.DrawCenteredTextRotated(screen, btn.fonts.Med, btn.text, centerX, centerY+yOffset, btn.Rotation, color.RGBA{R: 0, G: 0, B: 0, A: 255})
+		} else {
+			centerX, centerY := btn.GetCenter()
+			util.DrawCenteredText(screen, btn.fonts.Med, btn.text, centerX, centerY+yOffset, color.RGBA{R: 0, G: 0, B: 0, A: 255})
+		}
 	}
-	// ebitenutil.DrawRect(screen, float64(btn.rect.Min.X), float64(btn.rect.Min.Y), float64(btn.rect.Dx()), float64(btn.rect.Dy()), color.RGBA{0, 255, 0, 255})
+
+	if btn.key != 999 {
+		util.DrawCenteredText(screen, btn.fonts.XSmall, btn.key.String(), btn.rect.Min.X+6, btn.rect.Min.Y-4, color.RGBA{R: 255, G: 255, B: 255, A: 255})
+	}
 }
 
-func (btn *Button) Update() {
-	// clicks
+// DrawTooltip draws the button's tooltip if the mouse is hovering over it.
+// This is separated from Draw so callers can render all button backgrounds
+// first and tooltips last, keeping tooltips on top of neighbouring buttons.
+func (btn *Button) DrawTooltip(screen *ebiten.Image) {
+	if btn.Hidden {
+		return
+	}
+	if btn.tooltip != nil && btn.MouseCollides() {
+		btn.tooltip.OnHover(screen)
+	}
+}
+
+func (btn *Button) Update(keyboardEnabled bool) {
+	if btn.Hidden {
+		return
+	}
+	// clicks (always processed; mouse input is never gated here)
 	if btn.OnClick != nil && inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) && btn.MouseCollides() {
 		btn.currentImg = btn.pressedImg
 	}
 	if btn.OnClick != nil && inpututil.IsMouseButtonJustReleased(ebiten.MouseButtonLeft) && btn.MouseCollides() {
 		btn.OnClick()
+
 		btn.currentImg = btn.defaultImg
 	}
-	// key presses
-	if btn.key != 999 && inpututil.IsKeyJustPressed(btn.key) {
-		btn.currentImg = btn.pressedImg
-	}
-	if btn.key != 999 && inpututil.IsKeyJustReleased(btn.key) {
-		btn.OnClick()
-		btn.currentImg = btn.defaultImg
+	// key presses (gated: skipped when keyboard input is disabled)
+	if keyboardEnabled {
+		if btn.key != 999 && inpututil.IsKeyJustPressed(btn.key) {
+			btn.currentImg = btn.pressedImg
+		}
+		if btn.key != 999 && inpututil.IsKeyJustReleased(btn.key) {
+			btn.OnClick()
+
+			btn.currentImg = btn.defaultImg
+		}
 	}
 }
 

@@ -3,15 +3,11 @@ sexist pompey
 enobarbus
 octavius himself
 
-at some point cleopatra bolts?
-weird and subversive for gamejam
-
-level 1
-introduce basic RTS mechanics and build a bridge to cleopatroach
-antony and cleopatra on different islands.
-
 enubarkbug
 emporer bugustus
+
+at some point cleopatra bolts?
+weird and subversive for gamejam
 
 LEVEL 1.
 PURPOSE: tutorial w/ one base, collecting resources, building a bridge to Cleopatroach - fade to black -

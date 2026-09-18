@@ -1,15 +1,20 @@
 package ui
 
 import (
-	"gamejam/eventing"
+	"gamejam/fonts"
 	"gamejam/log"
 	"gamejam/sim"
 	"gamejam/util"
 	"image"
 	"log/slog"
+	"slices"
 
 	"github.com/hajimehoshi/ebiten/v2"
-	"github.com/hajimehoshi/ebiten/v2/text/v2"
+)
+
+var (
+	LowerUiBgPositionX = 0.0
+	LowerUiBgPositionY = 400.0
 )
 
 type RightSideHUDState int
@@ -17,153 +22,120 @@ type RightSideHUDState int
 const (
 	HiddenState RightSideHUDState = iota
 	HiveSelectedState
+	RoachHiveSelectedState
 	UnitSelectedState
 )
 
 type HUD struct {
-	leftSideBg   *ebiten.Image
-	leftSideRect image.Rectangle
+	rightSideRect  image.Rectangle
+	RightSideState RightSideHUDState
 
-	rightSideBg            *ebiten.Image
-	rightSideRect          image.Rectangle
-	RightSideState         RightSideHUDState
-	rightSideMakeAntBtn    *Button
-	rightSideMakeBridgeBtn *Button
-	rightSideZImg          *ebiten.Image
+	hitboxes    []image.Rectangle
+	miniMapRect image.Rectangle
 
-	resourceDisplay *ResourceDisplay
-	//attackBtn       *Button
-	//attackLabel *ebiten.Image
-	// moveBtn *Button
-	// stopBtn *Button
+	rightWorkerUnitButtonPanel *ButtonPanel // Buttons for worker selected (spawn more units)
+	rightHiveButtonPanel       *ButtonPanel // Buttons for ant hive selected (spawn more units)
+	rightRoachHiveButtonPanel  *ButtonPanel // Buttons for roach hive selected (spawn more roaches)
+
+	resourceDisplay  *ResourceDisplay
+	selectedUnitArea *SelectedUnitArea
+
+	lowerBG *ebiten.Image
+
 	log *slog.Logger
 	sim *sim.T
 }
 
-func NewHUD(font text.Face, sim *sim.T) *HUD {
-	leftSideRect := image.Rectangle{Min: image.Pt(0, 500), Max: image.Pt(200, 600)}
+func NewHUD(fonts *fonts.All, sim *sim.T) *HUD {
+	//leftSideRect := image.Rectangle{Min: image.Pt(0, 500), Max: image.Pt(200, 600)}
 	rightSideRect := image.Rectangle{Min: image.Pt(600, 500), Max: image.Pt(800, 600)}
-	c := &HUD{
-		leftSideRect: leftSideRect,
-		leftSideBg:   util.ScaleImage(util.LoadImage("ui/btn/controls-bg-left.png"), float32(leftSideRect.Dx()), float32(leftSideRect.Dy())),
-
+	hud := &HUD{
 		rightSideRect:  rightSideRect,
-		rightSideBg:    util.ScaleImage(util.LoadImage("ui/btn/controls-bg-right.png"), float32(leftSideRect.Dx()), float32(leftSideRect.Dy())),
 		RightSideState: HiddenState,
-		rightSideZImg:  util.ScaleImage(util.LoadImage("ui/keys/z.png"), float32(40), float32(40)),
 
-		resourceDisplay: NewResourceDisplay(font),
-		log:             log.NewLogger().With("for", "HUD"),
-		sim:             sim,
+		rightWorkerUnitButtonPanel: NewWorkerUnitButtonPanel(fonts, sim),
+		rightHiveButtonPanel:       NewHiveButtonPanel(fonts, sim),
+		rightRoachHiveButtonPanel:  NewRoachHiveButtonPanel(fonts, sim),
+
+		resourceDisplay:  NewResourceDisplay(fonts.Med),
+		selectedUnitArea: NewSelectedUnitArea(),
+
+		lowerBG: util.LoadImage("ui/bg/lower-UI-bg.png"),
+		log:     log.NewLogger().With("for", "HUD"),
+		sim:     sim,
 	}
 
-	c.rightSideMakeAntBtn = NewButton(font,
-		WithRect(image.Rectangle{
-			Min: image.Pt(c.rightSideRect.Min.X+20, c.rightSideRect.Min.Y+15),
-			Max: image.Pt(c.rightSideRect.Min.X+70, c.rightSideRect.Min.Y+65)}),
-		WithClickFunc(func() {
-			c.log.Info("MakeAntButtonClickedEvent")
-			sim.EventBus.Publish(eventing.Event{
-				Type: "MakeAntButtonClickedEvent",
-			})
-		}),
-		WithImage(util.LoadImage("ui/btn/make-ant-btn.png"), util.LoadImage("ui/btn/make-ant-btn-pressed.png")),
-		WithKeyActivation(ebiten.KeyZ),
-	)
+	// Setup UI hitbox areas
+	leftSideHitbox := image.Rectangle{Min: image.Pt(0, 420), Max: image.Pt(180, 600)}
+	hud.hitboxes = append(hud.hitboxes, leftSideHitbox)
+	rightSideHitbox := image.Rectangle{Min: image.Pt(620, 420), Max: image.Pt(800, 600)}
+	hud.hitboxes = append(hud.hitboxes, rightSideHitbox)
+	middleHitbox := image.Rectangle{Min: image.Pt(180, 472), Max: image.Pt(620, 600)}
+	hud.hitboxes = append(hud.hitboxes, middleHitbox)
 
-	c.rightSideMakeBridgeBtn = NewButton(font,
-		WithRect(image.Rectangle{
-			Min: image.Pt(c.rightSideRect.Min.X+20, c.rightSideRect.Min.Y+15),
-			Max: image.Pt(c.rightSideRect.Min.X+70, c.rightSideRect.Min.Y+65)}),
-		WithClickFunc(func() {
-			c.log.Info("MakeBridgeButtonClickedEvent")
-			sim.EventBus.Publish(eventing.Event{
-				Type: "MakeBridgeButtonClickedEvent",
-			})
-		}),
-		WithImage(util.LoadImage("ui/btn/make-bridge-btn.png"), util.LoadImage("ui/btn/make-bridge-btn-pressed.png")),
-		WithKeyActivation(ebiten.KeyZ),
-	)
+	hud.miniMapRect = image.Rectangle{Min: image.Pt(MiniMapLeftPad, 600-MiniMapHeight-MiniMapBottomPad), Max: image.Pt(MiniMapLeftPad+MiniMapWidth, 600-MiniMapBottomPad)}
+	hud.hitboxes = append(hud.hitboxes, hud.miniMapRect)
 
-	// c.attackBtn = NewButton(font,
-	// 	WithRect(image.Rectangle{Min: image.Pt(c.rect.Min.X+20, c.rect.Min.Y+20), Max: image.Pt(c.rect.Min.X+70, c.rect.Min.Y+70)}),
-	// 	WithClickFunc(func() {
-	// 		c.log.Info("atkbtnclicked")
-	// 	}),
-	// 	WithImage(util.LoadImage("ui/btn/atk-btn.png"), util.LoadImage("ui/btn/atk-btn-pressed.png")),
-	// 	WithKeyActivation(ebiten.KeyZ),
-	// )
-	// c.moveBtn = NewButton(font,
-	// 	WithRect(image.Rectangle{Min: image.Pt(c.rect.Min.X+80, c.rect.Min.Y+20), Max: image.Pt(c.rect.Min.X+130, c.rect.Min.Y+70)}),
-	// 	WithImage(util.LoadImage("ui/btn/move-btn.png"), util.LoadImage("ui/btn/move-btn-pressed.png")),
-	// 	WithClickFunc(func() {
-	// 		c.log.Info("movebtnclicked")
-	// 	}),
-	// 	WithKeyActivation(ebiten.KeyX),
-	// )
-	// c.stopBtn = NewButton(font,
-	// 	WithRect(image.Rectangle{Min: image.Pt(c.rect.Min.X+140, c.rect.Min.Y+20), Max: image.Pt(c.rect.Min.X+190, c.rect.Min.Y+70)}),
-	// 	WithImage(util.LoadImage("ui/btn/stop-btn.png"), util.LoadImage("ui/btn/stop-btn-pressed.png")),
-	// 	WithClickFunc(func() {
-	// 		c.log.Info("stopbtnclicked")
-	// 	}),
-	// 	WithKeyActivation(ebiten.KeyC),
-	// )
-	return c
+	return hud
 }
 
-func (c *HUD) Update() {
+func (h *HUD) Update(selectedUnitIDs []string, keyboardEnabled bool) {
+	// Reset right side build state
+	if h.RightSideState != UnitSelectedState && h.rightWorkerUnitButtonPanel.AltModeEnabled {
+		h.rightWorkerUnitButtonPanel.AltModeEnabled = false
+	}
+	switch h.RightSideState {
+	case HiddenState:
+		// do nothing +
+	case HiveSelectedState:
+		h.rightHiveButtonPanel.Update(keyboardEnabled)
+	case RoachHiveSelectedState:
+		h.rightRoachHiveButtonPanel.Update(keyboardEnabled)
+	case UnitSelectedState:
+		h.rightWorkerUnitButtonPanel.Update(keyboardEnabled)
+	}
+
+	h.selectedUnitArea.Update(selectedUnitIDs)
+}
+
+func (c *HUD) Draw(screen *ebiten.Image, sprites map[string]*Sprite) {
+	// Draw UI lower BG
+	op := &ebiten.DrawImageOptions{}
+	op.GeoM.Translate(LowerUiBgPositionX, LowerUiBgPositionY)
+	screen.DrawImage(c.lowerBG, op)
+
 	switch c.RightSideState {
 	case HiddenState:
 		// do nothing
 	case HiveSelectedState:
-		c.rightSideMakeAntBtn.Update()
+		c.rightHiveButtonPanel.Draw(screen)
+	case RoachHiveSelectedState:
+		c.rightRoachHiveButtonPanel.Draw(screen)
 	case UnitSelectedState:
-		c.rightSideMakeBridgeBtn.Update()
+		c.rightWorkerUnitButtonPanel.Draw(screen)
 	}
 
-	//c.attackBtn.Update()
-	//c.stopBtn.Update()
-	//c.moveBtn.Update()
-
-}
-
-func (c *HUD) Draw(screen *ebiten.Image) {
-	// draw left side BG
-	// opts := &ebiten.DrawImageOptions{}
-	// opts.GeoM.Translate(float64(c.leftSideRect.Min.X), float64(c.leftSideRect.Min.Y))
-	// screen.DrawImage(c.leftSideBg, opts)
-	//c.attackBtn.Draw(screen)
-	//c.stopBtn.Draw(screen)
-	//c.moveBtn.Draw(screen)
-
-	c.DrawRightSide(screen)
-	// draw resource display
 	c.resourceDisplay.Draw(screen, c.sim)
+	c.selectedUnitArea.Draw(screen, sprites)
+
+	// DebugDraw UI hitboxes
+	// for _, hb := range c.hitboxes {
+	// 	ebitenutil.DrawRect(screen, float64(hb.Min.X), float64(hb.Min.Y), float64(hb.Dx()), float64(hb.Dy()), color.RGBA{255, 255, 255, 255})
+	// }
 }
 
-func (c *HUD) DrawRightSide(screen *ebiten.Image) {
-	// setup right side BG options
-	opts := &ebiten.DrawImageOptions{}
-	opts.GeoM.Translate(float64(c.rightSideRect.Min.X), float64(c.rightSideRect.Min.Y))
+func (h *HUD) IsPointInside(pt image.Point) bool {
+	return slices.ContainsFunc(h.hitboxes, pt.In)
+}
 
-	switch c.RightSideState {
-	case HiddenState:
-		// draw nothing
-	case HiveSelectedState:
-		screen.DrawImage(c.rightSideBg, opts)
-		c.rightSideMakeAntBtn.Draw(screen)
-		c.DrawRightSideZImg(screen)
-	case UnitSelectedState:
-		screen.DrawImage(c.rightSideBg, opts)
-		c.rightSideMakeBridgeBtn.Draw(screen)
-		c.DrawRightSideZImg(screen)
+func (h *HUD) IsPointInsideMinimap(pt image.Point) bool {
+	return pt.In(h.miniMapRect)
+}
 
+func (h *HUD) EnableFighterButton() {
+	for _, btn := range h.rightHiveButtonPanel.btns {
+		if btn.description == "fighter_btn" {
+			btn.GreyedOut = false
+		}
 	}
-
-}
-func (c *HUD) DrawRightSideZImg(screen *ebiten.Image) {
-	opts := &ebiten.DrawImageOptions{}
-	opts.GeoM.Translate(float64(c.rightSideRect.Min.X+25), float64(c.rightSideRect.Min.Y+64))
-	screen.DrawImage(c.rightSideZImg, opts)
 }

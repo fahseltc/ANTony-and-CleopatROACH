@@ -27,7 +27,10 @@ var (
 	ScreenWidth  = 800
 	ScreenHeight = 600
 	HPadding     = 60
-	ScrollSpeed  = 1.5
+	ScrollSpeed  = 1.1
+	// FastScrollMultiplier is how much faster the text scrolls while the
+	// left mouse button is held down.
+	FastScrollMultiplier = 4.0
 )
 
 func NewFullscreenText(font text.Face, rawText string, lineSpacing float64) *FullscreenText {
@@ -55,18 +58,31 @@ func (f *FullscreenText) Update() {
 	}
 
 	minScroll := float64(f.screenHeight) - float64(f.TotalTextHeight())
+	atBottom := f.ScrollY <= minScroll
 
-	if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) {
-		if f.ScrollY > minScroll {
-			f.ScrollY = minScroll // jump immediately to bottom
-		} else {
-			f.Done = true // finish on next click
+	// Once scrolled all the way to the bottom, either click forcibly advances.
+	if atBottom {
+		if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) ||
+			inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonRight) {
+			f.Done = true
+			return
 		}
+	}
+
+	// Right click jumps straight to the bottom.
+	if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonRight) {
+		f.ScrollY = minScroll
 		return
 	}
 
+	// Holding left click speeds up the scroll.
+	speed := f.ScrollSpeed
+	if ebiten.IsMouseButtonPressed(ebiten.MouseButtonLeft) {
+		speed *= FastScrollMultiplier
+	}
+
 	// scroll up
-	f.ScrollY -= f.ScrollSpeed
+	f.ScrollY -= speed
 
 	// clamp scroll between top and bottom positions
 	if f.ScrollY < minScroll {

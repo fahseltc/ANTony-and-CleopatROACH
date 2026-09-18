@@ -2,7 +2,7 @@ package game
 
 import (
 	"gamejam/audio"
-	"gamejam/config"
+	"gamejam/data"
 	"gamejam/fonts"
 	"gamejam/log"
 	"gamejam/scene"
@@ -21,14 +21,14 @@ type Game struct {
 	sound          *audio.SoundManager
 	fonts          *fonts.All
 
-	cfg *config.T
+	cfg *data.Config
 	log *slog.Logger
 }
 
-func New(cfg *config.T, sound *audio.SoundManager) *Game {
+func New(cfg *data.Config, sound *audio.SoundManager) *Game {
 	state := scene.GameState{}
 	fonts := fonts.Load(fontPath)
-	levelData := scene.NewLevelCollection().Levels
+	levels := scene.NewLevelCollection()
 	var manager *stagehand.SceneManager[scene.GameState]
 
 	if cfg.MuteAudio {
@@ -36,11 +36,14 @@ func New(cfg *config.T, sound *audio.SoundManager) *Game {
 		sound.GlobalSFXVolume = 0.0
 	}
 
-	if cfg.SkipMenu {
-		scene := scene.NewNarratorScene(fonts, sound, levelData[cfg.StartingLevel])
+	if cfg.Dev.SkipMenu && !cfg.Dev.SkipToGameplay { // skip menu but go to first narration screen
+		scene := scene.NewNarratorScene(fonts, sound, levels.GetLevel(cfg.Dev.StartingLevel))
 		manager = stagehand.NewSceneManager(scene, state)
-	} else {
-		menu := scene.NewMenuScene(fonts, sound)
+	} else if cfg.Dev.SkipToGameplay { // go right to gameplay immediately
+		scene := scene.NewPlayScene(fonts, sound, levels.GetLevel(cfg.Dev.StartingLevel))
+		manager = stagehand.NewSceneManager(scene, state)
+	} else { // else normal menu flow
+		menu := scene.NewMenuScene(fonts, sound, cfg)
 		manager = stagehand.NewSceneManager(menu, state)
 	}
 
