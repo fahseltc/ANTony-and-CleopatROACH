@@ -44,7 +44,11 @@ jobs:
           Remove-Item Env:GOOS
           Remove-Item Env:GOARCH
           cp gamejam.wasm html/
-          compress-archive -path html/* -destination out.zip
+          # itch.io hosts a single build, so ship only the current (V2) version.
+          # The committed html/v1/ (frozen game jam build) is excluded here but is
+          # still published to GitHub Pages via the upload-pages-artifact step,
+          # which uploads all of html/ including html/v1/.
+          compress-archive -path html/index.html, html/wasm_exec.js, html/gamejam.wasm -destination out.zip
 
       - uses: KikimoraGames/itch-publish@v0.0.3
         with:
